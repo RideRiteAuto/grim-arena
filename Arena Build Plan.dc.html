@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; background:#0e0f0d; }
+  a { color:#c8a24a; text-decoration:none; border-bottom:1px solid rgba(200,162,74,0.35); }
+  a:hover { color:#e8c774; border-bottom-color:#e8c774; }
+  ::selection { background:#3d5a3a; color:#f2efe6; }
+</style>
+</helmet>
+
+<div style="background:#0e0f0d; color:#d8d4c6; font-family:'IBM Plex Sans',system-ui,sans-serif; min-height:100vh; padding:0 0 120px;">
+
+  <div style="max-width:940px; margin:0 auto; padding:0 40px;">
+
+    <div style="padding:88px 0 56px; border-bottom:1px solid #26281f;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">Technical build plan &nbsp;/&nbsp; v1</div>
+      <h1 style="font-family:'Cinzel',serif; font-weight:700; font-size:66px; line-height:1.02; letter-spacing:-0.01em; margin:22px 0 0; color:#f2efe6; text-wrap:balance;">Grim Arena</h1>
+      <p style="font-size:21px; line-height:1.55; color:#a9a596; margin:20px 0 0; max-width:680px; text-wrap:pretty;">A 1v1 browser duelling game with real-time third-person action combat — melee, magic and ranged — hosted off your machine and shared with a link.</p>
+      <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:32px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.08em; padding:7px 13px; border:1px solid #2f3327; border-radius:3px; color:#9aa87c; background:#15170f;">THREE.JS</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.08em; padding:7px 13px; border:1px solid #2f3327; border-radius:3px; color:#9aa87c; background:#15170f;">NODE + WEBSOCKET</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.08em; padding:7px 13px; border:1px solid #2f3327; border-radius:3px; color:#9aa87c; background:#15170f;">AUTHORITATIVE SERVER</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.08em; padding:7px 13px; border:1px solid #2f3327; border-radius:3px; color:#9aa87c; background:#15170f;">CLOUDFLARE TUNNEL</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.08em; padding:7px 13px; border:1px solid #2f3327; border-radius:3px; color:#9aa87c; background:#15170f;">~2 WEEKS TO MVP</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0; border-bottom:1px solid #26281f;">
+      <div style="padding:28px 28px 28px 0; border-right:1px solid #26281f;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:#7d8a63; margin-bottom:10px;">The one thing to get right</div>
+        <p style="margin:0; font-size:16px; line-height:1.6; color:#c2beb0; text-wrap:pretty;">Combat is <strong style="color:#f2efe6;">real-time and physical</strong>, not tick-based. Free WASD movement, mouse-aimed swings, dodge rolls, shield raises, projectiles with travel time. Every hit is a swept-capsule check against an animation window — never a dice roll on a timer.</p>
+      </div>
+      <div style="padding:28px 0 28px 28px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:#7d8a63; margin-bottom:10px;">A note on IP</div>
+        <p style="margin:0; font-size:16px; line-height:1.6; color:#c2beb0; text-wrap:pretty;">Mechanics are free to borrow. Names and art are not. This plan uses original item names and original assets throughout so you can share the link with anyone without worry.</p>
+      </div>
+    </div>
+
+    <section style="padding:72px 0 0;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">01</div>
+      <h2 style="font-family:'Cinzel',serif; font-weight:600; font-size:38px; line-height:1.1; margin:10px 0 0; color:#f2efe6;">Architecture</h2>
+      <p style="font-size:17px; line-height:1.65; color:#a9a596; margin:14px 0 0; max-width:660px; text-wrap:pretty;">One Node process serves the static client and runs the game loop. No build step, no bundler, no framework — ES modules straight to the browser. You can be running in ten minutes.</p>
+
+      <div style="margin-top:34px; border:1px solid #26281f; border-radius:4px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr;">
+          <div style="padding:26px 24px; border-right:1px solid #26281f; background:#131510;">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#c8a24a; margin-bottom:12px;">CLIENT</div>
+            <div style="font-size:15px; line-height:1.7; color:#c2beb0;">Three.js renderer<br />Input sampling @ 60Hz<br />Client-side prediction<br />Remote entity interpolation<br />HUD, hitsplats, VFX, audio</div>
+          </div>
+          <div style="padding:26px 24px; border-right:1px solid #26281f; background:#16180f;">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#c8a24a; margin-bottom:12px;">TRANSPORT</div>
+            <div style="font-size:15px; line-height:1.7; color:#c2beb0;">WebSocket (<code style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#9aa87c;">ws</code>)<br />Binary frames, not JSON<br />Input up @ 30Hz<br />Snapshot down @ 20Hz<br />Delta-compressed state</div>
+          </div>
+          <div style="padding:26px 24px; background:#131510;">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#c8a24a; margin-bottom:12px;">SERVER</div>
+            <div style="font-size:15px; line-height:1.7; color:#c2beb0;">Fixed 30Hz simulation<br />Authoritative movement<br />Hit resolution + lag comp<br />Match/round state machine<br />Room codes, 2 per room</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; background:#111309; border:1px solid #26281f; border-radius:4px; padding:24px 26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:1.85; color:#9aa87c; white-space:pre;">grim-arena/
+  server/
+    index.js          express + ws, serves /client
+    sim.js            fixed-step world simulation
+    combat.js         damage, hitboxes, status effects
+    room.js           matchmaking, round flow
+    shared/ -> symlink to client/shared
+  client/
+    index.html
+    main.js           bootstrap, render loop
+    net.js            socket, prediction, reconciliation
+    render/           scene, materials, camera, vfx
+    ui/               hud, hitsplats, menus
+    shared/
+      constants.js    ONE source of truth for all tuning
+      movement.js     runs identically on both sides</div>
+      </div>
+      <p style="font-size:16px; line-height:1.65; color:#a9a596; margin:18px 0 0; max-width:660px; text-wrap:pretty;">The <code style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:#c8a24a;">shared/</code> folder is the whole trick. Movement and combat maths are written once and imported by both the browser and Node, so prediction and authority can never drift apart.</p>
+    </section>
+
+    <section style="padding:72px 0 0;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">02</div>
+      <h2 style="font-family:'Cinzel',serif; font-weight:600; font-size:38px; line-height:1.1; margin:10px 0 0; color:#f2efe6;">Netcode</h2>
+      <p style="font-size:17px; line-height:1.65; color:#a9a596; margin:14px 0 0; max-width:660px; text-wrap:pretty;">Two players over a home tunnel means 40–120ms of latency. Action combat feels broken at that ping unless you handle it deliberately. Three techniques, in order of importance:</p>
+
+      <div style="display:flex; flex-direction:column; gap:14px; margin-top:30px;">
+        <div style="display:grid; grid-template-columns:52px 1fr; gap:22px; border:1px solid #26281f; border-radius:4px; padding:24px 26px; background:#131510;">
+          <div style="font-family:'Cinzel',serif; font-size:30px; color:#3f4a2e; line-height:1;">i</div>
+          <div>
+            <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:21px; margin:0 0 8px; color:#f2efe6;">Client-side prediction</h3>
+            <p style="margin:0; font-size:16px; line-height:1.65; color:#a9a596; text-wrap:pretty;">Your own character moves the instant you press a key. Every input is stamped with a sequence number and kept in a ring buffer. When the server's snapshot arrives it carries the last input it processed — if its position differs from your recorded one, snap and replay all unacknowledged inputs. Movement feels local at any ping.</p>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:52px 1fr; gap:22px; border:1px solid #26281f; border-radius:4px; padding:24px 26px; background:#131510;">
+          <div style="font-family:'Cinzel',serif; font-size:30px; color:#3f4a2e; line-height:1;">ii</div>
+          <div>
+            <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:21px; margin:0 0 8px; color:#f2efe6;">Entity interpolation</h3>
+            <p style="margin:0; font-size:16px; line-height:1.65; color:#a9a596; text-wrap:pretty;">Your opponent is rendered 100ms in the past, smoothly interpolated between the last two snapshots. Never extrapolate a player — a rubber-banding enemy is worse than a slightly delayed one.</p>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:52px 1fr; gap:22px; border:1px solid #26281f; border-radius:4px; padding:24px 26px; background:#131510;">
+          <div style="font-family:'Cinzel',serif; font-size:30px; color:#3f4a2e; line-height:1;">iii</div>
+          <div>
+            <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:21px; margin:0 0 8px; color:#f2efe6;">Lag-compensated hits</h3>
+            <p style="margin:0; font-size:16px; line-height:1.65; color:#a9a596; text-wrap:pretty;">The server keeps one second of positional history per player. When a swing lands, it rewinds the target to where the attacker actually saw them (their render time = now − RTT/2 − interp delay) and tests the hitbox there. Without this, hits visibly pass through people.</p>
+            <p style="margin:10px 0 0; font-size:15px; line-height:1.6; color:#7d8a63; text-wrap:pretty;">The block check runs on the rewound state too — otherwise raising your shield feels late.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:22px; border-left:2px solid #c8a24a; padding:4px 0 4px 22px;">
+        <p style="margin:0; font-size:16px; line-height:1.65; color:#c2beb0; text-wrap:pretty;"><strong style="color:#f2efe6;">Cheating is not your problem.</strong> You're playing with one coworker. Keep the server authoritative because it makes the game <em>feel</em> consistent, not because you need anti-cheat. Don't spend a day on input validation.</p>
+      </div>
+    </section>
+
+    <section style="padding:72px 0 0;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">03</div>
+      <h2 style="font-family:'Cinzel',serif; font-weight:600; font-size:38px; line-height:1.1; margin:10px 0 0; color:#f2efe6;">Combat design</h2>
+      <p style="font-size:17px; line-height:1.65; color:#a9a596; margin:14px 0 0; max-width:660px; text-wrap:pretty;">Every action is a state machine with explicit frame windows: <em>windup → active → recovery</em>. You are committed during windup and active; you can cancel into a dodge only during recovery. This is what makes action combat readable instead of mushy.</p>
+
+      <div style="margin-top:34px; border:1px solid #26281f; border-radius:4px; overflow:hidden;">
+        <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; background:#1b1d14; border-bottom:1px solid #26281f;">
+          <div style="padding:14px 20px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#9aa87c;">ACTION</div>
+          <div style="padding:14px 20px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#9aa87c;">WINDUP</div>
+          <div style="padding:14px 20px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#9aa87c;">DAMAGE</div>
+          <div style="padding:14px 20px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#9aa87c;">NOTES</div>
+        </div>
+        <sc-for list="{{ moves }}" as="m" hint-placeholder-count="8">
+          <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; border-bottom:1px solid #1e2118;">
+            <div style="padding:16px 20px; font-size:15px; color:#f2efe6; font-weight:500;">{{ m.name }}</div>
+            <div style="padding:16px 20px; font-size:15px; color:#a9a596; font-family:'IBM Plex Mono',monospace;">{{ m.windup }}</div>
+            <div style="padding:16px 20px; font-size:15px; color:#c8a24a; font-family:'IBM Plex Mono',monospace;">{{ m.dmg }}</div>
+            <div style="padding:16px 20px; font-size:14px; color:#7d8a63; line-height:1.5;">{{ m.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:26px;">
+        <div style="border:1px solid #26281f; border-top:2px solid #a8503a; border-radius:4px; padding:24px; background:#131510;">
+          <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 10px; color:#f2efe6;">Blade &amp; Shield</h3>
+          <p style="margin:0; font-size:15px; line-height:1.65; color:#a9a596; text-wrap:pretty;">Light attacks chain into a 3-hit combo with a widening arc. Hold right-mouse to raise the shield: 80% reduction in a 120° frontal cone, movement cut to 40%, drains a stamina bar. Release-on-impact within 200ms of a hit is a <strong style="color:#e8c774;">perfect block</strong> — zero damage and the attacker is staggered for 0.5s. That single mechanic carries the whole melee skill ceiling.</p>
+        </div>
+        <div style="border:1px solid #26281f; border-top:2px solid #4a7fa8; border-radius:4px; padding:24px; background:#131510;">
+          <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 10px; color:#f2efe6;">Frost Staff</h3>
+          <p style="margin:0; font-size:15px; line-height:1.65; color:#a9a596; text-wrap:pretty;">Frostbolt is a slow, visible projectile — 18 m/s, leads badly, punished by strafing. On hit: damage plus <strong style="color:#8fc4e8;">2s root</strong>. Rooted players can still turn, attack and block; they cannot walk or dodge. A 6s cooldown on the freeze specifically, so you can't perma-lock. Mana regenerates only when you're not casting.</p>
+        </div>
+        <div style="border:1px solid #26281f; border-top:2px solid #6f9a4a; border-radius:4px; padding:24px; background:#131510;">
+          <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 10px; color:#f2efe6;">Longbow</h3>
+          <p style="margin:0; font-size:15px; line-height:1.65; color:#a9a596; text-wrap:pretty;">Infinite arrows, two fire modes. <strong style="color:#f2efe6;">Charged</strong>: hold to draw up to 1.2s, damage and projectile speed scale with draw, movement slowed while drawing. <strong style="color:#f2efe6;">Rapid</strong>: three fast arrows in 0.9s, low damage, generous spread, no charge. Shield cone blocks arrows, so ranged wants angles.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:26px; border:1px solid #26281f; border-radius:4px; padding:26px; background:#111309;">
+        <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 12px; color:#f2efe6;">Weapon switching &amp; the triangle</h3>
+        <p style="margin:0; font-size:16px; line-height:1.65; color:#a9a596; max-width:720px; text-wrap:pretty;">Keys 1/2/3 switch loadout with a 0.6s lockout — long enough that switching is a decision, short enough to be part of a combo. Keep a soft rock-paper-scissors: magic pierces the shield cone at 50% reduction, arrows are fully blockable, melee beats a caster who can't kite. Don't hard-counter anything; multipliers of 1.25× / 1.0× / 0.8× are plenty.</p>
+      </div>
+
+      <div style="margin-top:14px; border:1px solid #26281f; border-radius:4px; padding:26px; background:#111309;">
+        <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 12px; color:#f2efe6;">Hitsplats &amp; feedback</h3>
+        <p style="margin:0 0 22px; font-size:16px; line-height:1.65; color:#a9a596; max-width:720px; text-wrap:pretty;">Chunky opaque plates with a bold centered numeral, projected from world space as DOM elements — cheaper and crisper than sprites, and trivially styleable. Original shape language (a hard-edged beveled hex rather than the classic teardrop blob), same readability rules that make the genre's splats work.</p>
+
+        <div style="display:flex; flex-wrap:wrap; gap:26px; align-items:flex-start; padding:30px 26px; background:#1a1c14; border:1px solid #26281f; border-radius:4px;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div style="width:46px; height:46px; background:#b4342b; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.28), inset 0 -3px 0 rgba(0,0,0,0.32); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:19px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,0.55);">14</div>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.14em; color:#7d8a63;">HIT</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div style="width:46px; height:46px; background:#3b4a5c; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -3px 0 rgba(0,0,0,0.32); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:19px; color:#dfe6ee; text-shadow:0 2px 0 rgba(0,0,0,0.55);">0</div>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.14em; color:#7d8a63;">BLOCKED</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div style="width:54px; height:54px; background:#d8a531; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(0,0,0,0.3), 0 0 18px rgba(216,165,49,0.45); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:22px; color:#2b2208; text-shadow:0 1px 0 rgba(255,255,255,0.3);">27</div>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.14em; color:#7d8a63;">CRIT</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div style="width:46px; height:46px; background:#3f86b8; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.34), inset 0 -3px 0 rgba(0,0,0,0.3); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:19px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,0.55);">16</div>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.14em; color:#7d8a63;">FROST</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div style="width:46px; height:46px; background:#5c7a3a; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.24), inset 0 -3px 0 rgba(0,0,0,0.32); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:19px; color:#eaf3dc; text-shadow:0 2px 0 rgba(0,0,0,0.55);">9</div>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.14em; color:#7d8a63;">ARROW</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <div style="display:flex; gap:3px;">
+              <div style="width:38px; height:38px; background:#5c7a3a; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.24), inset 0 -3px 0 rgba(0,0,0,0.32); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:15px; color:#eaf3dc; text-shadow:0 2px 0 rgba(0,0,0,0.55);">6</div>
+              <div style="width:38px; height:38px; background:#5c7a3a; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.24), inset 0 -3px 0 rgba(0,0,0,0.32); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:15px; color:#eaf3dc; text-shadow:0 2px 0 rgba(0,0,0,0.55);">6</div>
+              <div style="width:38px; height:38px; background:#5c7a3a; border:2px solid #0e0f0d; box-shadow:inset 0 2px 0 rgba(255,255,255,0.24), inset 0 -3px 0 rgba(0,0,0,0.32); clip-path:polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:15px; color:#eaf3dc; text-shadow:0 2px 0 rgba(0,0,0,0.55);">6</div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.14em; color:#7d8a63;">STACKED (RAPID SHOT)</span>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+          <div style="border:1px solid #26281f; border-radius:4px; padding:22px 24px; background:#15170f;">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#c8a24a; margin-bottom:12px;">THE RULES THAT MAKE IT READ</div>
+            <div style="font-size:15px; line-height:1.8; color:#a9a596;">Fully opaque fill, hard 2px dark outline — legible on any background<br />Numeral centered and optically balanced, never clipped<br />Colour encodes the <em>source</em>, size encodes the <em>severity</em><br />A zero is a real splat, not an absence — blocks must be visible<br />Multiple hits in a frame stack horizontally, max 4, then "+n"<br />Screen-space sized, so distance never shrinks it below legible</div>
+          </div>
+          <div style="border:1px solid #26281f; border-radius:4px; padding:22px 24px; background:#15170f;">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#c8a24a; margin-bottom:12px;">MOTION</div>
+            <div style="font-size:15px; line-height:1.8; color:#a9a596;"><span style="color:#7d8a63;">0–80ms</span> &nbsp;pop in, scale 0.6 → 1.15, back-out easing<br /><span style="color:#7d8a63;">80–140ms</span> &nbsp;settle to 1.0<br /><span style="color:#7d8a63;">140–700ms</span> &nbsp;hold, drift up ~30px, slight random x<br /><span style="color:#7d8a63;">700–900ms</span> &nbsp;fade to 0, drift continues<br />Anchor above the chest bone, not the origin<br />Billboard to camera; never rotate with the target</div>
+          </div>
+        </div>
+
+        <p style="margin:18px 0 0; font-size:15px; line-height:1.6; color:#7d8a63; max-width:720px; text-wrap:pretty;">Pair every splat with 60ms of hitstop, a 6px camera shake, a red vignette pulse when you're the one hit, and a sound. Feedback is 80% of how good combat feels — budget real time for it, not the last afternoon.</p>
+      </div>
+    </section>
+
+    <section style="padding:72px 0 0;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">04</div>
+      <h2 style="font-family:'Cinzel',serif; font-weight:600; font-size:38px; line-height:1.1; margin:10px 0 0; color:#f2efe6;">Arena &amp; art direction</h2>
+      <p style="font-size:17px; line-height:1.65; color:#a9a596; margin:14px 0 0; max-width:660px; text-wrap:pretty;">A sunken stone octagon, roughly 30m across, walled in weathered blocks with braziers at the corners and two opposing entry arches. Sand floor, a few broken pillars for cover so the ranged fight isn't a flat plane.</p>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:30px;">
+        <div style="border:1px solid #26281f; border-radius:4px; padding:26px; background:#131510;">
+          <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 12px; color:#f2efe6;">Looking good, cheaply</h3>
+          <div style="font-size:15px; line-height:1.85; color:#a9a596;">Stylized low-poly, hand-authored colours<br />Baked lightmaps on all static geometry<br />One directional light + hemisphere fill<br />Contact-hardening shadows on players only<br />Fog for depth and to hide the arena edge<br />Post: bloom on braziers, vignette, subtle grain<br />Trim-sheet texturing — one 1024 atlas, one draw call</div>
+        </div>
+        <div style="border:1px solid #26281f; border-radius:4px; padding:26px; background:#131510;">
+          <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 12px; color:#f2efe6;">Performance budget</h3>
+          <div style="font-size:15px; line-height:1.85; color:#a9a596;">60fps on integrated graphics, non-negotiable<br />&lt;120 draw calls, &lt;80k triangles total<br />Instanced pillars, braziers and rubble<br />GPU particles for frost, embers, dust<br />&lt;8MB initial download so the link loads fast<br />Cap devicePixelRatio at 1.5<br />Preload everything behind a loading gate</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px; border:1px solid #26281f; border-radius:4px; padding:26px; background:#111309;">
+        <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:20px; margin:0 0 12px; color:#f2efe6;">Characters</h3>
+        <p style="margin:0; font-size:16px; line-height:1.65; color:#a9a596; max-width:720px; text-wrap:pretty;">Start with capsule-and-cone placeholders and ship the whole combat system against them — you'll iterate ten times faster. Then swap in <strong style="color:#f2efe6;">Quaternius CC0 knights</strong> (free, low-poly, game-ready) with <strong style="color:#f2efe6;">Mixamo</strong> animations retargeted onto them: idle, run, strafe, three sword swings, block, block-impact, cast, draw-bow, release, hit-react, death. Weapons attach to a hand bone so switching is just visibility toggles. One GLB, one skeleton, animations packed together.</p>
+      </div>
+    </section>
+
+    <section style="padding:72px 0 0;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">05</div>
+      <h2 style="font-family:'Cinzel',serif; font-weight:600; font-size:38px; line-height:1.1; margin:10px 0 0; color:#f2efe6;">Hosting &amp; the link</h2>
+      <p style="font-size:17px; line-height:1.65; color:#a9a596; margin:14px 0 0; max-width:660px; text-wrap:pretty;">You want to run it locally and send a URL. Cloudflare Tunnel is the right answer: no router config, no account needed for a quick throwaway link, and it terminates HTTPS for you — which matters because a secure page can only open a secure WebSocket.</p>
+
+      <div style="margin-top:30px; background:#111309; border:1px solid #26281f; border-radius:4px; padding:24px 26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.16em; color:#7d8a63; margin-bottom:14px;">TERMINAL</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; line-height:1.9; color:#9aa87c; white-space:pre-wrap;"><span style="color:#4d5442;"># run the game</span>
+node server/index.js        <span style="color:#4d5442;">→ listening on :8080</span>
+
+<span style="color:#4d5442;"># expose it, in a second terminal</span>
+cloudflared tunnel --url http://localhost:8080
+<span style="color:#4d5442;">→ https://amber-quiet-fox.trycloudflare.com</span>
+
+<span style="color:#4d5442;"># send that URL. that's it.</span></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+        <div style="border:1px solid #26281f; border-radius:4px; padding:24px; background:#131510;">
+          <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:18px; margin:0 0 10px; color:#f2efe6;">Gotchas</h3>
+          <div style="font-size:15px; line-height:1.75; color:#a9a596;">Derive the socket URL from <code style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#c8a24a;">location</code>, never hardcode localhost<br />Use <code style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:#c8a24a;">wss://</code> when the page is https<br />Quick tunnels get a new URL each restart<br />Your machine sleeping kills the game</div>
+        </div>
+        <div style="border:1px solid #26281f; border-radius:4px; padding:24px; background:#131510;">
+          <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:18px; margin:0 0 10px; color:#f2efe6;">When you outgrow it</h3>
+          <p style="margin:0; font-size:15px; line-height:1.65; color:#a9a596; text-wrap:pretty;">The same Node process deploys unchanged to Fly.io or Railway for a few dollars a month, and you get a stable URL, better routing and no dependency on your laptop being awake. Worth doing once other people want to play.</p>
+        </div>
+      </div>
+    </section>
+
+    <section style="padding:72px 0 0;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">06</div>
+      <h2 style="font-family:'Cinzel',serif; font-weight:600; font-size:38px; line-height:1.1; margin:10px 0 0; color:#f2efe6;">Build order</h2>
+      <p style="font-size:17px; line-height:1.65; color:#a9a596; margin:14px 0 0; max-width:660px; text-wrap:pretty;">Ordered so there's something playable at the end of every milestone. Never build two systems before testing either.</p>
+
+      <div style="margin-top:34px; display:flex; flex-direction:column;">
+        <sc-for list="{{ milestones }}" as="ms" hint-placeholder-count="7">
+          <div style="display:grid; grid-template-columns:120px 1fr 130px; gap:26px; padding:24px 0; border-top:1px solid #26281f; align-items:start;">
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:26px; color:#c8a24a; line-height:1;">{{ ms.num }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; color:#7d8a63; margin-top:8px;">{{ ms.time }}</div>
+            </div>
+            <div>
+              <h3 style="font-family:'Cinzel',serif; font-weight:600; font-size:22px; margin:0 0 8px; color:#f2efe6;">{{ ms.title }}</h3>
+              <p style="margin:0; font-size:16px; line-height:1.65; color:#a9a596; text-wrap:pretty;">{{ ms.body }}</p>
+              <p style="margin:10px 0 0; font-size:14.5px; line-height:1.55; color:#7d8a63; text-wrap:pretty;"><span style="color:#5f6b4a;">Done when:</span> {{ ms.done }}</p>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; color:#9aa87c; text-align:right; padding-top:6px;">{{ ms.tag }}</div>
+          </div>
+        </sc-for>
+        <div style="border-top:1px solid #26281f;"></div>
+      </div>
+    </section>
+
+    <section style="padding:72px 0 0;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:#7d8a63;">07</div>
+      <h2 style="font-family:'Cinzel',serif; font-weight:600; font-size:38px; line-height:1.1; margin:10px 0 0; color:#f2efe6;">Scope discipline</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:30px;">
+        <div style="border:1px solid #2f3a24; border-radius:4px; padding:26px; background:#131711;">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.18em; color:#8fbf6a; margin-bottom:14px;">IN THE MVP</div>
+          <div style="font-size:15.5px; line-height:1.9; color:#c2beb0;">Two players, one arena, room codes<br />All three combat styles, hotkey switching<br />Blocking, perfect block, dodge roll<br />Hitsplats, health bars, hitstop, screen shake<br />Best of three rounds with a reset<br />Sound effects and a music bed</div>
+        </div>
+        <div style="border:1px solid #3a2a24; border-radius:4px; padding:26px; background:#171110;">
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.18em; color:#bf7a6a; margin-bottom:14px;">EXPLICITLY LATER</div>
+          <div style="font-size:15.5px; line-height:1.9; color:#a9a596;">Accounts, persistence, progression<br />Inventory, loot, crafting, food<br />More than two players or teams<br />Multiple arenas, PvE, mobile support<br />Voice chat, spectators, replays<br />Anti-cheat beyond server authority</div>
+        </div>
+      </div>
+      <div style="margin-top:22px; border-left:2px solid #c8a24a; padding:4px 0 4px 22px;">
+        <p style="margin:0; font-size:16px; line-height:1.65; color:#c2beb0; max-width:700px; text-wrap:pretty;">The failure mode for a project like this is building a lobby system and an inventory before the sword ever connects with someone. Get two capsules hitting each other over a real socket in week one — everything after that is polish on a thing that already works.</p>
+      </div>
+    </section>
+
+    <div style="margin-top:80px; border-top:1px solid #26281f; padding-top:40px; display:flex; justify-content:space-between; align-items:baseline; gap:24px; flex-wrap:wrap;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.14em; color:#5f6b4a;">GRIM ARENA — BUILD PLAN v1</div>
+      <div style="font-size:15px; color:#7d8a63;">Next: say the word and I'll build Milestone 1 as a running prototype.</div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      moves: [
+        { name: "Light swing", windup: "0.18s", dmg: "8–12", note: "Chains to 3; arc widens each hit" },
+        { name: "Heavy swing", windup: "0.55s", dmg: "22–30", note: "Breaks a raised shield, staggers" },
+        { name: "Shield raise", windup: "0.10s", dmg: "—", note: "80% cut, 120° cone, drains stamina" },
+        { name: "Perfect block", windup: "200ms window", dmg: "0", note: "Staggers attacker 0.5s" },
+        { name: "Dodge roll", windup: "0.10s", dmg: "—", note: "0.35s i-frames, 0.9s cooldown" },
+        { name: "Frostbolt", windup: "0.7s cast", dmg: "16", note: "18 m/s travel, 2s root, 6s freeze CD" },
+        { name: "Charged shot", windup: "0.3–1.2s draw", dmg: "12–34", note: "Speed and damage scale with draw" },
+        { name: "Rapid shot", windup: "0.15s", dmg: "6 × 3", note: "0.9s total, spread, no charge" }
+      ],
+      milestones: [
+        { num: "01", time: "DAY 1", title: "Two capsules in a room", body: "Node serves a Three.js page. WASD movement on a flat plane, third-person orbit camera, WebSocket connect, server echoes positions at 20Hz. No prediction yet — accept the jitter.", done: "You and your coworker can see each other move over a tunnel link.", tag: "FOUNDATION" },
+        { num: "02", time: "DAY 2–3", title: "Netcode that feels right", body: "Add input buffering, prediction with replay, and 100ms interpolation on the remote player. Build a debug overlay showing ping, snapshot rate and prediction error — you'll live in it.", done: "Movement feels local at 100ms simulated latency.", tag: "NETCODE" },
+        { num: "03", time: "DAY 4–5", title: "The sword connects", body: "Attack state machine, swept-capsule hitboxes, server-side lag compensation, health, hitsplats, hitstop and shake. Shield raise and perfect block. This is the core loop — spend the time here.", done: "A melee duel between capsules is genuinely fun.", tag: "COMBAT" },
+        { num: "04", time: "DAY 6–7", title: "Magic and ranged", body: "Server-simulated projectiles with travel time and client-side visual prediction. Frostbolt root, charged and rapid bow shots, mana and stamina bars, 1/2/3 loadout switching with lockout.", done: "All three styles are usable and the triangle reads.", tag: "COMBAT" },
+        { num: "05", time: "DAY 8–9", title: "Match flow", body: "Room codes, a join screen, spawn points, round start countdown, death and reset, best of three, a winner card. Everything that makes it a game rather than a sandbox.", done: "You can play a full match start to finish without a refresh.", tag: "GAME" },
+        { num: "06", time: "DAY 10–12", title: "The arena and the knights", body: "Swap placeholders for real geometry and rigged characters. Baked lighting, braziers, fog, bloom. Animation state machine driven by the same combat states. Weapon attachment to hand bones.", done: "It looks like a game you'd click a link for.", tag: "ART" },
+        { num: "07", time: "DAY 13–14", title: "Juice and ship", body: "Sound for every action, impact particles, frost shatter, arrow trails, camera punch on heavy hits, a title screen. Then playtest with your coworker for an hour and fix whatever felt wrong.", done: "You send the link without apologising for anything.", tag: "POLISH" }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>
