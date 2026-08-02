@@ -204,6 +204,7 @@
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">SHIFT</span> &nbsp;sprint</div>
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">E</span> &nbsp;lock-on &nbsp;·&nbsp; <span style="color:#f2efe6;">TAB</span> &nbsp;cyber wallet</div>
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">1-5</span> &nbsp;blade · staff · bow · pick · axe</div>
+            <div style="color:#b3afa0;"><span style="color:#f2efe6;">HOLD Q</span> &nbsp;spell wheel (staff)</div>
           </div>
         </div>
         <div style="padding:22px 24px; background:rgba(19,21,15,0.7);">
@@ -342,6 +343,7 @@ class Component extends DCLogic {
         frost:  { wind: .62, act: .06, rec: .34, mana: 22 },
         snare:  { wind: .48, act: .05, rec: .42, mana: 14 },
         volley: { wind: .7,  act: .05, rec: .5,  mana: 20 },
+        heal:   { wind: 1.5, act: .06, rec: .3,  mana: 30 },
         bash:   { wind: .3,  act: .1,  rec: .3, dmg: [4, 7], range: 2.3, arc: 1.7, stam: 8, bash: true },
         chop:   { wind: .24, act: .12, rec: .3, stam: 4 },
         shot:   { wind: .06, act: .04, rec: .30 },
@@ -1772,7 +1774,7 @@ class Component extends DCLogic {
       ControlLeft: 'dodge',
       Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6', Numpad6: '6',
       Numpad1: '1', Numpad2: '2', Numpad3: '3', Numpad4: '4', Numpad5: '5',
-      KeyQ: '1', KeyR: '2', KeyF: '3',
+      KeyQ: 'wheel', KeyR: '2', KeyF: '3',
       Space: 'jump', KeyE: 'lock', Tab: 'inv', Enter: 'ready', NumpadEnter: 'ready', KeyX: 'x', KeyC: 'c'
     };
     const norm = e => CODES[e.code] || CODES['Key' + (e.key || '').toUpperCase()] ||
@@ -1800,6 +1802,7 @@ class Component extends DCLogic {
       if (k === '6') this.switchWeapon(5);
       if (k === 'dodge') this.tryDodge();
       if (k === 'jump') this.tryJump();
+      if (k === 'wheel') this.openSpellWheel();
       if (k === 'x') {
         if (this.riding) this.stopRide();
         else if (this.hasDonkey && this.donkeyCompanion && this.me.pos.distanceTo(this.donkeyCompanion.pos) < 3.4) this.startRide();
@@ -1807,11 +1810,12 @@ class Component extends DCLogic {
       }
       if (k === 'c') this.toggleElement();
     };
-    const ku = e => { const k = norm(e); if (k) this.keys[k] = false; };
+    const ku = e => { const k = norm(e); if (!k) return; this.keys[k] = false; if (k === 'wheel') this.closeSpellWheel(); };
     const blur = () => { this.keys = {}; this.mouse.l = false; this.mouse.r = false; if (this.me) this.me.blocking = false; };
     addEventListener('blur', blur);
     this.onBlur = blur;
     const md = e => {
+      if (this.spellWheelOpen) return;
       if (!this.active()) return;
       // Only claim clicks that land on the game surface. Without this, free-aim
       // mode (cursor visible) sends every click in the host page to the game AND
@@ -1826,6 +1830,14 @@ class Component extends DCLogic {
       if (e.button === 2 && this.mouse.r) { this.mouse.r = false; this.onSecondaryUp(); }
     };
     const mm = e => {
+      if (this.spellWheelOpen) {
+        this.wheelX = (this.wheelX || 0) + e.movementX;
+        this.wheelY = (this.wheelY || 0) + e.movementY;
+        const mag = Math.hypot(this.wheelX, this.wheelY);
+        if (mag > 120) { this.wheelX *= 120 / mag; this.wheelY *= 120 / mag; }
+        this.updateSpellWheelHover();
+        return;
+      }
       if (this.locked) {
         // Locked: raw deltas, 1:1, no smoothing — this is the good path.
         this.yaw -= e.movementX * 0.0024;
@@ -2106,7 +2118,11 @@ class Component extends DCLogic {
   // Chain: light, light, heavy finisher, repeat. Holding the button keeps it
   // going; the finisher lands on the third beat so the combo has a shape.
   swing(e) {
-    if (e.weapon === 1) { this.startMove(e, 'frost'); return; }
+    if (e.weapon === 1) {
+      if (this.element === 'quickheal') { this.tryCastQuickHeal(); return; }
+      if (this.element === 'heal') { if (this.canAct(e)) this.startMove(e, 'heal'); return; }
+      this.startMove(e, 'frost'); return;
+    }
     if (e.weapon === 5) {
       const fin = e.chain >= 1;
       this.startMove(e, fin ? 'gheavy' : 'glight');
@@ -2270,7 +2286,7 @@ class Component extends DCLogic {
     if (m.mana && e.mana < m.mana) return;
     if (m.stam) e.stam -= m.stam;
     if (m.mana) e.mana -= m.mana;
-    e.state = (name === 'frost' || name === 'snare' || name === 'volley') ? 'cast' : 'attack';
+    e.state = (name === 'frost' || name === 'snare' || name === 'volley' || name === 'heal') ? 'cast' : 'attack';
     e.st = 0; e.act = Object.assign({ name }, m); e.hitDone = false;
     this.sfx(name === 'frost' ? 'cast' : (name === 'light' || name === 'heavy' || name === 'bash' || name === 'glight' || name === 'gheavy') ? 'slash' : name === 'rapid' ? 'draw' : 'swing');
     e.burst = name === 'rapid' ? 3 : 0; e.burstT = 0;
@@ -2556,6 +2572,7 @@ class Component extends DCLogic {
     }
     e.snareCd = Math.max(0, (e.snareCd || 0) - dt);
     e.switchLock = Math.max(0, (e.switchLock || 0) - dt);
+    if (e === this.me) this.quickHealCd = Math.max(0, (this.quickHealCd || 0) - dt);
     if ((e.poisonT || 0) > 0) {
       e.poisonT -= dt; e.poisonTk = (e.poisonTk || 0) + dt;
       if (e.poisonTk >= 1) {
@@ -2643,6 +2660,14 @@ class Component extends DCLogic {
         if (a.name === 'light' || a.name === 'heavy' || a.name === 'bash' || a.name === 'glight' || a.name === 'gheavy') { if (this.meleeCheck(e, a)) e.hitDone = true; }
         else if (a.name === 'frost') { this.fireFrost(e); e.hitDone = true; }
         else if (a.name === 'snare') { this.fireSnare(e); e.hitDone = true; }
+        else if (a.name === 'heal') {
+          e.hitDone = true;
+          if (e === this.me) {
+            e.hp = Math.min(e.max, e.hp + 50);
+            this.splat(e.pos.clone().add(new T.Vector3(0, 2.3, 0)), '+50', 'heal');
+            this.sfx('pickup');
+          }
+        }
         else if (a.name === 'chop') {
           if (e === this.me) { if (this.gatherCheck(e)) e.hitDone = true; }
           else {
@@ -3063,9 +3088,91 @@ class Component extends DCLogic {
   }
   updateElemHud() {
     const el = this.spellNameRef && this.spellNameRef.current; if (!el) return;
-    const fire = this.element === 'fire';
-    el.textContent = fire ? 'Fire' : 'Frost';
-    el.style.color = fire ? '#ffa15c' : '#9d998c';
+    const LABEL = { fire: 'Fire', water: 'Frost', heal: 'Heal', quickheal: 'Quick Heal' };
+    const COLOR = { fire: '#ffa15c', water: '#9d998c', heal: '#8fef5a', quickheal: '#e8c774' };
+    el.textContent = LABEL[this.element] || 'Fire';
+    el.style.color = COLOR[this.element] || '#ffa15c';
+  }
+
+  // ------------------------------------------------------------ quick heal
+  tryCastQuickHeal() {
+    const e = this.me;
+    if (!e || e.hp <= 0 || this.roundOver || (this.quickHealCd || 0) > 0 || e.mana < 15) return;
+    e.mana -= 15; this.quickHealCd = 3;
+    e.hp = Math.min(e.max, e.hp + 25);
+    this.splat(e.pos.clone().add(new this.T.Vector3(0, 2.3, 0)), '+25', 'heal');
+    this.sfx('pickup');
+  }
+
+  // ------------------------------------------------------------ spell wheel
+  // Built as a plain DOM overlay (not part of the template) so it doesn't
+  // depend on pointer lock — mouse deltas drive a virtual cursor instead of
+  // real screen position, which works identically locked or unlocked.
+  buildSpellWheelDom() {
+    if (this.wheelEl) return;
+    const SPELLS = [
+      { key: 'fire', label: 'FIRE', sub: 'BURN', color: '#ff8c3a', x: 0, y: -92 },
+      { key: 'water', label: 'FROST', sub: 'ROOT', color: '#7fc8ff', x: 92, y: 0 },
+      { key: 'heal', label: 'HEAL', sub: '50 HP · 1.5S', color: '#8fef5a', x: 0, y: 92 },
+      { key: 'quickheal', label: 'QUICK HEAL', sub: '25 HP · INSTANT', color: '#e8c774', x: -92, y: 0 },
+    ];
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;display:none;pointer-events:none;z-index:60;';
+    const ring = document.createElement('div');
+    ring.style.cssText = 'position:absolute;top:50%;left:50%;width:280px;height:280px;margin:-140px 0 0 -140px;border-radius:50%;background:rgba(10,11,8,0.85);border:2px solid #3a3f2c;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
+    wrap.appendChild(ring);
+    const slices = {};
+    for (const s of SPELLS) {
+      const el = document.createElement('div');
+      el.style.cssText = 'position:absolute;top:50%;left:50%;width:88px;height:88px;margin:' + (s.y - 44) + 'px 0 0 ' + (s.x - 44) + 'px;border-radius:50%;border:2px solid #3a3f2c;background:rgba(21,23,15,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:\'IBM Plex Mono\',monospace;text-align:center;transition:transform 90ms,border-color 90ms,background 90ms;';
+      const main = document.createElement('div');
+      main.style.cssText = 'font-size:12px;letter-spacing:0.06em;font-weight:600;color:' + s.color + ';';
+      main.textContent = s.label;
+      const sub = document.createElement('div');
+      sub.style.cssText = 'font-size:9px;color:#7d8a63;margin-top:3px;letter-spacing:0.04em;';
+      sub.textContent = s.sub;
+      el.appendChild(main); el.appendChild(sub);
+      ring.appendChild(el);
+      slices[s.key] = el;
+    }
+    document.body.appendChild(wrap);
+    this.wheelEl = wrap; this.wheelSlices = slices;
+  }
+  openSpellWheel() {
+    if (!this.me || this.me.hp <= 0 || this.roundOver) return;
+    this.buildSpellWheelDom();
+    this.spellWheelOpen = true;
+    const ANG = { fire: 0, water: 90, heal: 180, quickheal: 270 };
+    const a = (ANG[this.element] ?? 0) * Math.PI / 180;
+    this.wheelX = Math.sin(a) * 40; this.wheelY = -Math.cos(a) * 40;
+    this.wheelEl.style.display = 'block';
+    this.updateSpellWheelHover();
+  }
+  updateSpellWheelHover() {
+    let ang = Math.atan2(this.wheelX, -this.wheelY);
+    if (ang < 0) ang += Math.PI * 2;
+    const order = ['fire', 'water', 'heal', 'quickheal'];
+    const idx = Math.floor(((ang + Math.PI / 4) % (Math.PI * 2)) / (Math.PI / 2)) % 4;
+    this.wheelHover = order[idx];
+    for (const k in this.wheelSlices) {
+      const on = k === this.wheelHover;
+      this.wheelSlices[k].style.transform = on ? 'scale(1.12)' : 'scale(1)';
+      this.wheelSlices[k].style.borderColor = on ? '#e8c774' : '#3a3f2c';
+      this.wheelSlices[k].style.background = on ? 'rgba(42,40,20,0.95)' : 'rgba(21,23,15,0.9)';
+    }
+  }
+  closeSpellWheel() {
+    if (!this.spellWheelOpen) return;
+    this.spellWheelOpen = false;
+    if (this.wheelEl) this.wheelEl.style.display = 'none';
+    const hover = this.wheelHover;
+    if (hover && hover !== this.element) {
+      this.element = hover;
+      try { localStorage.setItem('grim-elem', this.element); } catch (er) {}
+      this.updateElemHud(); this.sfx('switch');
+      const NAMES = { fire: 'FIRE MAGIC', water: 'WATER MAGIC', heal: 'HEAL', quickheal: 'QUICK HEAL' };
+      if (this.me) this.splat(this.me.pos.clone().add(new this.T.Vector3(0, 2.3, 0)), NAMES[this.element], this.element === 'water' ? 'frost' : this.element === 'fire' ? 'fire' : 'heal');
+    }
   }
 
   fireFrost(a) {
