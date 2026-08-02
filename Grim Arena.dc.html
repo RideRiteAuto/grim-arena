@@ -2083,7 +2083,7 @@ class Component extends DCLogic {
   // input latency of a human click in front of every swing — that is the clunk.
   onPrimaryDown() {
     const e = this.me;
-    if (e.weapon >= 3) { if (this.canAct(e)) this.startMove(e, 'chop'); return; }
+    if (e.weapon === 3 || e.weapon === 4) { if (this.canAct(e)) this.startMove(e, 'chop'); return; }
     if (e.weapon === 2) { if (this.canAct(e)) { e.drawing = true; e.charge = 0; e.state = 'draw'; e.st = 0; } return; }
     if (this.canAct(e)) { this.swing(e); return; }
     this.buffer = 0.22;   // pressed mid-animation: remember it and chain out
