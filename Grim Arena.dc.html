@@ -180,7 +180,7 @@
           CHANGED — ground spikes replaced with soft walk-through bushes<br>
           NEW — <span style="color:#ffa15c;">FIRE</span> &amp; <span style="color:#9fdcff;">WATER</span> magic: press C with the staff. Fire burns, water freezes<br>
           NEW — JIM THE LUMBERJACK fells trees and PETE THE PROSPECTOR mines &amp; mutters. Both fight back if provoked<br>
-          NEW — slay MR. SAYLORS and ride his <span style="color:#c8a24a;">DONKEY</span> (faster travel · X to dismount · lost on death)<br>
+          NEW — slay MR. SAYLORS and ride his <span style="color:#c8a24a;">DONKEY</span> (faster travel · X to dismount/remount · follows you as a companion)<br>
           NEW — ALEXIS AYALA wanders the starting fields. He is buying gf<br>
           GAYLINOR — the game has a name: no more flat arena world<br>
           NEW — rolling hills &amp; real elevation, grass, scattered stone, fireflies over the mere<br>
@@ -199,7 +199,8 @@
           <div style="font-size:13.5px; line-height:2; color:#b3afa0;">
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">W A S D</span> &nbsp;move &nbsp;<span style="color:#5f6b4a;">or arrows</span></div>
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">MOUSE</span> &nbsp;look &amp; aim</div>
-            <div style="color:#b3afa0;"><span style="color:#f2efe6;">SPACE</span> &nbsp;dodge roll · i-frames</div>
+            <div style="color:#b3afa0;"><span style="color:#f2efe6;">SPACE</span> &nbsp;jump</div>
+            <div style="color:#b3afa0;"><span style="color:#f2efe6;">L CTRL</span> &nbsp;dodge roll · i-frames</div>
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">SHIFT</span> &nbsp;sprint</div>
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">E</span> &nbsp;lock-on &nbsp;·&nbsp; <span style="color:#f2efe6;">TAB</span> &nbsp;cyber wallet</div>
             <div style="color:#b3afa0;"><span style="color:#f2efe6;">1-5</span> &nbsp;blade · staff · bow · pick · axe</div>
@@ -353,6 +354,9 @@ class Component extends DCLogic {
   boot() {
     const T = window.THREE, C = this.cfg();
     this.C = C; this.T = T;
+    // Reused every frame by updateAim/pickTarget/meleeCheck so combat doesn't
+    // spin up garbage-collector pauses (the "skippy mid-fight" stutter).
+    this._sv1 = new T.Vector3(); this._sv2 = new T.Vector3();
     const mount = this.mountRef.current; if (!mount) return;
 
     const renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -451,7 +455,7 @@ class Component extends DCLogic {
     knight('STEVEN CARRASCO', 0x3d6b35, { max: 90, dmgScale: 0.65, aiD: 0.6, spdScale: 0.85, brawler: true, aggroR: 10, xp: 60 }, 34, -22);
     knight('KEVIN COELHO', 0x8a6b2b, { max: 90, dmgScale: 0.65, aiD: 0.6, spdScale: 0.85, brawler: true, aggroR: 10, xp: 60 }, -36, 16);
     const say = this.makeSaylors();
-    say.name = 'MR. SAYLORS'; say.home = new T.Vector3(0, 0, 44); say.pos.copy(say.home);
+    say.name = 'MR. SAYLORS'; say.home = new T.Vector3(10, 0, 95); say.pos.copy(say.home);
     Object.assign(say, { max: 170, dmgScale: 0.85, aiD: 0.85, spdScale: 0.88, lockWeapon: 1, spell: 'snare', shouts: true, aggroR: 14, specialCd: 3, xp: 150 });
     say.g.visible = true; say.hp = say.max;
     scene.add(say.g); this.npcs.push(say);
@@ -1009,7 +1013,7 @@ class Component extends DCLogic {
   // target unless something clearly better appears (no flicker).
   pickTarget(combatOnly) {
     const T = this.T, me = this.me;
-    const camDir = new T.Vector3();
+    const camDir = this._sv1;
     if (this.cam) { this.cam.getWorldDirection(camDir); camDir.y = 0; camDir.normalize(); }
     else camDir.set(Math.sin(this.yaw), 0, Math.cos(this.yaw));
     let best = null, bs = -1e9;
@@ -1017,7 +1021,7 @@ class Component extends DCLogic {
     for (const n of cands) {
       if (n.hp <= 0) continue;
       if (combatOnly && !n.aggro && n !== this.netFoe) continue;
-      const to = new T.Vector3().subVectors(n.pos, me.pos); to.y = 0;
+      const to = this._sv2.subVectors(n.pos, me.pos); to.y = 0;
       const d = to.length();
       if (d > 45 || d < 0.001) continue;
       to.normalize();
@@ -1105,6 +1109,24 @@ class Component extends DCLogic {
     const T = this.T, me = this.me;
     // Quest-giver marker bob + spin.
     this.worldT = (this.worldT || 0) + dt;
+    if (this.hasDonkey && this.donkeyCompanion && !this.riding) {
+      const d = this.donkeyCompanion;
+      const to = new T.Vector3().subVectors(me.pos, d.pos); to.y = 0;
+      const dist = to.length();
+      if (dist > 3) {
+        to.normalize();
+        d.yaw = Math.atan2(to.x, to.z);
+        d.pos.addScaledVector(to, Math.min(dist - 2, 6) * 1.4 * dt);
+        d.phase += dt * 6;
+        for (let i = 0; i < 4; i++) d.legs[i].rotation.x = Math.sin(d.phase + (i % 2 ? Math.PI : 0) + (i > 1 ? 0.6 : 0)) * 0.7;
+      } else {
+        d.phase = 0;
+        for (const l of d.legs) l.rotation.x *= 0.8;
+      }
+      const gy = (this.worldOn && this.mode === 'ai') ? this.groundY(d.pos.x, d.pos.z) : 0;
+      d.g.position.set(d.pos.x, gy, d.pos.z);
+      d.g.rotation.y = d.yaw;
+    }
     for (const n of this.npcs) {
       if (!n.civilian || n.hp <= 0) continue;
       n.chatT -= dt;
@@ -1122,7 +1144,8 @@ class Component extends DCLogic {
     for (const n of this.npcs) {
       if (!auth) break;   // co-op client: NPC lifecycle arrives over the wire
       if (n.hp <= 0 && !n.deadHandled) {
-        n.deadHandled = true; n.aggro = false; n.aggroBy = null; n.respawnT = n.goblin ? 20 : 26;
+        n.deadHandled = true; n.aggro = false; n.aggroBy = null;
+        n.respawnT = n.goblin ? 20 : (n.name === 'MR. SAYLORS' ? 100 : 26);
         if (this.coop && n.lastBy === 'c') {
           // Partner's kill: THEY get the credit, on their machine.
           this.netSendRaw({ t: 'ndead', i: this.npcs.indexOf(n), xp: n.xp || 40, gob: !!n.goblin, say: n.name === 'MR. SAYLORS', rt: !!n.rat, p: [n.pos.x, n.pos.z] }, true);
@@ -1270,18 +1293,19 @@ class Component extends DCLogic {
     const wantKind = e.weapon === 3 ? 'rock' : 'tree';
     const kindOk = best && (best.kind === wantKind || (wantKind === 'tree' && best.kind === 'oak'));
     if (kindOk && best.kind === 'oak' && this.lvl(this.skills.WOODCUTTING) < 5) {
-      this.splat(best.g.position.clone().add(new T.Vector3(0, 2.6, 0)), 'REQUIRES WOODCUTTING LEVEL 5', 'miss');
+      this.banner('REQUIRES WOODCUTTING LEVEL 5', '', false, 2000);
       return true;
     }
     if (kindOk) {
       best.hp--;
       const p = best.g.position.clone().add(new T.Vector3(0, 1.2, 0));
       this.spark(p, best.kind === 'rock' ? 0xc8c8c0 : 0x8a6b3a, 8);
-      this.sfx('block'); this.shake = Math.min(1, this.shake + 0.12);
+      this.sfx(best.kind === 'rock' ? 'mine' : 'chop'); this.shake = Math.min(1, this.shake + 0.12);
       if (best.hp <= 0) {
         best.dead = true; best.respawn = best.kind === 'oak' ? 44 : 28;
         if (best.kind !== 'rock') {
           this.fx.push({ kind: 'fall', mesh: best.g, life: 0.9, max: 0.9 });
+          this.sfx('timber');
           if (best.kind === 'oak') { this.addItem('OAK LOGS', 3); this.awardXp('WOODCUTTING', 60); }
           else { this.addItem('LOGS', 2); this.awardXp('WOODCUTTING', 15); }
         } else {
@@ -1292,7 +1316,7 @@ class Component extends DCLogic {
       }
       return true;
     }
-    if (best) { this.splat(best.g.position.clone().add(new T.Vector3(0, 1.6, 0)), e.weapon === 3 ? 'NEEDS THE AXE' : 'NEEDS THE PICK', 'miss'); return true; }
+    if (best) { this.banner(e.weapon === 3 ? 'NEEDS THE AXE' : 'NEEDS THE PICK', '', false, 2000); return true; }
     return this.meleeCheck(e, { dmg: [3, 5], range: 2.4, arc: 1.8 });   // tools are poor weapons
   }
 
@@ -1359,7 +1383,7 @@ class Component extends DCLogic {
 
   buildSwamp() {
     const T = this.T, S = this.scene;
-    const cx = 62, cz = -58;
+    const cx = 93, cz = -87;   // pushed further from camp — see zone-size patch
     const bog = new T.Mesh(new T.CircleGeometry(24, 22), new T.MeshStandardMaterial({ color: 0x3d4a33, roughness: 1 }));
     bog.rotation.x = -Math.PI / 2; bog.position.set(cx, 0.02, cz); bog.receiveShadow = true; S.add(bog);
     const lake = new T.Mesh(new T.CircleGeometry(13, 26), new T.MeshStandardMaterial({ color: 0x2e4238, roughness: 0.25, metalness: 0.35 }));
@@ -1454,7 +1478,7 @@ class Component extends DCLogic {
       target: new T.Vector3(), tyaw: 0, aiT: 0, aiStrafe: 1, aiSwitch: 999
     };
     e.name = 'THE PLAGUE RAT'; e.rat = true;
-    e.home = new T.Vector3(62, 0, -38); e.pos.copy(e.home);
+    e.home = new T.Vector3(93, 0, -67); e.pos.copy(e.home);
     Object.assign(e, { max: 260, dmgScale: 0.7, aiD: 0.8, spdScale: 1.05, brawler: true, aggroR: 15, xp: 220, weapon: 0, hp: 260 });
     this.applyWeaponVisuals(e);
     this.npcs.push(e);
@@ -1499,7 +1523,7 @@ class Component extends DCLogic {
     if (!this.started || this.mode !== 'ai' || !this.worldOn) return false;
     for (const sh of (this.sheep || [])) {
       if (this.me.pos.distanceTo(sh.g.position) < 2.2) {
-        if (!sh.wool) { this.splat(sh.g.position.clone().add(new this.T.Vector3(0, 1.4, 0)), 'STILL REGROWING', 'miss'); return true; }
+        if (!sh.wool) { this.banner('STILL REGROWING', '', false, 1800); return true; }
         sh.wool = false; sh.regrow = 30;
         sh.woolM.color.setHex(0xcfc4ac); sh.body.scale.set(1.0, 0.76, 0.74);
         this.addItem('WOOL', 1); this.sfx('pickup');
@@ -1566,7 +1590,7 @@ class Component extends DCLogic {
     }
     // the MAIN ROAD: a worn cart track from the camp all the way south to the
     // mere — follow it and you cannot miss the bog. Decals tilt to the slope.
-    const road = [[37, 27], [42, 16], [46, 4], [50, -10], [53, -24], [57, -38], [61, -50]];
+    const road = [[37, 27], [44, 11], [50, -7], [56, -28], [61, -48], [67, -69], [92, -79]];
     const up = new T.Vector3(0, 0, 1);
     for (let s2 = 0; s2 < road.length - 1; s2++) {
       const x1 = road[s2][0], z1 = road[s2][1], x2 = road[s2 + 1][0], z2 = road[s2 + 1][1];
@@ -1586,7 +1610,7 @@ class Component extends DCLogic {
     // fireflies over the mere
     for (let i = 0; i < 14; i++) {
       const m = new T.Mesh(new T.PlaneGeometry(0.09, 0.09), new T.MeshBasicMaterial({ color: 0xbfff7a, transparent: true, opacity: 0.9, depthWrite: false }));
-      m.position.set(62 + (rnd() - 0.5) * 30, 1 + rnd() * 1.6, -58 + (rnd() - 0.5) * 26);
+      m.position.set(93 + (rnd() - 0.5) * 30, 1 + rnd() * 1.6, -87 + (rnd() - 0.5) * 26);
       S.add(m);
       this.fx.push({ kind: 'firefly', mesh: m, seed: rnd() * 100, home: m.position.clone() });
     }
@@ -1636,7 +1660,7 @@ class Component extends DCLogic {
       const a = Math.random() * Math.PI * 2;
       const r = e.name === 'MR. SAYLORS' ? 14 + Math.random() * 22 : 5 + Math.random() * 11;
       e.way = new T.Vector3(e.home.x + Math.cos(a) * r, 0, e.home.z + Math.sin(a) * r);
-      const rr = Math.hypot(e.way.x, e.way.z); if (rr > 118) e.way.multiplyScalar(118 / rr);
+      const rr = Math.hypot(e.way.x, e.way.z); if (rr > 162) e.way.multiplyScalar(162 / rr);
       e.wayT = 6 + Math.random() * 6;
     }
     const dir = new T.Vector3().subVectors(e.way, e.pos).setY(0);
@@ -1735,13 +1759,14 @@ class Component extends DCLogic {
       KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd',
       ArrowUp: 'w', ArrowLeft: 'a', ArrowDown: 's', ArrowRight: 'd',
       ShiftLeft: 'shift', ShiftRight: 'shift',
+      ControlLeft: 'dodge',
       Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Digit5: '5', Digit6: '6', Numpad6: '6',
       Numpad1: '1', Numpad2: '2', Numpad3: '3', Numpad4: '4', Numpad5: '5',
       KeyQ: '1', KeyR: '2', KeyF: '3',
-      Space: 'space', KeyE: 'lock', Tab: 'inv', Enter: 'ready', NumpadEnter: 'ready', KeyX: 'x', KeyC: 'c'
+      Space: 'jump', KeyE: 'lock', Tab: 'inv', Enter: 'ready', NumpadEnter: 'ready', KeyX: 'x', KeyC: 'c'
     };
     const norm = e => CODES[e.code] || CODES['Key' + (e.key || '').toUpperCase()] ||
-      ({ w: 'w', a: 'a', s: 's', d: 'd', '1': '1', '2': '2', '3': '3', ' ': 'space', shift: 'shift', x: 'x', c: 'c' })[(e.key || '').toLowerCase()];
+      ({ w: 'w', a: 'a', s: 's', d: 'd', '1': '1', '2': '2', '3': '3', ' ': 'jump', control: 'dodge', shift: 'shift', x: 'x', c: 'c' })[(e.key || '').toLowerCase()];
     const kd = e => {
       const k = norm(e); if (!k) return;
       if (!this.active()) return;
@@ -1752,7 +1777,7 @@ class Component extends DCLogic {
         if (this.lockOn) { this.lockOn = false; this.sfx('switch'); return; }
         const t = (this.mode === 'ai' && this.worldOn) ? this.pickTarget(true) : this.foe;
         if (t && t.hp > 0) { this.foe = t; this.lockOn = true; this.sfx('switch'); }
-        else if (this.me) this.splat(this.me.pos.clone().add(new this.T.Vector3(0, 2.3, 0)), 'NO FOE ENGAGED', 'miss');
+        else if (this.me) this.banner('NO FOE ENGAGED', '', false, 1800);
         return;
       }
       if (k === 'inv') { this.toggleWallet(); return; }
@@ -1763,8 +1788,13 @@ class Component extends DCLogic {
       if (k === '4') this.switchWeapon(3);
       if (k === '5') this.switchWeapon(4);
       if (k === '6') this.switchWeapon(5);
-      if (k === 'space') this.tryDodge();
-      if (k === 'x' && this.riding) this.stopRide();
+      if (k === 'dodge') this.tryDodge();
+      if (k === 'jump') this.tryJump();
+      if (k === 'x') {
+        if (this.riding) this.stopRide();
+        else if (this.hasDonkey && this.donkeyCompanion && this.me.pos.distanceTo(this.donkeyCompanion.pos) < 3.4) this.startRide();
+        else if (this.hasDonkey) this.banner('TOO FAR FROM YOUR DONKEY', '', false, 1400);
+      }
       if (k === 'c') this.toggleElement();
     };
     const ku = e => { const k = norm(e); if (k) this.keys[k] = false; };
@@ -1913,7 +1943,12 @@ class Component extends DCLogic {
       case 'break': this.tone({ type: 'sawtooth', f: 210, f1: 55, t: 0.4, g: 0.4 }); this.hiss({ f: 900, f1: 200, t: 0.35, g: 0.3 }); break;
       case 'cast': this.hiss({ f: 1200, f1: 5200, t: 0.5, g: 0.14, q: 3 }); this.tone({ type: 'sine', f: 620, f1: 1240, t: 0.4, g: 0.1 }); break;
       case 'frost': this.tone({ type: 'triangle', f: 2400, f1: 700, t: 0.28, g: 0.24 }); this.hiss({ f: 5200, f1: 2000, t: 0.3, g: 0.18, q: 4 }); break;
-      case 'arrow': this.hiss({ f: 2600, f1: 900, t: 0.14, g: 0.2, q: 1.4 }); this.tone({ type: 'square', f: 130, t: 0.03, g: 0.08 }); break;
+      case 'fire': this.tone({ type: 'sawtooth', f: 260, f1: 90, t: 0.3, g: 0.22 }); this.hiss({ f: 3000, f1: 1200, t: 0.28, g: 0.2, q: 2 }); break;
+      case 'slash': this.hiss({ f: 3200, f1: 900, t: 0.13, g: 0.22, q: 2.2 }); this.hiss({ f: 1200, f1: 2600, t: 0.08, g: 0.1, q: 3, at: 0.02 }); break;
+      case 'chop': this.tone({ type: 'triangle', f: 180, f1: 90, t: 0.16, g: 0.32 }); this.hiss({ f: 1400, f1: 500, t: 0.1, g: 0.22, q: 1.8 }); break;
+      case 'mine': this.tone({ type: 'square', f: 900, f1: 300, t: 0.09, g: 0.22 }); this.hiss({ f: 5200, t: 0.07, g: 0.26, q: 3 }); break;
+      case 'timber': this.tone({ type: 'sawtooth', f: 140, f1: 40, t: 0.5, g: 0.35 }); this.hiss({ f: 700, f1: 150, t: 0.4, g: 0.28, q: 0.9 }); break;
+      case 'arrow': this.tone({ type: 'triangle', f: 220, f1: 110, t: 0.09, g: 0.16 }); this.hiss({ f: 2600, f1: 900, t: 0.14, g: 0.2, q: 1.4 }); this.tone({ type: 'square', f: 130, t: 0.03, g: 0.08 }); break;
       case 'draw': this.hiss({ f: 300, f1: 800, t: 0.35, g: 0.06, q: 3 }); break;
       case 'dodge': this.hiss({ f: 600, f1: 1500, t: 0.2, g: 0.1, q: 1 }); break;
       case 'switch': this.tone({ type: 'square', f: 420, f1: 560, t: 0.06, g: 0.08 }); break;
@@ -2112,7 +2147,7 @@ class Component extends DCLogic {
   }
 
   // ------------------------------------------------------------ donkey riding
-  buildDonkey(e) {
+  buildDonkey() {
     const T = this.T;
     const fm = (c) => new T.MeshStandardMaterial({ color: c, roughness: 0.9, flatShading: true });
     const hide = fm(0x8a7a68), hideD = fm(0x6e6154), dark = fm(0x2a2622);
@@ -2135,14 +2170,30 @@ class Component extends DCLogic {
     }
     const tail = mk(new T.BoxGeometry(0.05, 0.3, 0.05), dark); tail.position.set(0, 0.75, -0.48); tail.rotation.x = 0.5; g.add(tail);
     const blanket = mk(new T.BoxGeometry(0.42, 0.06, 0.52), fm(0x7a2b26)); blanket.position.y = 0.99; g.add(blanket);
-    e.g.add(g); g.visible = false;
+    g.visible = false;
     return { g, legs, head };
+  }
+
+  // The companion donkey lives in the scene (not parented to the player) so it
+  // can stand where you dismounted and walk itself back to you over time —
+  // once unlocked it is never lost, only ever mounted or trailing behind.
+  spawnDonkeyCompanion(atPos) {
+    if (!this.donkeyCompanion) {
+      const d = this.buildDonkey();
+      d.pos = new this.T.Vector3(); d.yaw = 0; d.phase = 0;
+      this.scene.add(d.g);
+      this.donkeyCompanion = d;
+    }
+    this.donkeyCompanion.pos.copy(atPos);
+    this.donkeyCompanion.g.visible = true;
   }
 
   startRide() {
     const e = this.me;
     if (this.riding) return;
-    if (!e.donkey) e.donkey = this.buildDonkey(e);
+    if (!e.donkey) { e.donkey = this.buildDonkey(); e.g.add(e.donkey.g); }
+    this.hasDonkey = true;
+    if (this.donkeyCompanion) this.donkeyCompanion.g.visible = false;
     this.riding = true; e.donkey.g.visible = true;
     if (this.rideHudRef && this.rideHudRef.current) this.rideHudRef.current.style.display = 'block';
     this.banner("SAYLORS' DONKEY IS YOURS", 'RIDE ON · PRESS X TO DISMOUNT', false, 4800); this.sfx('win');
@@ -2153,7 +2204,8 @@ class Component extends DCLogic {
     this.riding = false;
     if (this.me.donkey) this.me.donkey.g.visible = false;
     if (this.rideHudRef && this.rideHudRef.current) this.rideHudRef.current.style.display = 'none';
-    if (!silent) this.banner('DISMOUNTED', 'THE DONKEY WANDERS OFF. SLAY SAYLORS TO RIDE AGAIN.', false, 3200);
+    this.spawnDonkeyCompanion(this.me.pos);
+    if (!silent) this.banner('DISMOUNTED', 'YOUR DONKEY WAITS NEARBY · WALK UP AND PRESS X TO RIDE AGAIN', false, 3200);
   }
 
   tryDodge() {
@@ -2166,6 +2218,14 @@ class Component extends DCLogic {
     this.sfx('dodge');
     const dir = this.wishDir(e);
     e.dodgeDir = dir.lengthSq() > 0.01 ? dir.clone().normalize() : new this.T.Vector3(Math.sin(e.yaw), 0, Math.cos(e.yaw)).negate();
+  }
+
+  tryJump() {
+    const e = this.me;
+    if (!e || e.hp <= 0 || this.roundOver) return;
+    if (this.riding || e.jumping || e.frozen > 0 || e.state === 'dodge') return;
+    e.jumping = true; e.jumpT = 0;
+    this.sfx('dodge');
   }
 
   wishDir(e) {
@@ -2185,7 +2245,7 @@ class Component extends DCLogic {
     if (m.mana) e.mana -= m.mana;
     e.state = (name === 'frost' || name === 'snare' || name === 'volley') ? 'cast' : 'attack';
     e.st = 0; e.act = Object.assign({ name }, m); e.hitDone = false;
-    this.sfx(name === 'frost' ? 'cast' : name === 'heavy' ? 'heavy' : name === 'rapid' ? 'draw' : 'swing');
+    this.sfx(name === 'frost' ? 'cast' : (name === 'light' || name === 'heavy' || name === 'bash' || name === 'glight' || name === 'gheavy') ? 'slash' : name === 'rapid' ? 'draw' : 'swing');
     e.burst = name === 'rapid' ? 3 : 0; e.burstT = 0;
     if (name === 'light') { e.comboT = 0.9; e.combo = (e.combo + 1) % 3; } else e.combo = 0;
     if (name === 'light' || name === 'heavy' || name === 'glight' || name === 'gheavy') {
@@ -2290,7 +2350,7 @@ class Component extends DCLogic {
     // circling. The trackpad answer — aiming stops being your problem.
     if (this.lockOn && (!this.foe || this.foe.hp <= 0)) { this.lockOn = false; return; }
     if (this.lockOn && this.foe.hp > 0) {
-      const to = new this.T.Vector3().subVectors(this.foe.pos, this.me.pos);
+      const to = this._sv1.subVectors(this.foe.pos, this.me.pos);
       let dy = Math.atan2(to.x, to.z) - this.yaw;
       while (dy > Math.PI) dy -= Math.PI * 2;
       while (dy < -Math.PI) dy += Math.PI * 2;
@@ -2461,6 +2521,12 @@ class Component extends DCLogic {
     e.stagger = Math.max(0, e.stagger - dt);
     e.dodgeCd = Math.max(0, e.dodgeCd - dt);
     e.freezeCd = Math.max(0, e.freezeCd - dt);
+    if (e.jumping) {
+      e.jumpT += dt;
+      const JUMP_DUR = 0.55, JUMP_H = 1.15;
+      if (e.jumpT >= JUMP_DUR) { e.jumping = false; e.pos.y = 0; }
+      else e.pos.y = Math.sin(Math.PI * e.jumpT / JUMP_DUR) * JUMP_H;
+    }
     e.snareCd = Math.max(0, (e.snareCd || 0) - dt);
     e.switchLock = Math.max(0, (e.switchLock || 0) - dt);
     if ((e.poisonT || 0) > 0) {
@@ -2582,7 +2648,7 @@ class Component extends DCLogic {
       if (e.knockT > 0) { e.knockT -= dt; e.pos.addScaledVector(e.knockDir, e.knockPow * (e.knockT / 0.18) * dt); }
       const r = Math.hypot(e.pos.x, e.pos.z);
       if (this.worldOn && this.mode === 'ai') {
-        if (r > 124) { e.pos.x *= 124 / r; e.pos.z *= 124 / r; }
+        if (r > 168) { e.pos.x *= 168 / r; e.pos.z *= 168 / r; }
         // The arena wall is solid except at its two gates.
         const R = this.C.ARENA_R;
         if (r > R - 0.6 && r < R + 2.8) {
@@ -2943,12 +3009,12 @@ class Component extends DCLogic {
       : (a === this.netFoe ? []   // partner swings resolve on THEIR machine; 'hit' carries the result
          : [this.me].concat((this.coop && this.isHost && this.netFoe.g.visible && this.netFoe.hp > 0) ? [this.netFoe] : []));
     if (!targets.length) return true;
-    const f = new T.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw));
+    const f = this._sv1.set(Math.sin(a.yaw), 0, Math.cos(a.yaw));
     let hitAny = false, allDead = true;
     for (const t of targets) {
       if (t.hp <= 0) continue;
       allDead = false;
-      const to = new T.Vector3().subVectors(t.pos, a.pos); const d = to.length();
+      const to = this._sv2.subVectors(t.pos, a.pos); const d = to.length();
       if (d > mv.range) continue;
       if (f.dot(to.normalize()) < Math.cos(mv.arc / 2)) continue;
       const dmg = mv.dmg[0] + Math.random() * (mv.dmg[1] - mv.dmg[0]);
@@ -2979,13 +3045,15 @@ class Component extends DCLogic {
     const T = this.T;
     const fire = a === this.me ? this.element === 'fire' : a.elem === 'fire';
     const gy = (this.worldOn && this.mode === 'ai') ? this.groundY(a.pos.x, a.pos.z) : 0;
-    let dir = new T.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw));
-    if (a === this.me) dir = this.aimDirFrom(a.pos.clone().add(new T.Vector3(0, gy + 1.5, 0)));
+    let dir = (a === this.me)
+      ? this.aimDirFrom(a.pos.clone().add(new T.Vector3(0, gy + 1.5, 0)))
+      : this.npcAimDir(a, gy + 1.5);
     const m = new T.Mesh(new T.IcosahedronGeometry(0.2, 1), new T.MeshBasicMaterial({ color: fire ? 0xffb36b : 0xa8e2ff }));
     m.position.copy(a.pos).add(new T.Vector3(0, gy + 1.5, 0)).addScaledVector(dir, 1);
     const light = new T.PointLight(fire ? 0xff8c3a : 0x7fc8ff, 3.5, 7, 2); m.add(light);
     this.scene.add(m);
     this.projectiles.push({ mesh: m, vel: dir.multiplyScalar(19), owner: a, dmg: fire ? 20 : 16, kind: fire ? 'fire' : 'frost', life: 2.6 });
+    this.sfx(fire ? 'fire' : 'frost');
     this.coopProj(a);
   }
 
@@ -3000,16 +3068,30 @@ class Component extends DCLogic {
   aimDirFrom(origin) {
     return this.aimPoint().sub(origin).normalize();
   }
+  // NPC casters had no camera to aim through, so they fired dead level along
+  // their own facing yaw — fine on flat ground, but a caster on a hill would
+  // sail shots over a lower player's head (and undershoot into the ground
+  // from below). Aim at the target's actual 3D position instead.
+  npcAimDir(a, originY) {
+    const T = this.T;
+    const tgt = (this.coop && a.aggroBy === 'c') ? this.netFoe : this.me;
+    const tgy = (this.worldOn && this.mode === 'ai') ? this.groundY(tgt.pos.x, tgt.pos.z) : 0;
+    const origin = new T.Vector3(a.pos.x, originY, a.pos.z);
+    const at = new T.Vector3(tgt.pos.x, tgy + 1.4, tgt.pos.z);
+    return at.sub(origin).normalize();
+  }
 
   fireSnare(a, yawOff) {
     const T = this.T;
     const gy = (this.worldOn && this.mode === 'ai') ? this.groundY(a.pos.x, a.pos.z) : 0;
-    let dir = new T.Vector3(Math.sin(a.yaw + (yawOff || 0)), 0, Math.cos(a.yaw + (yawOff || 0)));
+    let dir;
     if (a === this.me) {
       const origin = a.pos.clone().add(new T.Vector3(0, gy + 1.7, 0));
       dir = this.aimDirFrom(origin);
-      if (yawOff) dir.applyAxisAngle(new T.Vector3(0, 1, 0), yawOff);
+    } else {
+      dir = this.npcAimDir(a, gy + 1.7);
     }
+    if (yawOff) dir.applyAxisAngle(new T.Vector3(0, 1, 0), yawOff);
     const m = new T.Mesh(new T.IcosahedronGeometry(0.24, 0), new T.MeshBasicMaterial({ color: 0x8fefaf }));
     m.position.copy(a.pos).add(new T.Vector3(0, gy + 1.7, 0)).addScaledVector(dir, 1.1);
     const light = new T.PointLight(0x6fdf8f, 3, 6, 2); m.add(light);
@@ -3021,8 +3103,9 @@ class Component extends DCLogic {
   fireArrow(a, charge, speedBase, dmg) {
     const T = this.T;
     const gy = (this.worldOn && this.mode === 'ai') ? this.groundY(a.pos.x, a.pos.z) : 0;
-    let dir = new T.Vector3(Math.sin(a.yaw), 0, Math.cos(a.yaw));
-    if (a === this.me) dir = this.aimDirFrom(a.pos.clone().add(new T.Vector3(0, gy + 1.55, 0)));
+    let dir = (a === this.me)
+      ? this.aimDirFrom(a.pos.clone().add(new T.Vector3(0, gy + 1.55, 0)))
+      : this.npcAimDir(a, gy + 1.55);
     if (a.act && a.act.name === 'rapid') { dir.x += (Math.random() - 0.5) * 0.09; dir.z += (Math.random() - 0.5) * 0.09; dir.y += (Math.random() - 0.5) * 0.05; }
     dir.normalize();
     const g = new T.Group();
@@ -3070,7 +3153,7 @@ class Component extends DCLogic {
         }
       }
       const r = Math.hypot(p.mesh.position.x, p.mesh.position.z);
-      if (hit || p.life <= 0 || r > ((this.worldOn && this.mode === 'ai') ? 126 : this.C.ARENA_R + 2) || p.mesh.position.y < ((this.worldOn && this.mode === 'ai') ? this.groundY(p.mesh.position.x, p.mesh.position.z) : 0) + 0.05) {
+      if (hit || p.life <= 0 || r > ((this.worldOn && this.mode === 'ai') ? 170 : this.C.ARENA_R + 2) || p.mesh.position.y < ((this.worldOn && this.mode === 'ai') ? this.groundY(p.mesh.position.x, p.mesh.position.z) : 0) + 0.05) {
         this.spark(p.mesh.position.clone(), p.kind === 'frost' ? 0x9fdcff : p.kind === 'fire' ? 0xffa050 : p.kind === 'snare' ? 0x8fefaf : p.kind === 'toxin' ? 0x6fdf3f : 0xd8c9a0, hit ? 12 : 5);
         this.scene.remove(p.mesh); this.projectiles.splice(i, 1);
       }
@@ -3322,7 +3405,7 @@ class Component extends DCLogic {
     // Camera bound must match the playable space — clamping it to the arena
     // while the PLAYER can roam the world left the camera pinned at the wall.
     const r = Math.hypot(want.x, want.z);
-    const lim = (this.worldOn && this.mode === 'ai') ? 130 : this.C.ARENA_R + 4.5;
+    const lim = (this.worldOn && this.mode === 'ai') ? 174 : this.C.ARENA_R + 4.5;
     if (r > lim) { want.x *= lim / r; want.z *= lim / r; }
     want.y = Math.max(0.9, want.y) + ((this.worldOn && this.mode === 'ai')
       ? Math.max(this.groundY(want.x, want.z), this.groundY((want.x + e.pos.x) / 2, (want.z + e.pos.z) / 2), this.groundY(e.pos.x, e.pos.z))
@@ -3817,7 +3900,7 @@ class Component extends DCLogic {
       const f = this.netFoe;   // duel foe IS netFoe; co-op partner too
       f.pos.set(m.p[0], 0, m.p[2]); f.yaw = m.y; f.hp = m.h;
       f.ridingF = !!m.rd;
-      if (m.rd && !f.donkey) f.donkey = this.buildDonkey(f);
+      if (m.rd && !f.donkey) { f.donkey = this.buildDonkey(); f.g.add(f.donkey.g); }
       if (f.donkey) f.donkey.g.visible = !!m.rd;
       f.state = m.st; f.moveAmt = m.mv; f.blocking = m.b; f.frozen = m.fz;
       if (f.weapon !== m.w) { f.weapon = m.w; this.applyWeaponVisuals(f); }
