@@ -456,7 +456,7 @@ class Component extends DCLogic {
     knight('KEVIN COELHO', 0x8a6b2b, { max: 90, dmgScale: 0.65, aiD: 0.6, spdScale: 0.85, brawler: true, aggroR: 10, xp: 60 }, -36, 16);
     const say = this.makeSaylors();
     say.name = 'MR. SAYLORS'; say.home = new T.Vector3(10, 0, 95); say.pos.copy(say.home);
-    Object.assign(say, { max: 170, dmgScale: 0.85, aiD: 0.85, spdScale: 0.88, lockWeapon: 1, spell: 'snare', shouts: true, aggroR: 14, specialCd: 3, xp: 150 });
+    Object.assign(say, { max: 320, dmgScale: 0.85, aiD: 0.85, spdScale: 0.88, lockWeapon: 1, spell: 'snare', shouts: true, aggroR: 14, specialCd: 3, xp: 150 });
     say.g.visible = true; say.hp = say.max;
     scene.add(say.g); this.npcs.push(say);
 
@@ -512,7 +512,7 @@ class Component extends DCLogic {
       this.wallet = this.sanitizeWallet(JSON.parse(localStorage.getItem('grim-wallet') || '{}'));
       this.skills = JSON.parse(localStorage.getItem('grim-skills') || '{}');
     } catch (e) { this.wallet = {}; this.skills = {}; }
-    for (const s of ['COMBAT', 'WOODCUTTING', 'MINING', 'SMITHING']) this.skills[s] = this.skills[s] || 0;
+    for (const s of ['MELEE', 'MAGIC', 'RANGED', 'HITPOINTS', 'WOODCUTTING', 'MINING', 'SMITHING']) this.skills[s] = this.skills[s] || 0;
 
     this.resetRound(true);
     this.bindInput();
@@ -1041,7 +1041,7 @@ class Component extends DCLogic {
   resetWorldSpawn() {
     const me = this.me;
     const diff = this.diffSel || 'veteran';
-    me.max = ({ squire: 300, veteran: 180, champion: 120 })[diff] || 180;
+    me.max = 100 + (this.lvl(this.skills.HITPOINTS) - 1) * 10;
     me.hp = me.max; me.stam = 100; me.mana = 100;
     me.pos.set(41 + (this.coop && !this.isHost ? 2.6 : 0), 0, 31); me.yaw = -2.22; this.yaw = -2.22;
     me.state = 'idle'; me.st = 0; me.frozen = 0; me.stagger = 0;
@@ -1058,8 +1058,19 @@ class Component extends DCLogic {
     const after = this.lvl(this.skills[skill]);
     try { localStorage.setItem('grim-skills', JSON.stringify(this.skills)); } catch (e) {}
     this.splat(this.me.pos.clone().add(new this.T.Vector3(0, 2.5, 0)), '+' + amt + ' ' + skill + ' XP', 'xp');
-    if (after > before) { this.banner(skill + ' LEVEL ' + after, 'ONWARD', false, 2200); this.sfx('win'); }
+    if (after > before) {
+      this.banner(skill + ' LEVEL ' + after, 'ONWARD', false, 2200); this.sfx('win');
+      if (skill === 'HITPOINTS' && this.worldOn && this.mode === 'ai' && this.me) {
+        const gain = (after - before) * 10;
+        this.me.max += gain; this.me.hp += gain;
+      }
+    }
     if (this.walletOpen) this.renderWallet();
+  }
+  awardQuestCombatXp(total) {
+    const each = Math.round(total / 3);
+    this.awardXp('MELEE', each); this.awardXp('MAGIC', each); this.awardXp('RANGED', each);
+    this.awardXp('HITPOINTS', Math.round(total / 3));
   }
   // Inventory core: every mutation flows through addItem/takeItem — integer
   // amounts, clamped, saved immediately. takeItem is atomic: it either removes
@@ -1150,7 +1161,6 @@ class Component extends DCLogic {
           // Partner's kill: THEY get the credit, on their machine.
           this.netSendRaw({ t: 'ndead', i: this.npcs.indexOf(n), xp: n.xp || 40, gob: !!n.goblin, say: n.name === 'MR. SAYLORS', rt: !!n.rat, p: [n.pos.x, n.pos.z] }, true);
         } else {
-          this.awardXp('COMBAT', n.xp || 40);
           if (!n.goblin) this.spawnDrop(n.pos.clone(), 'TESLA PAYCHECK');
           if (n.goblin && this.quest.stage === 1) {
             this.quest.kills++;
@@ -1479,7 +1489,7 @@ class Component extends DCLogic {
     };
     e.name = 'THE PLAGUE RAT'; e.rat = true;
     e.home = new T.Vector3(93, 0, -67); e.pos.copy(e.home);
-    Object.assign(e, { max: 260, dmgScale: 0.7, aiD: 0.8, spdScale: 1.05, brawler: true, aggroR: 15, xp: 220, weapon: 0, hp: 260 });
+    Object.assign(e, { max: 480, dmgScale: 0.7, aiD: 0.8, spdScale: 1.05, brawler: true, aggroR: 15, xp: 220, weapon: 0, hp: 480 });
     this.applyWeaponVisuals(e);
     this.npcs.push(e);
     this.rat = e;
@@ -1642,7 +1652,7 @@ class Component extends DCLogic {
           '<span style="flex:1;font-size:12px;letter-spacing:0.08em;color:#d8d4c6;">' + k + '</span>' +
           '<span style="font-size:13px;color:#e8c774;">×' + this.wallet[k] + '</span></div>').join('')
       : '<div style="font-size:11px;color:#5f6b4a;letter-spacing:0.1em;">EMPTY — GO EARN SOMETHING</div>';
-    stats.innerHTML = ['COMBAT', 'WOODCUTTING', 'MINING', 'SMITHING'].map(s => {
+    stats.innerHTML = ['MELEE', 'MAGIC', 'RANGED', 'HITPOINTS', 'WOODCUTTING', 'MINING', 'SMITHING'].map(s => {
       const xp = this.skills[s] || 0, L = this.lvl(xp);
       const cur = this.xpFor(L), next = this.xpFor(L + 1);
       const p = next > cur ? Math.min(1, (xp - cur) / (next - cur)) : 1;
@@ -2127,19 +2137,19 @@ class Component extends DCLogic {
     if (q.stage === 0) { q.stage = 1; this.banner('DAILY PMS', '"SLAY 10 GOBLINS. AND CLOSE OUT YOUR PM."', false, 4400); }
     else if (q.stage === 1) this.banner('PAUL BELLINGER', '"' + (10 - q.kills) + ' GOBLINS LEFT. GET OFF YOUR SEAT."', false, 3200);
     else if (q.stage === 2) {
-      q.stage = 3; this.awardXp('COMBAT', 120); this.addItem('TESLA PAYCHECK', 1);
+      q.stage = 3; this.awardQuestCombatXp(120); this.addItem('TESLA PAYCHECK', 1);
       this.banner('QUEST COMPLETE · DAILY PMS', 'NEW QUEST: TRACK DOWN MR. SAYLORS — FELL THE FOREMAN', false, 5000); this.sfx('win');
     }
     else if (q.stage === 3) this.banner('PAUL BELLINGER', '"SAYLORS PATROLS THE FAR FIELD, PAST THE ARENA. ANY LINE LIMITERS?"', false, 4200);
     else if (q.stage === 4) {
-      q.stage = 5; this.awardXp('COMBAT', 300); this.addItem('TESLA PAYCHECK', 3);
+      q.stage = 5; this.awardQuestCombatXp(300); this.addItem('TESLA PAYCHECK', 3);
       this.banner('QUEST COMPLETE · THE FOREMAN', 'PAUL HAS MORE WORK — TALK TO HIM AGAIN', false, 5000); this.sfx('win');
     }
     else if (q.stage === 5) { q.stage = 6; this.banner('IRONS IN THE FIRE', '"MINE 10 ORE. SMELT 10 BARS AT MY FURNACE. THEN USE THE ANVIL. GET OFF YOUR SEAT."', false, 5400); }
     else if (q.stage === 6) {
       const bars = this.invCount('IRON BAR'), ore = this.invCount('IRON ORE');
       if (this.invCount('GRIM CLEAVER') > 0) {
-        q.stage = 8; this.awardXp('COMBAT', 250); this.awardXp('SMITHING', 150); this.addItem('TESLA PAYCHECK', 2);
+        q.stage = 8; this.awardQuestCombatXp(250); this.awardXp('SMITHING', 150); this.addItem('TESLA PAYCHECK', 2);
         this.banner('QUEST COMPLETE · IRONS IN THE FIRE', '"NOW THAT IS A CLOSED-OUT PM. ALL DAILIES DONE."', false, 5400); this.sfx('win');
       }
       else if (bars >= 10) this.banner('PAUL BELLINGER', '"10 BARS. NOW THE ANVIL. USE IT."', false, 3200);
@@ -2149,13 +2159,13 @@ class Component extends DCLogic {
     else if (q.stage === 8) { q.stage = 9; this.banner('THE MERE ROAD', '"SOMETHING FESTERS DOWN THE MAIN ROAD, SOUTH. BRING ME 3 WOOL OFF THE SWAMP SHEEP."', false, 5400); }
     else if (q.stage === 9) {
       if (this.invCount('WOOL') >= 3 && this.takeItem('WOOL', 3)) {
-        q.stage = 10; this.awardXp('COMBAT', 150); this.addItem('TESLA PAYCHECK', 1);
+        q.stage = 10; this.awardQuestCombatXp(150); this.addItem('TESLA PAYCHECK', 1);
         this.banner('QUEST COMPLETE · THE MERE ROAD', 'NEW QUEST: FELL THE PLAGUE RAT — IT PROWLS NORTH OF THE LAKE', false, 5400); this.sfx('win');
       } else this.banner('PAUL BELLINGER', '"' + this.invCount('WOOL') + '/3 WOOL. THE SHEEP GRAZE PAST THE OAKS. PRESS F ON THEM."', false, 3600);
     }
     else if (q.stage === 10) this.banner('PAUL BELLINGER', '"THE RAT. BIG AS A CART. GO ON. ANY LINE LIMITERS?"', false, 3400);
     else if (q.stage === 11) {
-      q.stage = 12; this.awardXp('COMBAT', 400); this.addItem('TESLA PAYCHECK', 3);
+      q.stage = 12; this.awardQuestCombatXp(400); this.addItem('TESLA PAYCHECK', 3);
       this.banner('QUEST COMPLETE · FELL THE PLAGUE RAT', '"THE MERE IS CLEAN. YOU ARE FREE. GET OFF YOUR SEAT ANYWAY."', false, 5400); this.sfx('win');
     }
     else this.banner('PAUL BELLINGER', '"NO MORE TASKS TODAY. DID YOU CLOSE OUT YOUR PM?"', false, 3200);
@@ -3183,6 +3193,10 @@ class Component extends DCLogic {
     if (this.warmup || t.hp <= 0 || this.roundOver) return;
     if (t.iframe > 0) { this.splat(worldPos, 'MISS', 'miss'); return; }
     if (from && from.dmgScale) dmg *= from.dmgScale;
+    if (from === this.me) {
+      const style = this.me.weapon === 1 ? 'MAGIC' : this.me.weapon === 2 ? 'RANGED' : 'MELEE';
+      dmg *= 1 + (this.lvl(this.skills[style]) - 1) * 0.015;
+    }
     if (this.npcs && this.npcs.includes(t)) {
       t.aggro = true;   // hitting anyone makes it personal
       if (this.coop && this.isHost) t.lastBy = t.aggroBy = (from === this.netFoe ? 'c' : 'h');
@@ -3223,6 +3237,11 @@ class Component extends DCLogic {
       this.hitstop = Math.max(this.hitstop, 0.11);
     }
     t.hp = Math.max(0, t.hp - dmg);
+    if (from === this.me && dmg > 0 && t !== this.me) {
+      const style = this.me.weapon === 1 ? 'MAGIC' : this.me.weapon === 2 ? 'RANGED' : 'MELEE';
+      this.awardXp(style, Math.max(1, Math.round(dmg * 2)));
+      this.awardXp('HITPOINTS', Math.max(1, Math.round(dmg * 0.67)));
+    }
     if (opt.freeze && !blocked && t.freezeCd <= 0) { t.frozen = 2; t.freezeCd = 6; }
     if (opt.burn && !blocked && dmg > 0) { t.burnS = 3; t.burnTk = 0; }
     if (opt.snare && !blocked && (from.snareCd || 0) <= 0) { t.frozen = Math.max(t.frozen, 1.0); from.snareCd = 2.4; }
@@ -3689,11 +3708,6 @@ class Component extends DCLogic {
         map[k].current.style.color = k === d ? '#e8c774' : '#8f9a76';
       }
     }
-    // Applies live: max HP follows difficulty in the open world.
-    if (this.me && this.worldOn && this.mode === 'ai') {
-      const mx = ({ squire: 300, veteran: 180, champion: 120 })[d] || 180;
-      this.me.max = mx; this.me.hp = Math.min(this.me.hp, mx);
-    }
     this.sfx('switch');
   }
 
@@ -3945,7 +3959,6 @@ class Component extends DCLogic {
       if (n && n.hp > 0) this.applyDamage(this.netFoe, n, m.d, m.k, new this.T.Vector3(m.p[0], m.p[1], m.p[2]), m.o || {});
     }
     if (m.t === 'ndead' && this.coop && !this.isHost) {
-      this.awardXp('COMBAT', m.xp || 40);
       const pos = new this.T.Vector3(m.p[0], 0, m.p[1]);
       if (!m.gob) this.spawnDrop(pos, 'TESLA PAYCHECK');
       if (m.gob && this.quest.stage === 1) {
