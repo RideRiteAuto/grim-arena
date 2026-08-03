@@ -1,0 +1,14 @@
+{
+  "name": "grim-world-relay",
+  "main": "relay-worker.js",
+  "compatibility_date": "2026-01-01",
+  "durable_objects": {
+    "bindings": [
+      { "name": "WORLD", "class_name": "World" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["World"] }
+  ],
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "grim-world-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multiplayer relay for Grim World. Deployed to Cloudflare Workers. The game itself is the static index.html in this repo.",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
