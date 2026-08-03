@@ -2,6 +2,11 @@
 
 ## August 3, 2026 — multiplayer rebuilt, log out added
 
+**Status: live.** The relay is deployed at `grim-arena.kevin-230.workers.dev` and the
+game at rideriteauto.github.io/grim-arena is connected to it. Verified on the
+live site with two players: both connect, the server names one owner, and player
+position, health and name all cross correctly between them.
+
 ### Log out
 There is now a **LOG OUT** button on the pause menu (press Escape while in the
 world, it sits under RESUME). It saves your character, hands the world back to
@@ -48,7 +53,7 @@ What this removes, permanently:
   the status line names the failure instead of spinning.
 
 ### Verified
-Two real browsers against a live relay: both players connect, see each other by
+On the deployed relay, and before that in two real browsers against a local copy: both players connect, see each other by
 name and colour, positions track correctly, and when the host disconnects the
 second player is promoted within a second with no errors on either side. The
 relay's own test suite covers presence, ownership handover, message routing,
