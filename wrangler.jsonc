@@ -1,5 +1,5 @@
 {
-  "name": "grim-world-relay",
+  "name": "grim-arena",
   "main": "relay-worker.js",
   "compatibility_date": "2026-01-01",
   "durable_objects": {

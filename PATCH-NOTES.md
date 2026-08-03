@@ -1,5 +1,40 @@
 # Grim World — patch notes
 
+## August 3, 2026 (evening) — frozen worlds fixed, one action bar
+
+### Fixed: monsters freezing (not fighting back, not dying, no loot)
+Cause found. Whichever player joined first runs the monsters, and when that
+player's browser tab goes into the background, Chrome freezes it. Monsters kept
+their health but stopped animating, stopped fighting, and deaths never
+processed, so no loot dropped. Everyone else in the world was watching a
+frozen simulation.
+
+Three layers of fix, so this cannot come back:
+
+- A player whose tab goes hidden now hands the simulation to a visible player
+  immediately.
+- If ownership lands on a tab that is already hidden, it hands it back the
+  moment it notices. The server only ever hands simulation to a VISIBLE
+  player, so two hidden tabs can never pass it back and forth.
+- If the owning tab freezes so hard it cannot even say goodbye, the server
+  evicts it after 8 silent seconds and promotes the most recently active
+  visible player.
+
+### One action bar
+The duplicate action bar inside the inventory is gone. The bar at the bottom
+of the screen is the only bar, and it does everything:
+
+- Drag weapons, tools, and potions from your pack straight onto it
+- Drag between slots to rearrange, drop onto a full slot to swap
+- Drag an icon off the bar to unbind it (the item stays in your pack)
+- Click a slot to use it, exactly like pressing its number key
+- Right-click a slot to unbind
+- Icons appear and disappear instantly, and bindings save with your character
+- Empty slots stay empty
+
+Also fixed along the way: equipping by number key crashed if any bar slot was
+empty. That bug was hiding in the old bar code.
+
 ## August 3, 2026 — multiplayer rebuilt, log out added
 
 **Status: live.** The relay is deployed at `grim-arena.kevin-230.workers.dev` and the
