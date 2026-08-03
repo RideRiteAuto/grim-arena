@@ -1,11 +1,11 @@
-# Grim Arena
+# Grim World
 
 Third-person action duelling in the browser. Solo boss ladder or peer-to-peer 1v1.
 
 ## Solo
 
 Open the game, type a name, pick a colour, hit **SOLO — FIGHT THE BOSSES**.
-Boss 1 is **Austin Little** (a pushover). Fell him and **Mr. Saylors** rides out —
+Boss 1 is **Austin Little** (a pushover). Fell him and **Mr. Sailers** rides out —
 a very large man on a very small donkey who casts snares and shouts gibberish.
 
 ## Play against your coworker (the easy way — no server)
@@ -44,9 +44,9 @@ Open the printed URL with `#room=ring` on the end on both PCs.
 
 **Perfect parry:** raise the shield within 200ms of impact — zero damage, attacker staggers.
 **Guard break:** blocking drains stamina per hit absorbed; empty means 1.4s wide open.
-**Frostbolt** roots 2s (6s cooldown). Saylors' **snares** root 1s.
+**Frostbolt** roots 2s (6s cooldown). Sailers' **snares** root 1s.
 
 ## Tuning
 
-Everything lives in `cfg()` in `Grim Arena.dc.html`. Tweaks panel exposes
+Everything lives in `cfg()` in `Grim World.dc.html`. Tweaks panel exposes
 player health, difficulty, turn speed, volume.

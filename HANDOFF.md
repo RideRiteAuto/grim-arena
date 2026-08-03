@@ -1,40 +1,62 @@
-# GRIM ARENA — Developer Handoff
+# Grim World — Developer Handoff
 
-Third-person action RPG in the browser. One self-contained Design Component
-(`Grim Arena.dc.html`), three.js via CDN import map, zero build step, zero
-asset downloads (all geometry, textures and audio are procedural).
+**SOURCE OF TRUTH: `index.html` / `grim-arena-standalone.html` (identical bundles).**
+`Grim Arena.dc.html` is STALE (last true at the Aug 2 spell-wheel commit) and must
+NOT be edited or used to rebuild — doing so would erase everything after 3pm Aug 2
+(Northreach, shared world, music, knight rework, Inventory 2.0, loot sacks).
+Edit the bundles via `repack.py`:
 
-## Files
+    python3 repack.py extract   # game doc -> /tmp/game-src.html
+    (edit /tmp/game-src.html)
+    python3 repack.py pack      # writes BOTH bundles, verifies round-trip
 
-- **`Grim Arena.dc.html`** — the entire game: template (HUD/menus, between `<x-dc>` tags) + one `Component` logic class (~2700 lines). Everything below lives here.
-- `grim-arena-standalone.html` — compiled single-file build (generated; do not edit).
-- `server/index.js` + `package.json` — optional WebSocket relay fallback (~80 lines, `npm i && node index.js`, serves the project + `/ws` room relay).
-- `README.md` — player-facing instructions.
+The bundle embeds the game document as a JSON string; `repack.py` escapes `</`
+so the payload cannot terminate the outer script tag.
 
-## Architecture (all in the logic class, top to bottom)
+## Inventory 2.0 (Aug 3)
 
-- **`cfg()`** — ALL combat tuning: move frame-data (`MOVES`: wind/act/rec windows, damage, ranges), speeds, arena radius. Change a number, reload, feel it.
-- **`boot()`** — renderer (pixelRatio ≤1.25, PCF shadows), scene/lights, `buildArena()`, entity creation, input binding, rAF loop. WebGL context loss is handled: `webglcontextlost` pauses hard, restore triggers `rebuild()` (full renderer teardown/re-boot; score survives).
-- **`tick(dt)`** — fixed flow: hitstop scaling → title/pause branch (sim frozen) → countdown branch (net only) → `driveLocal` → world branch (`driveAI` per NPC, `stepFighter` per entity, `stepWorld`) or duel branch → projectiles → shouts → fx → camera → round logic → HUD → `netSend` → render.
-- **Entities** — plain objects from `makeFighter(palette,isMe)` / `makeSaylors()`. Shared shape: `pos/vel/want` (vel eases toward want, exp damping — the smoothness core), `state` machine (`idle/attack/cast/draw/dodge/leap/charge/taunt/flourish/stagger/dead`), `st` (state time), `act` (current move + frame data), guard fields (`blocking/blockAge/guardBreak`), boss knobs (`aiD/dmgScale/spdScale/aggroR/spell/brawler/xp`). Rigs share part names (`upper/armR/armL/legR/legL/hand/handL/mount...`) so `animate()` runs every body.
-- **Combat rules** — attacks fire on mouse-DOWN; input buffer (220ms) + recovery cancel at 45% chains combos (light,light,heavy); melee = arc+range check during active frames (`meleeCheck`); parry window = `blockAge < 0.2s` in SIM time; guard drains stamina per absorbed hit → guard break; projectiles in `projectiles[]`, player shots aim via `aimDirFrom()` (camera-ray through crosshair — never character yaw, the camera sits off-shoulder).
-- **World** (`worldOn && mode==='ai'`) — `npcs[]` roam waypoints (`wander`), aggro by radius or on hit, deaggro at 32m. `stepWorld()`: NPC death → COMBAT XP + TESLA PAYCHECK drop + 26s respawn; player death → respawn at ring. `resources[]` (trees/rocks): `gatherCheck()` on 'chop' swings (weapon 3 pick↔rock, 4 axe↔tree), fell/shatter, LOGS/IRON ORE + WOODCUTTING/MINING XP, 28s respawn. Wall ring is solid except two gates (segments 0 & 4; collision in `stepFighter`).
-- **Progression** — `wallet{}` + `skills{}` persisted to localStorage (`grim-wallet`, `grim-skills`); `lvl(xp)` curve; `renderWallet()` draws the Tab panel (CYBER WALLET + STATS).
-- **Multiplayer** — PeerJS (CDN) data channels: reliable 'ctl' (hello/hits) + unreliable 'state' (20Hz snapshots), TURN relays over tcp/443 for corporate NATs (`peerOpts()`), staged status + 14s watchdog (`netStage`). Victim-authoritative damage. Host = `grim-duel-<CODE>` peer id. Legacy WS relay path kept (`tryConnect`, `#room=`).
-- **FX** — pooled sparks/trails (`poolGet/poolPut` — never dispose pooled meshes), `fx[]` kinds: flame/ember/sway/fall/ring/spark/trail. Audio: WebAudio synth only (`sfx(name)`).
-- **HUD/menus** — template refs (`hpFillRef`, `slot0-4Ref`, `walletRef`...); hitsplats + XP toasts are DOM projected from world space (`splat`); Saylors speech bubbles via `showShout`.
+- `ITEMS()` registry: every item has stack/slot/hands/wieldAs/stats/value/icon.
+  **An item without an icon throws at boot.** Add art in the registry, nowhere else.
+- State: `inv` (28 slots), `worn` (HEAD/AMULET/WEAPON/BODY/SHIELD/LEGS), `bar`
+  (6 item IDS, never items), `overflow` (surplus pouch, auto-refills).
+  Persisted as `grim-inv-v1`; legacy `grim-wallet` migrates once, losing nothing.
+- EVERY mutation goes through `invCommit(fn)`: snapshot -> mutate -> `invValidate()`
+  -> save. Violations revert wholesale. Use `invSimulate(fn)` for prechecks.
+- `addItem` is capacity-aware (returns amount added). `grantItem` is for rewards:
+  spills to overflow, never blocks, never destroys. `takeItem` is atomic.
+  `hasItem` checks pack AND worn — use it for ownership gates (the anvil dupe).
+- Crafting prechecks room BEFORE consuming inputs (`craftAtAnvil`, smelt loop).
+- Combat: `armourCut()` = DEF/(DEF+110) capped 0.60; `styleDamageMult` from
+  STR/MAG/RNG. Keys 1-6 call `switchWeapon` which EQUIPS the bar-bound item.
+- Panel: `toggleWallet` (TAB). Drag logic in `bindInvPointer`; ops are
+  `moveSlot/splitStack/equipFromSlot/unequipSlot/unequipToSlot/bindBar/
+  dropFromSlot/sortInventory`. Sort is a pure permutation.
 
-## Gotchas for the next engineer
+## Loot sacks (Aug 3)
 
-1. `this.foe` is a POINTER to the current target (nearest NPC in world / `netFoe` online). Many systems read it; never null it.
-2. Boot order matters: `fx`/`resources` arrays must exist before `buildArena()`.
-3. Pooled fx meshes share geometry — always retire via `retireFx`, never `.dispose()`.
-4. Hot paths avoid layout reads; `fit()` runs on ResizeObserver + every 45 frames only.
-5. Test rig pattern (used throughout development): grab the logic instance via React fiber from the canvas, drive `g.tick(1/60)` manually (rAF throttles in hidden tabs), and read back rendered pixels with `renderer.domElement.toDataURL()` right after a manual `render()`.
-6. IP guardrail: mechanics are genre-standard; all names, models, and art are original. Keep it that way.
+- Authority = host, or yourself when not `connectedAsClient()` (broker down =>
+  local sacks; this also fixed offline NPC lifecycle, see authority gates).
+- Protocol: client `lreq{id,e,q,tok}` -> host validates (exists, qty, ownership
+  window, token unseen) -> `lok` to that client only (grant happens ONLY here)
+  + `skupd` broadcast. `sknew` on spawn + on late join. `skgone` on empty/expiry.
+- Killer-owned 60s, public 180s more, sink+fade last 15s, 40-sack cap.
+- Loot tables: `lootEntriesFor(tag)`; quest credit: `questCreditFor(tag)` on the
+  killer's machine via `ndead` (unchanged flow).
 
-## Controls
-WASD/arrows move · mouse aim (pointer lock, free-aim fallback) · LMB attack (hold = chain) · RMB block/ward/rapid · Space roll · Shift sprint · E lock-on · Tab wallet · 1-5 blade/staff/bow/pick/axe · Enter ready (net).
+## Testing
 
-## Tuning knobs (Tweaks panel)
-`playerHealth`, `difficulty`, `roundsToWin` (net), `turnSpeed`, `volume`, `showDamage`. Difficulty also selectable in-game (SQUIRE 300hp / VETERAN 180 / CHAMPION 120 + AI ±).
+- `/tmp/fuzz.js` (conservation fuzz, migration), `/tmp/ui-test.js`,
+  `/tmp/drag-test.js` (real pointer events), `/tmp/sack-test.js`,
+  `/tmp/net-test.js` (two browsers + local PeerJS broker on :9944).
+  Serve via http with three.js importmap pointed at a local copy — unpkg is
+  unreachable from the sandbox, and file:// never fires three-ready.
+- Instance handle: `window.__grim`. World init runs in `boot()`, so wait for
+  `Array.isArray(__grim.inv)` before poking inventory.
+
+## Older architecture notes
+
+HANDOFF-v9.md still describes the world/quests/netcode accurately EXCEPT
+anything about `Grim Arena.dc.html` being the source (it is not) and the old
+wallet (replaced). Wire IDs and save keys deliberately keep legacy names
+(`grim-arena/`, `grim-duel-`, `grim-gaylinor-world-v1`, `grim-*` storage):
+renaming them would break co-op between copies and wipe player saves.

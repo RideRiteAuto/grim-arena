@@ -84,7 +84,7 @@
       </div>
       <div ref="{{ questRef }}" style="display:none; margin-top:14px; width:250px; padding:10px 13px; background:rgba(10,11,8,0.62); border:2px solid #2c2f24; border-left:3px solid #c8a24a;">
         <div ref="{{ questTitleRef }}" style="font-family:'Cinzel',serif; font-size:12.5px; font-weight:700; letter-spacing:0.1em; color:#e8c774;">QUEST</div>
-        <div ref="{{ questObjRef }}" style="font-size:11px; letter-spacing:0.12em; color:#b3afa0; margin-top:5px; line-height:1.5;">TALK TO PAUL BELLINGER</div>
+        <div ref="{{ questObjRef }}" style="font-size:11px; letter-spacing:0.12em; color:#b3afa0; margin-top:5px; line-height:1.5;">TALK TO BALL PELLINGER</div>
       </div>
     </div>
 
@@ -158,7 +158,7 @@
     <div ref="{{ bannerSubRef }}" style="font-size:12px; letter-spacing:0.24em; color:#c8a24a; margin-top:8px;"></div>
   </div>
 
-  <div ref="{{ promptRef }}" style="position:absolute; bottom:190px; left:50%; transform:translateX(-50%); display:none; padding:9px 22px; background:rgba(10,11,8,0.78); border:1px solid #c8a24a; font-size:12px; letter-spacing:0.18em; color:#e8c774; text-shadow:0 2px 4px #000; pointer-events:none; z-index:5;">F &nbsp;·&nbsp; TALK TO PAUL BELLINGER</div>
+  <div ref="{{ promptRef }}" style="position:absolute; bottom:190px; left:50%; transform:translateX(-50%); display:none; padding:9px 22px; background:rgba(10,11,8,0.78); border:1px solid #c8a24a; font-size:12px; letter-spacing:0.18em; color:#e8c774; text-shadow:0 2px 4px #000; pointer-events:none; z-index:5;">F &nbsp;·&nbsp; TALK TO BALL PELLINGER</div>
 
   <div ref="{{ rideHudRef }}" style="position:absolute; bottom:200px; left:50%; transform:translateX(-50%); display:none; padding:8px 20px; background:rgba(10,11,8,0.74); border:1px solid #c8a24a; color:#e8c774; font-size:11px; letter-spacing:0.2em; z-index:5;">X — DISMOUNT DONKEY</div>
   <div ref="{{ readyRef }}" style="position:absolute; bottom:118px; left:50%; transform:translateX(-50%); display:none; flex-direction:column; align-items:center; gap:9px; z-index:5;">
@@ -168,21 +168,21 @@
 
   <div ref="{{ overlayRef }}" style="position:absolute; inset:0; background:radial-gradient(ellipse at 50% 40%, rgba(24,26,18,0.94), rgba(6,7,5,0.985)); display:flex; justify-content:center; overflow-y:auto;">
     <div style="width:640px; max-width:88vw; text-align:center; margin:auto; padding:26px 0;">
-      <div style="font-size:11px; letter-spacing:0.34em; color:#7d8a63;">THE REALM OF GAYLINOR</div>
-      <h1 style="font-family:'Cinzel',serif; font-weight:700; font-size:74px; line-height:1; margin:16px 0 0; color:#f2efe6; letter-spacing:0.01em; text-shadow:0 8px 40px rgba(0,0,0,0.8);">Gaylinor</h1>
+      <div style="font-size:11px; letter-spacing:0.34em; color:#7d8a63;">THE REALM OF GRIM WORLD</div>
+      <h1 style="font-family:'Cinzel',serif; font-weight:700; font-size:74px; line-height:1; margin:16px 0 0; color:#f2efe6; letter-spacing:0.01em; text-shadow:0 8px 40px rgba(0,0,0,0.8);">Grim World</h1>
       <div ref="{{ statusRef }}" style="font-size:12.5px; letter-spacing:0.16em; color:#c8a24a; margin-top:18px;">LOADING…</div>
 
       <div style="margin:16px auto 0; max-width:560px; text-align:left; border:1px solid #262a1e; background:rgba(19,21,15,0.7); padding:12px 16px;">
-        <div style="font-size:10px; letter-spacing:0.2em; color:#7d8a63;">PATCH NOTES · V9.3 — WELCOME TO GAYLINOR</div>
+        <div style="font-size:10px; letter-spacing:0.2em; color:#7d8a63;">PATCH NOTES · V9.3 — WELCOME TO GRIM WORLD</div>
         <div style="font-size:11.5px; line-height:1.8; color:#b3afa0; margin-top:6px; text-wrap:pretty;">
           NEW — <span style="color:#e8c774;">THE GRIM CLEAVER IS NOW A WEAPON</span>: forge it, press 6 — an iron two-hander with sweeping new attacks (RMB = crush)<br>
           FIXED — lock-on releases when your target dies; it only ever locks onto foes you're in combat with · E to untarget (labeled on screen)<br>
           CHANGED — ground spikes replaced with soft walk-through bushes<br>
           NEW — <span style="color:#ffa15c;">FIRE</span> &amp; <span style="color:#9fdcff;">WATER</span> magic: press C with the staff. Fire burns, water freezes<br>
           NEW — JIM THE LUMBERJACK fells trees and PETE THE PROSPECTOR mines &amp; mutters. Both fight back if provoked<br>
-          NEW — slay MR. SAYLORS and ride his <span style="color:#c8a24a;">DONKEY</span> (faster travel · X to dismount/remount · follows you as a companion)<br>
+          NEW — slay MR. SAILERS and ride his <span style="color:#c8a24a;">DONKEY</span> (faster travel · X to dismount/remount · follows you as a companion)<br>
           NEW — ALEXIS AYALA wanders the starting fields. He is buying gf<br>
-          GAYLINOR — the game has a name: no more flat arena world<br>
+          GRIM WORLD — the game has a name: no more flat arena world<br>
           NEW — rolling hills &amp; real elevation, grass, scattered stone, fireflies over the mere<br>
           NEW — a MAIN ROAD south from camp to the bog · new quests: THE MERE ROAD &amp; FELL THE PLAGUE RAT<br>
           V8 — the mere: swamp, lake, shearable sheep, mighty oaks (woodcutting lv 5), and <span style="color:#8fef5a;">THE PLAGUE RAT</span>, a poison boss<br>
@@ -420,7 +420,7 @@ class Component extends DCLogic {
     this.me  = this.makeFighter({ steel: 0xb9c2cc, cloth: 0x2f5d8a, trim: 0xc8a24a }, true);
     scene.add(this.me.g);
 
-    // The world's men-at-arms: three roaming knights and Mr. Saylors on patrol.
+    // The world's men-at-arms: three roaming knights and Mr. Sailers on patrol.
     this.npcs = [];
     const knight = (name, cloth, extra, x, z) => {
       const k = this.makeFighter({ steel: 0xc0b4a6, cloth, trim: 0x9a7a34 }, false);
@@ -456,17 +456,17 @@ class Component extends DCLogic {
     }
     knight('STEVEN CARRASCO', 0x3d6b35, { max: 90, dmgScale: 0.65, aiD: 0.6, spdScale: 0.85, brawler: true, aggroR: 10, xp: 60 }, 34, -22);
     knight('KEVIN COELHO', 0x8a6b2b, { max: 90, dmgScale: 0.65, aiD: 0.6, spdScale: 0.85, brawler: true, aggroR: 10, xp: 60 }, -36, 16);
-    const say = this.makeSaylors();
-    say.name = 'MR. SAYLORS'; say.home = new T.Vector3(10, 0, 95); say.pos.copy(say.home);
+    const say = this.makeSailers();
+    say.name = 'MR. SAILERS'; say.home = new T.Vector3(10, 0, 95); say.pos.copy(say.home);
     Object.assign(say, { max: 320, dmgScale: 0.85, aiD: 0.85, spdScale: 0.88, lockWeapon: 1, spell: 'snare', shouts: true, aggroR: 14, specialCd: 3, xp: 150 });
     say.g.visible = true; say.hp = say.max;
     scene.add(say.g); this.npcs.push(say);
 
-    // Paul Bellinger, quest giver. Not in npcs: untargetable, unkillable.
+    // Ball Pellinger, quest giver. Not in npcs: untargetable, unkillable.
     try { this.quest = this.sanitizeQuest(JSON.parse(localStorage.getItem('grim-quest') || '{}')); }
     catch (e) { this.quest = { stage: 0, kills: 0 }; }
     const paul = this.makeFighter({ steel: 0x9a9484, cloth: 0x3d6b35, trim: 0xc8a24a }, false);
-    paul.name = 'PAUL BELLINGER';
+    paul.name = 'BALL PELLINGER';
     paul.pos.set(37, 0, 27.5); paul.g.position.copy(paul.pos);
     paul.g.rotation.y = Math.atan2(41 - 37, 31 - 27.5);   // faces the spawn
     paul.weapon = 9; this.applyWeaponVisuals(paul);
@@ -536,7 +536,7 @@ class Component extends DCLogic {
     };
     this.raf = requestAnimationFrame(loop);
 
-    if (this.statusRef.current && this.mode === 'ai') this.statusRef.current.textContent = 'OPEN WORLD — PAUL BELLINGER HAS WORK FOR YOU';
+    if (this.statusRef.current && this.mode === 'ai') this.statusRef.current.textContent = 'OPEN WORLD — BALL PELLINGER HAS WORK FOR YOU';
   }
 
   // Procedural CanvasTexture — real surface detail with zero downloads.
@@ -933,10 +933,10 @@ class Component extends DCLogic {
   }
 
   // ------------------------------------------------------------- bosses
-  // Boss 2: Mr. Saylors — a very large man on a very small donkey. Casts short
+  // Boss 2: Mr. Sailers — a very large man on a very small donkey. Casts short
   // snares and shouts gibberish. Shares the fighter interface (same part names)
   // so every combat/animation system works unmodified.
-  makeSaylors() {
+  makeSailers() {
     const T = this.T;
     const fm = (c, r, m) => new T.MeshStandardMaterial({ color: c, roughness: r ?? 0.85, metalness: m ?? 0, flatShading: true });
     const robe = fm(0x5a3a6e), robeDark = fm(0x432b52), trim = fm(0xc8a24a, 0.5, 0.35), skin = fm(0xd8a87c, 1);
@@ -1158,25 +1158,25 @@ class Component extends DCLogic {
       if (!auth) break;   // co-op client: NPC lifecycle arrives over the wire
       if (n.hp <= 0 && !n.deadHandled) {
         n.deadHandled = true; n.aggro = false; n.aggroBy = null;
-        n.respawnT = n.goblin ? 20 : (n.name === 'MR. SAYLORS' ? 100 : 26);
+        n.respawnT = n.goblin ? 20 : (n.name === 'MR. SAILERS' ? 100 : 26);
         if (this.coop && n.lastBy === 'c') {
           // Partner's kill: THEY get the credit, on their machine.
-          this.netSendRaw({ t: 'ndead', i: this.npcs.indexOf(n), xp: n.xp || 40, gob: !!n.goblin, say: n.name === 'MR. SAYLORS', rt: !!n.rat, p: [n.pos.x, n.pos.z] }, true);
+          this.netSendRaw({ t: 'ndead', i: this.npcs.indexOf(n), xp: n.xp || 40, gob: !!n.goblin, say: n.name === 'MR. SAILERS', rt: !!n.rat, p: [n.pos.x, n.pos.z] }, true);
         } else {
           if (!n.goblin) this.spawnDrop(n.pos.clone(), 'TESLA PAYCHECK');
           if (n.goblin && this.quest.stage === 1) {
             this.quest.kills++;
-            if (this.quest.kills >= 10) { this.quest.stage = 2; this.banner('GOBLINS SLAIN', 'RETURN TO PAUL BELLINGER', false, 3400); this.sfx('win'); }
+            if (this.quest.kills >= 10) { this.quest.stage = 2; this.banner('GOBLINS SLAIN', 'RETURN TO BALL PELLINGER', false, 3400); this.sfx('win'); }
             else this.splat(n.pos.clone().add(new T.Vector3(0, 2.2, 0)), 'GOBLIN ' + this.quest.kills + ' / 10', 'xp');
           }
-          if (n.name === 'MR. SAYLORS' && this.quest.stage === 3) {
+          if (n.name === 'MR. SAILERS' && this.quest.stage === 3) {
             this.quest.stage = 4;
-            this.banner('THE FOREMAN IS FELLED', 'RETURN TO PAUL BELLINGER', false, 3800); this.sfx('win');
+            this.banner('THE FOREMAN IS FELLED', 'RETURN TO BALL PELLINGER', false, 3800); this.sfx('win');
           }
-          if (n.name === 'MR. SAYLORS' && (!this.coop || n.lastBy !== this.netFoe)) this.startRide();
+          if (n.name === 'MR. SAILERS' && (!this.coop || n.lastBy !== this.netFoe)) this.startRide();
           if (n.rat) {
             this.addItem('RAT TAIL', 1);
-            if (this.quest.stage === 10) { this.quest.stage = 11; this.banner('THE PLAGUE RAT IS FELLED', 'RETURN TO PAUL BELLINGER', false, 4200); this.sfx('win'); }
+            if (this.quest.stage === 10) { this.quest.stage = 11; this.banner('THE PLAGUE RAT IS FELLED', 'RETURN TO BALL PELLINGER', false, 4200); this.sfx('win'); }
             else this.banner('THE PLAGUE RAT IS SLAIN', 'THE MERE BREATHES EASIER', false, 4200);
           }
           this.saveQuest();
@@ -1670,7 +1670,7 @@ class Component extends DCLogic {
     e.wayT = (e.wayT || 0) - dt;
     if (!e.way || e.pos.distanceTo(e.way) < 1.6 || e.wayT <= 0) {
       const a = Math.random() * Math.PI * 2;
-      const r = e.name === 'MR. SAYLORS' ? 14 + Math.random() * 22 : 5 + Math.random() * 11;
+      const r = e.name === 'MR. SAILERS' ? 14 + Math.random() * 22 : 5 + Math.random() * 11;
       e.way = new T.Vector3(e.home.x + Math.cos(a) * r, 0, e.home.z + Math.sin(a) * r);
       const rr = Math.hypot(e.way.x, e.way.z); if (rr > 162) e.way.multiplyScalar(162 / rr);
       e.wayT = 6 + Math.random() * 6;
@@ -2151,15 +2151,15 @@ class Component extends DCLogic {
     if (this.me.pos.distanceTo(this.paul.pos) > 3.6) return false;
     const q = this.quest; this.sfx('switch');
     if (q.stage === 0) { q.stage = 1; this.banner('DAILY PMS', '"SLAY 10 GOBLINS. AND CLOSE OUT YOUR PM."', false, 4400); }
-    else if (q.stage === 1) this.banner('PAUL BELLINGER', '"' + (10 - q.kills) + ' GOBLINS LEFT. GET OFF YOUR SEAT."', false, 3200);
+    else if (q.stage === 1) this.banner('BALL PELLINGER', '"' + (10 - q.kills) + ' GOBLINS LEFT. GET OFF YOUR SEAT."', false, 3200);
     else if (q.stage === 2) {
       q.stage = 3; this.awardQuestCombatXp(120); this.addItem('TESLA PAYCHECK', 1);
-      this.banner('QUEST COMPLETE · DAILY PMS', 'NEW QUEST: TRACK DOWN MR. SAYLORS — FELL THE FOREMAN', false, 5000); this.sfx('win');
+      this.banner('QUEST COMPLETE · DAILY PMS', 'NEW QUEST: TRACK DOWN MR. SAILERS — FELL THE FOREMAN', false, 5000); this.sfx('win');
     }
-    else if (q.stage === 3) this.banner('PAUL BELLINGER', '"SAYLORS PATROLS THE FAR FIELD, PAST THE ARENA. ANY LINE LIMITERS?"', false, 4200);
+    else if (q.stage === 3) this.banner('BALL PELLINGER', '"SAILERS PATROLS THE FAR FIELD, PAST THE ARENA. ANY LINE LIMITERS?"', false, 4200);
     else if (q.stage === 4) {
       q.stage = 5; this.awardQuestCombatXp(300); this.addItem('TESLA PAYCHECK', 3);
-      this.banner('QUEST COMPLETE · THE FOREMAN', 'PAUL HAS MORE WORK — TALK TO HIM AGAIN', false, 5000); this.sfx('win');
+      this.banner('QUEST COMPLETE · THE FOREMAN', 'BALL HAS MORE WORK — TALK TO HIM AGAIN', false, 5000); this.sfx('win');
     }
     else if (q.stage === 5) { q.stage = 6; this.banner('IRONS IN THE FIRE', '"MINE 10 ORE. SMELT 10 BARS AT MY FURNACE. THEN USE THE ANVIL. GET OFF YOUR SEAT."', false, 5400); }
     else if (q.stage === 6) {
@@ -2168,23 +2168,23 @@ class Component extends DCLogic {
         q.stage = 8; this.awardQuestCombatXp(250); this.awardXp('SMITHING', 150); this.addItem('TESLA PAYCHECK', 2);
         this.banner('QUEST COMPLETE · IRONS IN THE FIRE', '"NOW THAT IS A CLOSED-OUT PM. ALL DAILIES DONE."', false, 5400); this.sfx('win');
       }
-      else if (bars >= 10) this.banner('PAUL BELLINGER', '"10 BARS. NOW THE ANVIL. USE IT."', false, 3200);
-      else if (ore > 0 || bars > 0) this.banner('PAUL BELLINGER', '"' + bars + '/10 BARS. THE FURNACE IS RIGHT THERE. ANY LINE LIMITERS?"', false, 3400);
-      else this.banner('PAUL BELLINGER', '"NO ORE? PICKAXE. SLOT 4. THE STUDDED ROCKS."', false, 3400);
+      else if (bars >= 10) this.banner('BALL PELLINGER', '"10 BARS. NOW THE ANVIL. USE IT."', false, 3200);
+      else if (ore > 0 || bars > 0) this.banner('BALL PELLINGER', '"' + bars + '/10 BARS. THE FURNACE IS RIGHT THERE. ANY LINE LIMITERS?"', false, 3400);
+      else this.banner('BALL PELLINGER', '"NO ORE? PICKAXE. SLOT 4. THE STUDDED ROCKS."', false, 3400);
     }
     else if (q.stage === 8) { q.stage = 9; this.banner('THE MERE ROAD', '"SOMETHING FESTERS DOWN THE MAIN ROAD, SOUTH. BRING ME 3 WOOL OFF THE SWAMP SHEEP."', false, 5400); }
     else if (q.stage === 9) {
       if (this.invCount('WOOL') >= 3 && this.takeItem('WOOL', 3)) {
         q.stage = 10; this.awardQuestCombatXp(150); this.addItem('TESLA PAYCHECK', 1);
         this.banner('QUEST COMPLETE · THE MERE ROAD', 'NEW QUEST: FELL THE PLAGUE RAT — IT PROWLS NORTH OF THE LAKE', false, 5400); this.sfx('win');
-      } else this.banner('PAUL BELLINGER', '"' + this.invCount('WOOL') + '/3 WOOL. THE SHEEP GRAZE PAST THE OAKS. PRESS F ON THEM."', false, 3600);
+      } else this.banner('BALL PELLINGER', '"' + this.invCount('WOOL') + '/3 WOOL. THE SHEEP GRAZE PAST THE OAKS. PRESS F ON THEM."', false, 3600);
     }
-    else if (q.stage === 10) this.banner('PAUL BELLINGER', '"THE RAT. BIG AS A CART. GO ON. ANY LINE LIMITERS?"', false, 3400);
+    else if (q.stage === 10) this.banner('BALL PELLINGER', '"THE RAT. BIG AS A CART. GO ON. ANY LINE LIMITERS?"', false, 3400);
     else if (q.stage === 11) {
       q.stage = 12; this.awardQuestCombatXp(400); this.addItem('TESLA PAYCHECK', 3);
       this.banner('QUEST COMPLETE · FELL THE PLAGUE RAT', '"THE MERE IS CLEAN. YOU ARE FREE. GET OFF YOUR SEAT ANYWAY."', false, 5400); this.sfx('win');
     }
-    else this.banner('PAUL BELLINGER', '"NO MORE TASKS TODAY. DID YOU CLOSE OUT YOUR PM?"', false, 3200);
+    else this.banner('BALL PELLINGER', '"NO MORE TASKS TODAY. DID YOU CLOSE OUT YOUR PM?"', false, 3200);
     this.saveQuest();
     return true;
   }
@@ -2239,7 +2239,7 @@ class Component extends DCLogic {
     if (this.donkeyCompanion) this.donkeyCompanion.g.visible = false;
     this.riding = true; e.donkey.g.visible = true;
     if (this.rideHudRef && this.rideHudRef.current) this.rideHudRef.current.style.display = 'block';
-    this.banner("SAYLORS' DONKEY IS YOURS", 'RIDE ON · PRESS X TO DISMOUNT', false, 4800); this.sfx('win');
+    this.banner("SAILERS' DONKEY IS YOURS", 'RIDE ON · PRESS X TO DISMOUNT', false, 4800); this.sfx('win');
   }
 
   stopRide(silent) {
@@ -2484,7 +2484,7 @@ class Component extends DCLogic {
     if (e.state === 'taunt' || e.state === 'flourish' || e.state === 'leap') { e.want.set(0, 0, 0); e.moveAmt *= 0.9; return; }
     if (this.canAct(e) && e.specialCd <= 0) {
       const roll = Math.random();
-      if (e.spell === 'snare') {   // Mr. Saylors
+      if (e.spell === 'snare') {   // Mr. Sailers
         if (dist > 7 && roll < 0.4) { this.startCharge(e, me); return; }
         if (roll < 0.68) {
           e.state = 'taunt'; e.st = 0; e.want.set(0, 0, 0);
@@ -2947,7 +2947,7 @@ class Component extends DCLogic {
   }
 
   // ------------------------------------------------------------- shouts
-  // Mr. Saylors bellows random gibberish that floats over his head mid-fight.
+  // Mr. Sailers bellows random gibberish that floats over his head mid-fight.
   showShout(text, gold, dur) {
     const layer = this.splatRef.current; if (!layer) return;
     if (!this.shoutEl) {
@@ -3649,22 +3649,22 @@ class Component extends DCLogic {
       if (world && this.started) {
         const q = this.quest;
         const bars = this.invCount('IRON BAR'), ore = this.invCount('IRON ORE'), cle = this.invCount('GRIM CLEAVER') > 0;
-        const title = ['QUEST', 'DAILY PMS', 'DAILY PMS', 'TRACK DOWN MR. SAYLORS', 'TRACK DOWN MR. SAYLORS', 'NEW QUEST WAITING', 'IRONS IN THE FIRE', 'IRONS IN THE FIRE', 'NEW QUEST WAITING', 'THE MERE ROAD', 'FELL THE PLAGUE RAT', 'FELL THE PLAGUE RAT', 'ALL QUESTS DONE'][q.stage] || 'QUEST';
+        const title = ['QUEST', 'DAILY PMS', 'DAILY PMS', 'TRACK DOWN MR. SAILERS', 'TRACK DOWN MR. SAILERS', 'NEW QUEST WAITING', 'IRONS IN THE FIRE', 'IRONS IN THE FIRE', 'NEW QUEST WAITING', 'THE MERE ROAD', 'FELL THE PLAGUE RAT', 'FELL THE PLAGUE RAT', 'ALL QUESTS DONE'][q.stage] || 'QUEST';
         const obj = [
-          'TALK TO PAUL BELLINGER',
+          'TALK TO BALL PELLINGER',
           'SLAY GOBLINS — ' + q.kills + ' / 10',
-          'RETURN TO PAUL BELLINGER',
-          'FIND AND FELL MR. SAYLORS — THE FAR FIELD',
-          'RETURN TO PAUL BELLINGER',
-          'TALK TO PAUL BELLINGER',
-          cle ? 'RETURN TO PAUL BELLINGER'
+          'RETURN TO BALL PELLINGER',
+          'FIND AND FELL MR. SAILERS — THE FAR FIELD',
+          'RETURN TO BALL PELLINGER',
+          'TALK TO BALL PELLINGER',
+          cle ? 'RETURN TO BALL PELLINGER'
             : bars >= 10 ? 'FORGE AT THE ANVIL — BY THE CAMP'
             : 'SMELT IRON BARS — ' + Math.min(bars, 10) + ' / 10' + (ore > 0 ? ' · ORE ×' + ore : ' · MINE MORE ORE'),
-          'RETURN TO PAUL BELLINGER',
-          'TALK TO PAUL BELLINGER',
+          'RETURN TO BALL PELLINGER',
+          'TALK TO BALL PELLINGER',
           'WOOL — ' + Math.min(this.invCount('WOOL'), 3) + ' / 3 · FOLLOW THE MAIN ROAD SOUTH',
           'SLAY THE PLAGUE RAT — NORTH OF THE LAKE',
-          'RETURN TO PAUL BELLINGER',
+          'RETURN TO BALL PELLINGER',
           'ALL QUESTS COMPLETE'
         ][q.stage] || '';
         if (this.questTitleRef.current.textContent !== title) this.questTitleRef.current.textContent = title;
@@ -3674,7 +3674,7 @@ class Component extends DCLogic {
     if (this.promptRef.current) {
       let ptxt = '';
       if (world && this.started && me.hp > 0) {
-        if (this.paul && me.pos.distanceTo(this.paul.pos) < 3.6) ptxt = 'F — TALK TO PAUL BELLINGER';
+        if (this.paul && me.pos.distanceTo(this.paul.pos) < 3.6) ptxt = 'F — TALK TO BALL PELLINGER';
         else if (this.furnace && me.pos.distanceTo(this.furnace.pos) < 3.2) ptxt = this.smelting ? 'F — STOP SMELTING' : 'F — SMELT IRON ORE';
         else if (this.anvil && me.pos.distanceTo(this.anvil.pos) < 3.0) ptxt = 'F — FORGE (10 IRON BARS)';
         else if ((this.sheep || []).some(s => me.pos.distanceTo(s.g.position) < 2.2)) ptxt = 'F — SHEAR SHEEP';
@@ -3720,7 +3720,7 @@ class Component extends DCLogic {
     this.stepMap();
   }
 
-  // Minimap: north-up disc — arena ring, camp, Paul, every living NPC, the
+  // Minimap: north-up disc — arena ring, camp, Ball, every living NPC, the
   // co-op partner (named), and you as a heading arrow.
   stepMap() {
     const c = this.mapRef && this.mapRef.current; if (!c) return;
@@ -4070,14 +4070,14 @@ class Component extends DCLogic {
       if (!m.gob) this.spawnDrop(pos, 'TESLA PAYCHECK');
       if (m.gob && this.quest.stage === 1) {
         this.quest.kills++;
-        if (this.quest.kills >= 10) { this.quest.stage = 2; this.banner('GOBLINS SLAIN', 'RETURN TO PAUL BELLINGER', false, 3400); this.sfx('win'); }
+        if (this.quest.kills >= 10) { this.quest.stage = 2; this.banner('GOBLINS SLAIN', 'RETURN TO BALL PELLINGER', false, 3400); this.sfx('win'); }
         else this.splat(pos.clone().add(new this.T.Vector3(0, 2.2, 0)), 'GOBLIN ' + this.quest.kills + ' / 10', 'xp');
       }
-      if (m.say && this.quest.stage === 3) { this.quest.stage = 4; this.banner('THE FOREMAN IS FELLED', 'RETURN TO PAUL BELLINGER', false, 3800); this.sfx('win'); }
+      if (m.say && this.quest.stage === 3) { this.quest.stage = 4; this.banner('THE FOREMAN IS FELLED', 'RETURN TO BALL PELLINGER', false, 3800); this.sfx('win'); }
       if (m.say) this.startRide();
       if (m.rt) {
         this.addItem('RAT TAIL', 1);
-        if (this.quest.stage === 10) { this.quest.stage = 11; this.banner('THE PLAGUE RAT IS FELLED', 'RETURN TO PAUL BELLINGER', false, 4200); this.sfx('win'); }
+        if (this.quest.stage === 10) { this.quest.stage = 11; this.banner('THE PLAGUE RAT IS FELLED', 'RETURN TO BALL PELLINGER', false, 4200); this.sfx('win'); }
       }
       this.saveQuest();
     }
