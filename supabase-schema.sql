@@ -114,3 +114,46 @@ $$;
 revoke all on grim_world from anon, authenticated;
 grant execute on function grim_world_join(text) to anon;
 grant execute on function grim_world_beat(text) to anon;
+
+-- ============================================================
+-- V3 ADDITION — clean hand-back of the world (paste this block once).
+-- A host that logs out or closes the tab releases the slot instantly
+-- instead of leaving a ghost that the next player has to time out on.
+-- Also shortens the stale window from 45s to 20s for crash recovery.
+-- ============================================================
+
+create or replace function grim_world_leave(p text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  n int;
+begin
+  delete from grim_world where slot = 'main' and host_peer = p;
+  get diagnostics n = row_count;
+  return n = 1;
+end;
+$$;
+
+create or replace function grim_world_join(p text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  row_rec grim_world%rowtype;
+begin
+  select * into row_rec from grim_world where slot = 'main';
+  if not found or row_rec.beat < now() - interval '20 seconds' or row_rec.host_peer = p then
+    insert into grim_world (slot, host_peer, beat) values ('main', p, now())
+      on conflict (slot) do update set host_peer = excluded.host_peer, beat = now();
+    return jsonb_build_object('role', 'host');
+  end if;
+  return jsonb_build_object('role', 'client', 'host', row_rec.host_peer);
+end;
+$$;
+
+grant execute on function grim_world_leave(text) to anon;
