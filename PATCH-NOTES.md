@@ -1,5 +1,44 @@
 # Grim World — patch notes
 
+## August 3, 2026 (late night) — monsters stay in sync for boss fights
+
+Follow-up to the server move. Every player was animating monsters on their own
+machine, which meant two screens could disagree about where a monster was
+standing and what it was doing. Measured across a live fight, positions
+differed by an average of 1.9 metres, sometimes as much as 7, and one screen
+showed a monster leaping while the other showed it standing still. Fine for a
+wandering goblin, useless for fighting a boss together.
+
+Monster positions and animations now come from one shared feed, so every
+player sees the same fight. Running the monsters locally is demoted to a
+fallback that only kicks in if that feed actually stops, which is what keeps a
+sleeping or crashed tab from turning monsters back into statues.
+
+Measured again after the change, same test:
+
+| | before | after |
+|---|---|---|
+| average difference between screens | 1.89 m | 0.60 m |
+| worst case | 7.02 m | 1.99 m |
+| animation disagreements | yes | none |
+
+That remaining half-metre is normal network smoothing, and the test machine
+was running two copies of the game on software rendering. On real hardware it
+will be tighter.
+
+### Two real bugs found while measuring
+- **A dropped connection made you harmless.** If your connection died, the game
+  still believed the server owned monster health, so it stopped applying damage
+  locally while having nobody to report hits to. You could swing forever and
+  nothing would take damage. Losing the connection now falls back to running
+  monsters locally until it returns.
+- **Reconnecting left you fighting ghosts.** After a reconnect the game never
+  asked the server for current monster health again, so you could be fighting
+  something the server considered long dead. It now re-syncs on every reconnect.
+- A monster more than four metres out of place now snaps into position instead
+  of sliding there, so a brief network hiccup cannot leave a boss visibly in the
+  wrong spot mid-fight.
+
 ## August 3, 2026 (night) — monsters now live on the server
 
 This is the change you asked for. Monster health, death, respawn, kill credit
