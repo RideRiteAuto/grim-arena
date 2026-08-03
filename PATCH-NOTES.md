@@ -1,5 +1,33 @@
 # Grim World — patch notes
 
+## August 3, 2026 (late) — combat sync fixed
+
+### Fixed: hitting monsters did nothing
+Attacks landed on your screen but the monster never lost health, never fought
+back, never died and never dropped loot. One line caused it.
+
+Only one player runs the monsters. Everyone else sends "I hit monster number 7"
+to that player. The relay server stamps who sent each message, and it was
+writing the sender's id into the same field the game uses for the monster
+number. The owning player received "I hit monster number pj4x8b", found no such
+monster, and dropped the hit on the floor. Same field, same result, for chopping
+trees and mining rocks.
+
+### Fixed: everything the owner sends back to one player
+The old peer-to-peer code addressed replies through per-player connections.
+Those no longer exist under the relay, so the owner was writing into an empty
+list and every one of these was silently thrown away:
+
+- monster damage aimed at another player (remote players took no damage at all)
+- loot grants and refusals (nobody but the owner could pick anything up)
+- monster death notices (no kill credit, no quest progress)
+- tree and rock depletion replies
+- existing loot sacks sent to a player who just joined
+
+All of them now route properly. Two message types, refused-loot and
+sack-expired, were not even on the relay's allowed list and were being dropped
+outright; both are through now.
+
 ## August 3, 2026 (evening) — frozen worlds fixed, one action bar
 
 ### Fixed: monsters freezing (not fighting back, not dying, no loot)
