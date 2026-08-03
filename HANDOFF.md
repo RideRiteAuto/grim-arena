@@ -43,6 +43,27 @@ so the payload cannot terminate the outer script tag.
 - Loot tables: `lootEntriesFor(tag)`; quest credit: `questCreditFor(tag)` on the
   killer's machine via `ndead` (unchanged flow).
 
+## Accounts, saves and the bank (Aug 3, later)
+
+- RSPS-style login on the menu (`buildLoginUi`). `acctLogin(u,p)` SHA-256s
+  `grim:user:pass`, auto-creates on first login. Local accounts live at
+  `grim-acct:v1:<user>`; fill `GRIM_BACKEND()` with a Supabase URL + anon key
+  and the same login round-trips `grim_login` / `grim_save` RPCs instead
+  (`supabase-schema.sql` — table locked down, RPCs are the only doors, both
+  demand the password hash). Saves debounce 4s, flush on pagehide + 45s timer,
+  `keepalive` fetch on unload. Last write wins.
+- While `this.profile` is set, legacy guest keys (`grim-inv-v1`, `grim-skills`,
+  `grim-quest`) are NOT written — profiles and the guest save never bleed into
+  each other. `applySaveBlob` validates like `invLoad`; corrupt saves fall back
+  to `freshCharacter()` (full iron kit).
+- Bank: `bankV` — one merged stack per item, cap 2,000,000 × 400 kinds, part of
+  every invCommit snapshot/validate. Booth + Odwin in Hollowrest
+  (`this.bankPos`), F opens, deposits/withdraws are single transactions with
+  capacity prechecks. UI: search, SORT, DEPOSIT PACK/WORN, click-to-withdraw.
+- `uiWindowOpen()` gates aiming, world clicks and the pause overlay while
+  pack/sack/bank/shop are open — the world stays visible and running behind
+  semi-transparent panels.
+
 ## Testing
 
 - `/tmp/fuzz.js` (conservation fuzz, migration), `/tmp/ui-test.js`,
