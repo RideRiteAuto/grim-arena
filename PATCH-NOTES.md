@@ -1,5 +1,48 @@
 # Grim World — patch notes
 
+## August 3, 2026 (night) — monsters now live on the server
+
+This is the change you asked for. Monster health, death, respawn, kill credit
+and every loot sack have moved off players' computers and into the Cloudflare
+server. No player's browser decides any of it any more.
+
+### What this fixes for good
+- **Monsters freezing.** Every player now animates monsters on their own
+  machine. If someone's tab sleeps, crashes or lags, it is invisible to you.
+  There is no longer a single player everyone depends on.
+- **Hits not registering.** Damage is reported to the server, the server
+  subtracts it and tells everyone the new health. Two players can no longer
+  disagree about how hurt something is.
+- **Monsters not dying or dropping loot.** The server declares the death, rolls
+  the loot itself, and creates the sack. It survives a player leaving mid-fight.
+- **Respawns.** Timed by the server, so they happen whether anyone is watching
+  or not, and they still happen if every player closes the game and comes back.
+- **Loot.** Sacks live on the server. The killer's one-minute claim, quantities,
+  and the sack expiring are all decided there. Nobody can grant themselves loot.
+
+The server keeps this in permanent storage, so even if Cloudflare recycles it
+mid-fight nothing is lost. Respawn timers run on a scheduled wake-up rather
+than a countdown, so they fire correctly even while the server is idle.
+
+### Also fixed
+- A player whose tab loaded in the background could silently fail to hand over
+  to the server and drift out of sync with everyone else. Registration no
+  longer depends on browser timers, which are throttled to a crawl in
+  background tabs.
+
+### Verified
+Two real browsers against a live server: damage agrees on both screens, deaths
+and loot sacks appear for both, the killer can loot and a bystander is refused
+during the claim window, and with one player's tab deliberately frozen the
+monsters keep moving and keep taking damage for the other player. Twenty-two
+separate server checks cover health, death, loot rules, forged messages and
+respawn.
+
+### Still to come
+Monster movement is still drawn by each player locally rather than dictated by
+the server, so positions can differ very slightly between screens. Nothing that
+matters depends on it any more.
+
 ## August 3, 2026 (late) — combat sync fixed
 
 ### Fixed: hitting monsters did nothing

@@ -21,7 +21,7 @@
  *     for tabs that froze without managing to say anything
  */
 
-const PROTO = 4;
+const PROTO = 5;
 const RATE_LIMIT = 60;              // msgs/sec per player; the game sends ~20
 const OWNER_STALE_MS = 8000;
 
@@ -29,13 +29,61 @@ const OWNER_STALE_MS = 8000;
 const RELAYED = new Set(['s', 'w', 'nhit', 'ndead', 'rhit', 'rdead', 'phit', 'lreq', 'lok', 'lno', 'skupd', 'sknew', 'skgone', 'chat']);
 // Only the simulation owner may speak world truth.
 const OWNER_ONLY = new Set(['w', 'ndead', 'rdead', 'phit', 'lok', 'lno', 'skupd', 'sknew', 'skgone']);
-// Claims the owner alone needs to see.
-const TO_OWNER = new Set(['nhit', 'rhit', 'lreq']);
+// Claims the owner alone needs to see (movement-only traffic).
+const TO_OWNER = new Set(['rhit']);
+
+// ---------------------------------------------------------------------------
+// SERVER-AUTHORITATIVE COMBAT (v5)
+//
+// Monster health, death, respawn, kill credit and every loot sack now live
+// here, not in a player's browser. A frozen or slow tab can no longer stop a
+// monster taking damage, dying, or dropping anything, and no client can grant
+// itself loot. Players still draw monster movement locally; only the facts
+// that matter are decided here.
+//
+// State is persisted, because a Durable Object hibernates while sockets stay
+// open and anything held only in memory would silently vanish mid-fight.
+// ---------------------------------------------------------------------------
+
+const SACK_OWN_MS = 60000;          // killer's exclusive window
+const SACK_LIFE_MS = 240000;        // then public, then gone
+const SACK_CAP = 40;
+const RESPAWN_MS = 120000;
+const RESPAWN_BOSS_MS = 150000;
+
+// Ported from the game's own loot table so the server can roll without asking
+// any client. Keep in step with lootEntriesFor() in the game.
+function rollLoot(tag) {
+  tag = tag || {};
+  const gold = tag.king ? 900 : tag.captain ? 280 : tag.wraith ? 75 : tag.bandit ? 48
+             : tag.wolf ? 24 : tag.deer ? 9 : tag.rat ? 130 : tag.goblin ? 6 : 32;
+  const out = [{ item: 'GOLD CROWNS', qty: gold }];
+  if (tag.wolf) out.push({ item: 'WOLF PELT', qty: 1 });
+  else if (tag.deer) { out.push({ item: 'DEER HIDE', qty: 1 }); out.push({ item: 'VENISON', qty: 1 + Math.floor(Math.random() * 2) }); }
+  else if (tag.king) { out.push({ item: 'HOLLOW PLATE', qty: 1 }); out.push({ item: 'HOLLOW AMULET', qty: 1 }); }
+  else if (tag.rat) out.push({ item: 'RAT TAIL', qty: 1 });
+  else if (!tag.goblin && !tag.bandit && !tag.wraith && !tag.captain) out.push({ item: 'TESLA PAYCHECK', qty: 1 });
+  return out;
+}
 
 export class World {
   constructor(state, env) {
     this.state = state;
     this.env = env;
+    this.mem = null;                        // {npcs, sacks, seq} cache of stored world state
+  }
+
+  // ------------------------------------------------------- world state (durable)
+
+  async world() {
+    if (this.mem) return this.mem;
+    const w = await this.state.storage.get('world');
+    this.mem = w || { npcs: null, sacks: {}, seq: 0 };
+    return this.mem;
+  }
+  async saveWorld() {
+    if (!this.mem) return;
+    try { await this.state.storage.put('world', this.mem); } catch (e) {}
   }
 
   async fetch(request) {
@@ -124,6 +172,14 @@ export class World {
       if (nb) { const om = owner.meta; delete om.owner; this.setMeta(owner.ws, om); this.makeOwner(socks, nb.ws, nb.meta); owner = { ws: nb.ws, meta: nb.meta }; }
     }
 
+    // ---- server-authoritative combat ------------------------------------
+    if (m.t === 'nreg' || m.t === 'nhit' || m.t === 'lreq' || m.t === 'lall') {
+      await this.combat(ws, meta, m, socks);
+      return;
+    }
+    // The owner no longer speaks for monster health or death; the server does.
+    if (m.t === 'ndead' || m.t === 'lok' || m.t === 'lno' || m.t === 'skupd' || m.t === 'sknew' || m.t === 'skgone') return;
+
     if (!RELAYED.has(m.t)) return;
     if (OWNER_ONLY.has(m.t) && (!owner || meta.id !== owner.meta.id)) return;
 
@@ -142,6 +198,122 @@ export class World {
     }
 
     this.broadcast(socks, m, ws);
+  }
+
+  // -------------------------------------------------------------- combat
+
+  async combat(ws, meta, m, socks) {
+    const w = await this.world();
+    const now = Date.now();
+
+    // A client hands over the monster roster once. The server owns health from
+    // that moment on; later registrations are ignored so nobody can reset a
+    // fight by reloading.
+    if (m.t === 'nreg') {
+      if (!w.npcs && Array.isArray(m.n) && m.n.length && m.n.length < 400) {
+        w.npcs = m.n.map(x => ({ hp: Math.max(1, x.m | 0), max: Math.max(1, x.m | 0), tag: x.tag || {}, xp: x.xp | 0, boss: !!x.boss, dead: 0, at: 0, by: null }));
+        await this.saveWorld();
+      }
+      this.send(ws, { t: 'nsync', n: (w.npcs || []).map(n => [n.hp, n.dead ? 1 : 0]) });
+      return;
+    }
+
+    if (m.t === 'nhit') {
+      if (!w.npcs) return;
+      const i = m.i | 0;
+      const n = w.npcs[i];
+      if (!n || n.dead || n.hp <= 0) return;
+      const dmg = Math.max(0, Math.min(9999, Math.round(+m.d || 0)));
+      if (!dmg) return;
+      n.hp = Math.max(0, n.hp - dmg);
+      n.by = meta.id;
+      // Everyone hears the hit: the attacker for confirmation, the others so
+      // the health bar matches. The monster's own reaction rides along.
+      this.broadcast(socks, { t: 'nhp', i: i, hp: n.hp, d: dmg, k: m.k || 'hit', by: meta.id, p: m.p || null, o: m.o || null });
+      if (n.hp <= 0) {
+        n.dead = 1;
+        n.at = now + (n.boss ? RESPAWN_BOSS_MS : RESPAWN_MS);
+        const entries = rollLoot(n.tag).filter(e => e && e.qty > 0);
+        let sack = null;
+        if (entries.length) {
+          w.seq = (w.seq || 0) + 1;
+          const id = 'k' + w.seq.toString(36) + now.toString(36).slice(-4);
+          sack = { id, x: (m.p && +(+m.p[0]).toFixed(2)) || 0, z: (m.p && +(+m.p[2]).toFixed(2)) || 0,
+                   entries: entries.map((e, k) => ({ e: k, item: e.item, qty: Math.floor(e.qty) })),
+                   owner: meta.id, pub: now + SACK_OWN_MS, die: now + SACK_LIFE_MS };
+          w.sacks[id] = sack;
+          const ids = Object.keys(w.sacks);
+          if (ids.length > SACK_CAP) {
+            let oldest = ids[0];
+            for (const k2 of ids) if (w.sacks[k2].die < w.sacks[oldest].die) oldest = k2;
+            delete w.sacks[oldest];
+            this.broadcast(socks, { t: 'skgone', id: oldest });
+          }
+        }
+        this.broadcast(socks, { t: 'ndead', i: i, xp: n.xp, tag: n.tag, killer: meta.id, p: m.p || null, at: n.at - now });
+        if (sack) this.broadcast(socks, { t: 'sknew', s: this.wire(sack, now) });
+        await this.setAlarm(n.at);
+      }
+      await this.saveWorld();
+      return;
+    }
+
+    if (m.t === 'lreq') {                    // take from a sack
+      const s = w.sacks[m.id];
+      if (!s) { this.send(ws, { t: 'lno', tok: m.tok }); return; }
+      if (now < s.pub && meta.id !== s.owner) { this.send(ws, { t: 'lno', tok: m.tok, locked: 1 }); return; }
+      const en = s.entries.find(x => x.e === (m.e | 0));
+      if (!en || en.qty < 1) { this.send(ws, { t: 'lno', tok: m.tok }); return; }
+      const take = Math.max(1, Math.min(Math.floor(+m.q) || 1, en.qty));
+      en.qty -= take;
+      this.send(ws, { t: 'lok', tok: m.tok, item: en.item, qty: take });
+      if (en.qty <= 0) s.entries = s.entries.filter(x => x.qty > 0);
+      if (!s.entries.length) { delete w.sacks[m.id]; this.broadcast(socks, { t: 'skgone', id: m.id }); }
+      else this.broadcast(socks, { t: 'skupd', id: m.id, e: en.e, qty: en.qty });
+      await this.saveWorld();
+      return;
+    }
+
+    if (m.t === 'lall') {                    // a player asks for everything present
+      this.send(ws, { t: 'lsync', sacks: Object.keys(w.sacks).map(k => this.wire(w.sacks[k], now)) });
+      return;
+    }
+  }
+
+  wire(s, now) {
+    return { id: s.id, x: s.x, z: s.z, entries: s.entries, owner: s.owner,
+             pubIn: Math.max(0, s.pub - now), dieIn: Math.max(0, s.die - now) };
+  }
+
+  // Respawns and sack expiry must survive hibernation, so they run on an alarm
+  // rather than a timer, which a hibernated object would never fire.
+  async setAlarm(at) {
+    try {
+      const cur = await this.state.storage.getAlarm();
+      if (cur === null || at < cur) await this.state.storage.setAlarm(at);
+    } catch (e) {}
+  }
+
+  async alarm() {
+    const w = await this.world();
+    const now = Date.now();
+    const socks = this.sockets();
+    let next = 0;
+    if (w.npcs) {
+      for (let i = 0; i < w.npcs.length; i++) {
+        const n = w.npcs[i];
+        if (!n.dead) continue;
+        if (n.at <= now) { n.dead = 0; n.hp = n.max; n.by = null; n.at = 0; this.broadcast(socks, { t: 'nrsp', i: i, hp: n.hp }); }
+        else if (!next || n.at < next) next = n.at;
+      }
+    }
+    for (const k of Object.keys(w.sacks)) {
+      const s = w.sacks[k];
+      if (s.die <= now) { delete w.sacks[k]; this.broadcast(socks, { t: 'skgone', id: k }); }
+      else if (!next || s.die < next) next = s.die;
+    }
+    await this.saveWorld();
+    if (next) { try { await this.state.storage.setAlarm(next); } catch (e) {} }
   }
 
   async webSocketClose(ws) { this.gone(ws); }
