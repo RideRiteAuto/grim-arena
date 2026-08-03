@@ -62,3 +62,55 @@ $$;
 revoke all on grim_saves from anon, authenticated;
 grant execute on function grim_login(text, text) to anon;
 grant execute on function grim_save(text, text, jsonb) to anon;
+
+-- ============================================================
+-- V2 ADDITION — world host directory (paste this block once).
+-- Kills the "dead session squats the world name" outage class:
+-- players use random connection ids; who hosts is decided here.
+-- ============================================================
+
+create table if not exists grim_world (
+  slot      text primary key,
+  host_peer text not null,
+  beat      timestamptz not null default now()
+);
+
+alter table grim_world enable row level security;
+
+create or replace function grim_world_join(p text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  row_rec grim_world%rowtype;
+begin
+  select * into row_rec from grim_world where slot = 'main';
+  if not found or row_rec.beat < now() - interval '45 seconds' or row_rec.host_peer = p then
+    insert into grim_world (slot, host_peer, beat) values ('main', p, now())
+      on conflict (slot) do update set host_peer = excluded.host_peer, beat = now();
+    return jsonb_build_object('role', 'host');
+  end if;
+  return jsonb_build_object('role', 'client', 'host', row_rec.host_peer);
+end;
+$$;
+
+create or replace function grim_world_beat(p text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  n int;
+begin
+  update grim_world set beat = now() where slot = 'main' and host_peer = p;
+  get diagnostics n = row_count;
+  return n = 1;
+end;
+$$;
+
+revoke all on grim_world from anon, authenticated;
+grant execute on function grim_world_join(text) to anon;
+grant execute on function grim_world_beat(text) to anon;
