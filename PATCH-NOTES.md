@@ -1,5 +1,46 @@
 # Grim World — patch notes
 
+## August 5, 2026 (frame rate) — the big performance pass
+
+### Measured on real hardware first
+Profiled the live game over the Chrome bridge: about 1,050 draw calls,
+5,300 meshes, and a surprisingly small pixel load. The game was CPU and
+draw-submission bound, not resolution bound. Everything below attacks
+exactly that.
+
+### Only nearby torches cast light
+Every torch and lamp in the world was a live point light riding inside
+EVERY draw call's shading, even from across the map (their light only
+reaches 26 m). Now exactly the five nearest you are lit. This also keeps
+the shader's light count stable, so no hitching while walking.
+
+### Trees stop breathing at a distance
+Every canopy in the world ran its sway animation every frame. Past 70 m
+nobody can see a canopy breathe, so past 70 m it does not.
+
+### Static scenery frozen
+Trees, rocks and terrain no longer recompute their positions every frame
+just to stand still. Only things that actually move keep paying: swaying
+canopies nearby, and a trunk mid-fall.
+
+### Distant monsters undrawn
+Monsters past 90 m are not rendered or animated (the server stops
+sending their movements at 60 m anyway, so they were frozen statues at
+that range). Their minimap dots remain. They pop back well outside
+notice range as you approach.
+
+### Background tab stops burning your GPU
+A hidden tab kept doing full renders. Now it keeps the world alive but
+skips drawing, and no longer poisons the frame-rate average that decides
+Performance Mode.
+
+### Performance Mode safety floor
+Choosing GRAPHICS: HIGH by hand used to disable the automatic downshift
+forever. HIGH is still honored, but if the frame rate sits far below
+playable for six straight seconds the game protects itself once, with a
+banner. The button brings HIGH back any time.
+
+
 ## August 5, 2026 (combat sync) — monsters now run on the real clock on every machine
 
 ### The real bug behind the weird combat
@@ -208,25 +249,3 @@ pitched over the top of you, and you were left staring straight down at
 the waves. The deeper the water, the worse the flip. The aim point now
 clamps to the waterline whenever you are afloat (boat or swimming), so
 the chase view stays level over any depth.
-
-
-## August 5, 2026 (model rewrite 8) — villains with identity, a donkey worth riding
-
-### Every villain now reads at a glance
-The knight-body villains got their own identity layered on the upgraded
-base: BANDITS wear dark hoods and cowls; THE BANDIT CAPTAIN wears a
-blood-red hood and a bone skull strapped to his off arm; FROST WRAITHS
-float in full tattered robes with no legs and burning ice-blue eyes; THE
-HOLLOW KING wears a five-spiked gold crown over sickly green glowing
-eyes.
-
-### The donkey, rebuilt
-Lofted round-bellied body with fur texture and pale belly shading, a real
-neck and long-eared donkey head with a dark nose, a mane ridge, lofted
-legs with hooves, a rope tail with a tuft, and a proper saddle - red
-blanket, leather seat and girth strap. Riding, the trailing companion,
-swimming and turbo all unchanged.
-
-This completes the first full pass of the model rewrite: wolf, goblin,
-deer, sheep, Plague Rat, trees, ore, the humanoid base, every villain,
-and the donkey.
