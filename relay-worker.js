@@ -259,7 +259,9 @@ export class World {
       return n;
     });
     this.colliders = w.manifest.colliders || [];
-    this.safe = (w.manifest.safe || []).map(s => ({ x: s.x, z: s.z, r: s.r }));
+    // keep the whole shape: copying only {x,z,r} silently dropped the separate
+    // player and monster radii, so safe ground stopped working
+    this.safe = (w.manifest.safe || []).map(s => Object.assign({}, s));
     this.rnd = mulberry32(0x9e3779b9 ^ (w.manifest.hash || '').length);
     this.lastTick = Date.now();
     this.evSeq = 0;

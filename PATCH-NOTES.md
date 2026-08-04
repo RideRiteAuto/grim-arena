@@ -1,5 +1,36 @@
 # Grim World — patch notes
 
+## August 4, 2026 (night) — corpses, fighting back, and safe ground
+
+Three more from live play.
+
+### Dead monsters actually die
+A killed monster kept being reported as standing idle, so its body stayed put
+and walked on the spot forever. The server now says plainly when something is
+dead, the body drops, and it disappears a moment later. Anything already dead
+when you join is simply not there, rather than appearing as a corpse jogging in
+place.
+
+### Safe ground worked too well
+Two bugs, opposite directions.
+
+The town has always protected both the player standing in it and any monster
+that wandered in, while the starting camp only protects the PLAYER. I had made
+the camp protect monsters too, which meant every monster living anywhere near
+the camp could never fight back — anywhere in the world, forever. Fixed.
+
+Then the code that handed those zones to the simulation was quietly throwing
+away the separate player and monster radii, which broke safe ground entirely in
+the other direction. Also fixed.
+
+Worth knowing, because it is deliberate and always has been: **nothing will
+fight you while you are standing in the starting camp or in town.** If you are
+whacking something and it refuses to hit back, step out of the safe circle.
+
+### Smoother, and the last of the stutter
+Monsters no longer guess ahead of the server between updates, and a monster
+peacefully wandering is now updated as often as one in a fight.
+
 ## August 4, 2026 (later) — monsters move properly and fight back
 
 Fixes for the first live run of the server simulation. Three real faults, all

@@ -74,7 +74,13 @@ function stepNpc(n, dt, ctx) {
   n.specialCd = Math.max(0, n.specialCd - dt);
   n.st += dt;
 
-  if (n.dead || n.hp <= 0) { n.wx = 0; n.wz = 0; n.vx *= 0.8; n.vz *= 0.8; return; }
+  // A dead monster must SAY it is dead. Reporting it as idle left corpses
+  // walking on the spot forever on every screen.
+  if (n.dead || n.hp <= 0) {
+    n.state = 'dead'; n.act = null; n.aggro = false; n.aggroPeer = null;
+    n.wx = 0; n.wz = 0; n.vx = 0; n.vz = 0;
+    return;
+  }
 
   // ---- pick a target: whoever hit it, else the nearest living player -----
   let tgt = null, bestD = 1e9;
@@ -99,8 +105,10 @@ function stepNpc(n, dt, ctx) {
   // anything dragged in breaks off. Dragged too far from home, it goes back.
   let meSafe = false, npcSafe = false;
   for (const s of ctx.safe) {
-    if (Math.hypot(tgt.x - s.x, tgt.z - s.z) < s.r) meSafe = true;
-    if (Math.hypot(n.x - s.x, n.z - s.z) < s.r + 2) npcSafe = true;
+    const rMe = s.rMe != null ? s.rMe : s.r;
+    const rNpc = s.rNpc != null ? s.rNpc : (s.r != null ? s.r + 2 : 0);
+    if (rMe && Math.hypot(tgt.x - s.x, tgt.z - s.z) < rMe) meSafe = true;
+    if (rNpc && Math.hypot(n.x - s.x, n.z - s.z) < rNpc) npcSafe = true;
   }
   const leashed = Math.hypot(n.x - n.hx, n.z - n.hz) > R.LEASH_R;
   const safe = meSafe || npcSafe;
