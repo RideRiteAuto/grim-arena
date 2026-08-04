@@ -1,5 +1,15 @@
 # Grim World — patch notes
 
+## August 5, 2026 (clean menu) — the menu is just the menu
+
+HUD pieces were leaking onto the menu screen: the action bar, the
+compass, the minimap, the health bars and quest tracker, and the
+floating key hints (H teleport, X dismount, B boat). A central HUD
+blackout now runs every frame: the moment the menu overlay is up (or
+before you log in), every HUD element hides, and everything returns the
+instant you resume play. The pause screen is finally just the pause
+screen.
+
 ## August 5, 2026 (player polish) — a hero worth following
 
 The chase camera stares at your back all day, and your back was a flat
