@@ -1,5 +1,13 @@
 # Grim World — patch notes
 
+## August 5, 2026 (donkey) — the donkey swims now
+
+Your donkey no longer sinks to the lakebed when it follows you into water.
+In the shallows its hooves stay on the bottom like before; once the water
+is deep it floats up to the surface, nose up, gently bobbing, legs
+paddling, and swims after you wherever you go. Other players' trailing
+donkeys float the same way on your screen.
+
 ## August 5, 2026 (rowing follow-up) — hands on the grips, both hands busy
 
 ### Hands meet the handles
