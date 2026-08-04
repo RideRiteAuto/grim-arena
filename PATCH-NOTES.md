@@ -1,5 +1,28 @@
 # Grim World — patch notes
 
+## August 5, 2026 (small hours) — B for boat, and everyone out of the pool
+
+### B — launch / stow the rowboat
+One key for the boat now: press B at the waterline to launch and board,
+press B again (aboard or beside the hull) to stow it back in your pack.
+A prompt appears whenever the boat is out — "B — STOW BOAT · X — HOP OUT"
+while aboard — and B is listed in the menu's key bindings.
+
+### Monsters stay on dry land
+Wolves, deer, and everything else were wandering into the lake and rivers
+and spawning in the drink. Every creature's spawn point now walks itself
+uphill to dry land when the world builds (all clients and the server agree
+on the moved spots), monsters can no longer step into water while roaming,
+and any beast that somehow ends up wet wades straight out. When swimming
+combat becomes a thing, they'll learn to chase you in — deliberately.
+
+### No more trees in the lake
+A handful of trees and mining rocks were still standing in open water —
+they were placed on the dead-flat lake bed where the "walk uphill to shore"
+rule had no slope to follow. Flat-bottomed water now routes them toward
+town instead, and every last tree, rock, and oak stands on dry ground.
+
+
 ## August 4, 2026 (later that night) — the keys work, the seams are gone
 
 ### Z and H actually do something now
