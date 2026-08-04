@@ -1,5 +1,17 @@
 # Grim World — patch notes
 
+## August 5, 2026 (model rewrite 6) — bigger, better trees and ore
+
+Every tree and ore node is rebuilt, and all trees are 25 percent bigger.
+Field trees now have tapered lofted trunks with a slight natural lean,
+root flares at the base, and organically jittered two-tone canopies that
+still sway in the wind. The big oaks get thick flared trunks and broad
+layered crowns. Pines get taller lofted trunks, four staggered needle
+tiers and a crown spike. Ore rocks are now weathered boulder clusters
+with vertex-sculpted faces and six copper-glinting ore studs. Chopping,
+mining, respawns and multiplayer sync all unchanged - these builders are
+also the base set for the zone dressing work coming next.
+
 ## August 5, 2026 (model rewrite 5) — The Plague Rat, properly repulsive
 
 The barrow boss got the loft treatment: a low-slung chest rising into a
