@@ -1,5 +1,35 @@
 # Grim World — patch notes
 
+## August 4, 2026 (night) — you come back where you left, and F loots
+
+### The world remembers where you logged out
+Your position and your donkey are part of your character save now. Log out
+halfway across the map and you come back standing there, with your donkey under
+you if you were riding it, or waiting exactly where you left it if you were
+not.
+
+Dying still sends you back to the camp — that has not changed, and it should
+not. A fresh character still starts at the camp too, and a save with an
+impossible position in it is ignored rather than trusted, so nothing can strand
+you outside the world.
+
+Your position is written on a slow beat rather than every step, and logging out
+or closing the tab flushes it immediately.
+
+### You can see each other's donkeys
+Mounts were only ever drawn for their owner. Everyone else saw you jogging
+along at riding speed with nothing underneath you, and a dismounted donkey was
+invisible entirely. Now you can see other players riding, and see their donkey
+trailing after them on foot when they are not.
+
+### F loots the whole sack
+One key. It used to open the bag and leave you reaching for T as well, which is
+two presses for the thing you want every single time.
+
+The bag now only appears if something would not fit in your pack, so you can
+see what is left on the ground. A clean sweep never opens a window at all.
+Escape still closes it, and T still works if that is the habit.
+
 ## August 4, 2026 (later still) — the Hollow King, and spells on hillsides
 
 ### Spells were being destroyed the instant they were cast on high ground
