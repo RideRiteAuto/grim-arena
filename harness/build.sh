@@ -2,10 +2,18 @@
 # Rebuild the bundle from the committed bundle plus every patch in order.
 #
 # This is the whole edit path in one command: extract the embedded game source,
-# replay each patch script against it, and pack it back into both bundles with a
-# verified byte-exact round trip. Re-running it after someone else pushes a
-# bundle change is how the two tracks stay merged without hand-editing the
-# bundle, which would brick the live site.
+# apply every PENDING patch script against it, and pack it back into both
+# bundles with a verified byte-exact round trip.
+#
+# harness/patches/ holds patches not yet in the committed bundle.
+# harness/patches/applied/ holds the ones that are, kept only as a record of what
+# each shipped change actually did. Once a patch is pushed, MOVE IT to applied/:
+# replaying it against a bundle that already contains it fails on a missing
+# anchor, which is the assert doing its job.
+#
+# Re-running this after the combat track pushes a bundle change is how the two
+# tracks stay merged without hand-editing the bundle, which would brick the
+# live site.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -1,5 +1,12 @@
 # Grim World — patch notes
 
+## August 4, 2026 (zones-1c) - Gathering XP splats read in their skill's colour
+
+Small one. When you gather, the floating XP text now comes up in the skill's own colour instead of the same gold as everything else: green for woodcutting, orange for mining, teal for foraging. Combat XP is unchanged.
+
+The point is that you can tell what moved without reading it, which matters once you are swinging at three kinds of node in the same clearing.
+
+
 ## August 4, 2026 (zones-1b) - Five new creature rigs in the model lab
 
 Groundwork for the monsters, not the monsters themselves. Nothing in the game changes with this one.
@@ -347,27 +354,3 @@ The four-legged attack lunge (wolves and their coming kin) peaked early,
 before the damage moment. It now reaches full extension exactly on the
 frame the damage lands, then recovers - the bite you see is the bite
 that hits.
-
-
-## August 5, 2026 (fixes) — clean tree bases, solid Plague Rat, gentle cloak
-
-### Tree roots removed
-The four cone protrusions at every tree base (a root-flare experiment
-that read as spikes) are gone from field trees and oaks alike. Trunks
-meet the ground clean.
-
-### The Plague Rat is watertight
-The rat's body shell was built with its cross-sections listed
-back-to-front, which flipped every face inward - you could see into the
-model. The model builder now normalizes section order so every lofted
-shell always faces outward. This heals the rat everywhere and armors
-every future model against the same mistake.
-
-### The cloak calmed down
-Cape lift while moving is cut to about a quarter of what it was, with a
-soft idle breath of a flap when standing and a modest speed-scaled
-flutter when running - both clamped so a sprint never kites the cloak.
-
-### Patch notes now self-prune
-This file automatically keeps only the newest twelve entries so it never
-grows forever.
