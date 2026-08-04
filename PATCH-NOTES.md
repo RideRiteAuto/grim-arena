@@ -1,5 +1,38 @@
 # Grim World — patch notes
 
+## August 4, 2026 (later) — monsters move properly and fight back
+
+Fixes for the first live run of the server simulation. Three real faults, all
+found from the same report: monsters crawling, lurching, and ignoring you.
+
+### The world now runs on its own clock
+The simulation only advanced when a player's message arrived, which tied every
+monster's movement to how often your browser happened to send. One player on a
+slow frame rate made monsters crawl in lurching steps for everyone. The server
+now keeps its own clock while anyone is connected.
+
+Measured with a client deliberately sending only twice a second: monsters still
+update ten times a second, still walk at full speed, and still move in small
+smooth steps. Before this fix that client saw them at a crawl.
+
+### Hitting something now makes it fight back
+Only walking close enough could start a fight. Anything you shot from range, or
+anything with a small notice radius, simply stood there and took it. Landing a
+hit now makes it personal, the way it always did before the move to the server.
+
+### Archers and mages actually throw something
+A monster with a staff or a bow played its whole wind-up and then nothing left
+its hands, so it looked like it was ignoring you. Ranged attacks now fire what
+they are supposed to fire.
+
+### Smoother monsters
+Movement between server updates was guessing ahead and then getting yanked back
+when the real position arrived, which is what made everything look jagged. It
+now plays cleanly from one known position to the next and never guesses. Updates
+also went out at a rate based on whether a monster was in a fight, which meant a
+monster peacefully wandering around was only reported once a second. The rate now
+follows whether it is MOVING.
+
 ## August 4, 2026 — monsters now run on the server, end to end
 
 The rest of it. Monster movement, decisions, attacks, projectiles and boss

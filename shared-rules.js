@@ -132,9 +132,9 @@ const GRIM_RULES = {
   },
 
   // ---- networking ---------------------------------------------------------
-  SIM_HZ: 8,             // server simulation timestep
-  SNAP_HZ: 8,            // snapshot rate for monsters in a fight
-  SNAP_IDLE_HZ: 1,       // snapshot rate for monsters doing nothing
+  SIM_HZ: 10,            // server simulation timestep
+  SNAP_HZ: 10,           // snapshot rate for any monster that is moving
+  SNAP_IDLE_HZ: 2,       // snapshot rate for monsters genuinely standing still
   INTEREST_R: 60,        // a player is only told about monsters this close
   CLOCK_SAMPLES: 8       // rolling median window for server-time offset
 };

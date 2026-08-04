@@ -169,9 +169,9 @@ const GRIM_RULES = {
   },
 
   // ---- networking ---------------------------------------------------------
-  SIM_HZ: 8,             // server simulation timestep
-  SNAP_HZ: 8,            // snapshot rate for monsters in a fight
-  SNAP_IDLE_HZ: 1,       // snapshot rate for monsters doing nothing
+  SIM_HZ: 10,            // server simulation timestep
+  SNAP_HZ: 10,           // snapshot rate for any monster that is moving
+  SNAP_IDLE_HZ: 2,       // snapshot rate for monsters genuinely standing still
   INTEREST_R: 60,        // a player is only told about monsters this close
   CLOCK_SAMPLES: 8       // rolling median window for server-time offset
 };
@@ -266,13 +266,35 @@ export class World {
     return this.sim;
   }
 
+  // Keep the world moving on its own schedule. A Durable Object with live
+  // sockets stays in memory, so a short self-rescheduling timer costs nothing
+  // extra and does not touch the alarm budget. If the object is ever evicted
+  // the timer dies with it and the next arriving message starts it again.
+  startPump() {
+    if (this._pump) return;
+    const tick = async () => {
+      this._pump = null;
+      try {
+        const socks = this.sockets();
+        if (!socks.length) return;                 // empty world: stop, and cost nothing
+        const w = await this.world();
+        if (w.manifest) this.advance(w, socks);
+        this._pump = setTimeout(tick, Math.round(1000 / GRIM_RULES.SIM_HZ));
+      } catch (e) {
+        this.simErr = String((e && e.stack) || e).slice(0, 300);
+        this._pump = setTimeout(tick, 250);
+      }
+    };
+    this._pump = setTimeout(tick, Math.round(1000 / GRIM_RULES.SIM_HZ));
+  }
+
   advance(w, socks) {
     const sim = this.ensureSim(w);
     if (!sim || !w.npcs) return;
     const now = Date.now();
     const STEP = 1000 / GRIM_RULES.SIM_HZ;
     let steps = Math.floor((now - (this.lastTick || now)) / STEP);
-    if (steps <= 0) return;
+    if (steps <= 0) { this.pushSnapshots(socks, sim, now); return; }
     // A cold start or a long quiet spell must not be replayed second by
     // second; catch up a little and then jump.
     if (steps > 12) { steps = 1; this.lastTick = now - STEP; }
@@ -302,7 +324,8 @@ export class World {
         const n = sim[i], rec = w.npcs[i];
         if (!rec) continue;
         n.hp = rec.hp; n.dead = rec.dead;      // health is the stored world's word
-        if (rec.by) n.aggroPeer = rec.by;
+        n.max = rec.max || n.max;
+        if (rec.by && !n.aggroPeer) n.aggroPeer = rec.by;
         stepNpc(n, dt, ctx);
         // an attack in flight runs its own clock: wind, damage frame, recovery
         if (n.act) {
@@ -331,6 +354,20 @@ export class World {
     if (m.stam) n.stam = Math.max(0, n.stam - m.stam);
     if (m.mana) n.mana = Math.max(0, n.mana - m.mana);
     const dmg = m.dmg ? Math.round((m.dmg[0] + this.rnd() * (m.dmg[1] - m.dmg[0])) * n.dmgScale) : 0;
+    // A move with no reach is a ranged one: staves and bows throw something.
+    // Without this an archer or a mage played its whole wind-up and then
+    // nothing left its hands, so it looked like it was ignoring you.
+    if (!m.range && tgt) {
+      const SPEC = {
+        frost: { kind: 'frost', n: 1, spread: 0, speed: 16, dmg: 14 },
+        snare: { kind: 'snare', n: 1, spread: 0, speed: 15, dmg: 8 },
+        volley: { kind: 'snare', n: 3, spread: 0.24, speed: 15, dmg: 8 },
+        shot:  { kind: 'arrow', n: 1, spread: 0, speed: 30, dmg: 16 },
+        rapid: { kind: 'arrow', n: 3, spread: 0.12, speed: 30, dmg: 9 },
+        storm: { kind: 'fire', n: 4, spread: 0.3, speed: 14, dmg: 12 }
+      }[move];
+      if (SPEC) this.fireProjectiles(n, tgt, { move: move, proj: SPEC }, n.dmgScale, events);
+    }
     events.push({
       t: 'atk', ev: ++this.evSeq, i: n.i, m: move, at: Date.now(),
       w: m.wind, a: m.act, r: m.rec,
@@ -353,7 +390,8 @@ export class World {
       for (const n of sim) {
         const d = Math.hypot(n.x - x.px, n.z - x.pz);
         if (d > R.INTEREST_R) continue;
-        const due = n.aggro ? fast : slow;
+        const moving = n.aggro || (n.vx * n.vx + n.vz * n.vz) > 0.05 || n.act || n.state !== 'idle';
+        const due = moving ? fast : slow;
         if (now - (n.sentAt || 0) < due) continue;
         rows.push([n.i, Math.round(n.x * 10), Math.round(n.z * 10), Math.round(n.yaw * 100),
                    n.state, Math.round(n.st * 100), Math.round(n.moveAmt * 100), n.act || 0]);
@@ -362,8 +400,8 @@ export class World {
       this.send(ws, { t: 'nsnap', at: now, r: rows });
     }
     for (const n of sim) {
-      const d0 = n.aggro ? fast : slow;
-      if (now - (n.sentAt || 0) >= d0) n.sentAt = now;
+      const moving = n.aggro || (n.vx * n.vx + n.vz * n.vz) > 0.05 || n.act || n.state !== 'idle';
+      if (now - (n.sentAt || 0) >= (moving ? fast : slow)) n.sentAt = now;
     }
   }
 
@@ -496,6 +534,7 @@ export class World {
     server.serializeAttachment({ id, name: 'PLAYER', color: 0, joined: now, seen: now, bg: 0, sec: 0, count: 0 });
 
     this.send(server, { t: 'welcome', proto: PROTO, id, sv: now });
+    this.startPump();
     const socks = this.sockets();
     const owner = this.resolveOwner(socks);
     this.broadcast(socks, { t: 'sim', i: owner ? owner.meta.id : null });
@@ -572,7 +611,7 @@ export class World {
 
     // every message is a heartbeat for the simulation
     const world = await this.world();
-    if (world.manifest) { try { this.advance(world, socks); } catch (e) { this.simErr = String(e && e.stack || e).slice(0, 300); } }
+    if (world.manifest) { this.startPump(); }
 
     // With the server driving monsters, a player's world snapshot is no longer
     // truth and is dropped; players speak only for themselves.
@@ -657,6 +696,8 @@ export class World {
       if (!dmg) return;
       n.hp = Math.max(0, n.hp - dmg);
       n.by = meta.id;
+      const live = this.sim && this.sim[i];
+      if (live) { live.aggro = true; live.aggroPeer = meta.id; live.hasWay = false; }
       // Everyone hears the hit: the attacker for confirmation, the others so
       // the health bar matches. The monster's own reaction rides along.
       this.broadcast(socks, { t: 'nhp', i: i, hp: n.hp, d: dmg, k: m.k || 'hit', by: meta.id, p: m.p || null, o: m.o || null });
