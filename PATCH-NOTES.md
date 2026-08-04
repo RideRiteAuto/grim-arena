@@ -1,5 +1,17 @@
 # Grim World — patch notes
 
+## August 5, 2026 (map sharpness) — crisp at every zoom
+
+Zooming the world map used to magnify a cached bitmap of the chart, so it
+went soft the deeper you zoomed. The zoom now resizes the map layer
+itself, which makes the browser re-render the vector chart natively at
+every zoom level - razor sharp at 6x, like zooming a PDF instead of a
+photo of one. The chart file itself is untouched (not one byte), the pan
+clamping is identical, and the arrow's position was verified bit-identical
+at 1x and 6x, so region outlines and world accuracy are exactly as
+before. The arrow's old counter-scale workaround is gone too since it no
+longer scales with the map.
+
 ## August 5, 2026 (map fix) — closing the map goes back to the GAME
 
 Opening the map releases the mouse, and the pause watcher treated that
