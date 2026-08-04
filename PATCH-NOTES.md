@@ -1,5 +1,29 @@
 # Grim World — patch notes
 
+## August 5, 2026 (performance) — shadow diet + steady combat dice
+
+### Why it slowed down
+The model rewrite tripled the number of meshes in the scene, and nearly
+every tiny part (teeth, tusks, ore studs, rivets, ears) was casting its
+own shadow - invisible shadows the GPU still had to draw every frame.
+On HIGH graphics that was a slideshow on many machines.
+
+### The fix
+A shadow diet now strips shadow-casting from any part too small for its
+shadow to be visible - over HALF of all shadow casters removed with zero
+visual difference - and it re-sweeps every few seconds so newly spawned
+players, boats and mounts get the same treatment.
+
+### Combat un-weirded
+The slideshow was also what made monster attacks look broken: slow
+frames made the attack dice fire in bursts and skip animation frames.
+All attack rolls are now clamped so slow frames can never burst-fire
+attacks, on top of the earlier timing fixes. If your machine still dips,
+GRAPHICS: LOW on the menu turns shadows off entirely - and the coming
+zone dressing engine batches its scenery from day one so density stays
+cheap.
+
+
 ## August 5, 2026 (clean cuts) — stumps only exist once the tree is cut
 
 The stump used to be a separate shape hiding inside the trunk, and its
@@ -195,13 +219,3 @@ tiers and a crown spike. Ore rocks are now weathered boulder clusters
 with vertex-sculpted faces and six copper-glinting ore studs. Chopping,
 mining, respawns and multiplayer sync all unchanged - these builders are
 also the base set for the zone dressing work coming next.
-
-
-## August 5, 2026 (model rewrite 5) — The Plague Rat, properly repulsive
-
-The barrow boss got the loft treatment: a low-slung chest rising into a
-high arched rump, mangy two-tone hide with fur texture, a real rat head
-with a long tapering snout, chisel teeth, glowing toxic eyes and nose,
-thin dish ears, actual whiskers, clawed feet, and a naked segmented tail
-that tapers away in a falling curve. The toxic boils still glow along its
-spine. Same fight, same toxin pools, same loot.
