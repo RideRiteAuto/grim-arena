@@ -1,5 +1,23 @@
 # Grim World — patch notes
 
+## August 5, 2026 (skills page + pack cleanup) — press K
+
+### The skills page
+K opens (and closes) your character's skill sheet: all seven skills -
+MELEE, RANGED, MAGIC, HITPOINTS, WOODCUTTING, MINING, SMITHING - each
+with its level out of 99, a colored progress bar to the next level, your
+exact XP and the XP remaining. A TOTAL LEVEL sits in the header, levels
+are now capped at 99, and hovering any skill shows a detailed tooltip:
+what it does, how to train it, and where the next tier unlocks. The page
+updates live as XP lands, Esc also closes it, and K is in the menu
+binding list.
+
+### Pack panel cleaned up
+The pack grid is now 7 wide instead of a tall 4-wide column, the panel
+is tighter with the dead space gone, and GEAR STATS is a compact
+two-column readout that skips zero stats, with a damage-reduction bar
+and a pointer to the K page.
+
 ## August 5, 2026 (harvest feel) — falling trees, empty veins, deeper mana
 
 ### Trees fall again - and properly this time
