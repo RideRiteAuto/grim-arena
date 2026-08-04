@@ -1,5 +1,33 @@
 # Grim World — patch notes
 
+## August 5, 2026 (combat sync) — monsters now run on the real clock on every machine
+
+### The real bug behind the weird combat
+Server-owned monsters were mixing three clocks on your screen. Their
+positions moved on real time, their damage landed on real time, but
+their ANIMATIONS ran on the game clock, which silently slows down
+whenever your frame rate dips below 20. Result on a busy machine: the
+damage arrives while the swing is still winding up, legs animate slower
+than the body glides (the stutter), and monsters keep true speed while
+you are slowed (the wrong-feeling pathing). The first seconds after
+loading always looked fine because the local stand-in brain keeps damage
+and animation on the SAME clock, and the switch to the server feed is
+what you saw as the moment everything went weird.
+
+### The fix
+Everything about a server-simulated monster now advances on real elapsed
+time: swing telegraphs, walk cycles and position settling all share the
+same wall clock the damage timer already used. Swings land when they
+look like they land, at any frame rate.
+
+### The flash you see a few seconds in
+That is PERFORMANCE MODE kicking in automatically when the frame rate
+dips: it turns shadows and extra lights off and rebuilds the materials,
+which shows as a one-time flicker. It was being blamed for the combat
+weirdness because both happened at the same moment. The combat part is
+fixed; the flicker is the graphics downshift doing its job.
+
+
 ## August 5, 2026 (server combat sync) — the fixes reach the server brain
 
 Mystery solved on the lingering combat weirdness: for your first few
@@ -202,23 +230,3 @@ swimming and turbo all unchanged.
 This completes the first full pass of the model rewrite: wolf, goblin,
 deer, sheep, Plague Rat, trees, ore, the humanoid base, every villain,
 and the donkey.
-
-
-## August 5, 2026 (model rewrite 7) — sealed seams + armored bodies
-
-### The gaps are gone
-The new trees, ore rocks and sheep wool had visible cracks where mesh
-faces met: the surface sculpting moved each face's copy of a shared
-corner differently, tearing the model open. Sculpting now displaces by
-corner POSITION, so every copy of a corner moves identically and the
-meshes are watertight by construction. Rocks, canopies and wool are
-solid from every angle.
-
-### Knight bodies, upgraded
-Every humanoid (your character, other players, townsfolk, knights) gets
-a body pass: a sculpted lofted cuirass with a waist taper and breastplate
-ridge in place of the straight tube torso, real shoulder pauldrons with
-trim rims that ride the arms, thigh tassets, boot cuffs, and a proper
-helm with a brim, nasal bar, cheek guards - and a visible chin, so
-there is finally a person inside the armor. Same pivots, same gear and
-palette system, so every armor color and weapon works unchanged.
