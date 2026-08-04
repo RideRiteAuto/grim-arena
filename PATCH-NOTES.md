@@ -1,5 +1,33 @@
 # Grim World — patch notes
 
+## August 5, 2026 (the map update) — Asterra in your pocket
+
+### World map on M
+Press M (or Esc to close) for the full map of Asterra — the exact "World
+Map v2" chart the terrain was baked from, so it is pixel-accurate to the
+world by construction: 4 meters per map pixel, world origin at The
+Capital, top of the map is TRUE NORTH. Region names, rivers, roads, towns
+and ports are all there, with a legend bottom-left (points of interest
+get added to it later) and a gold arrow showing exactly where you are and
+which way you face, live. Ships inside the game file as crisp vector art.
+
+### Compass ribbon
+A compass now runs across the top of the screen whenever the map is
+closed: cardinal letters and degree ticks scroll smoothly under a gold
+caret as you look around, N highlighted. The FREE ROAM banner moved down
+a touch to make room.
+
+### Minimap, rebuilt
+The top-right minimap is now a live circular cutout of the real Asterra
+map instead of an abstract dot disc. Your arrow is pinned dead-center and
+never moves; the world rotates around it as you turn, so up on the disc
+is always the way you are looking. Monster and NPC dots ride on top, and
+a gold N on the rim always shows where true north went. The minimap uses
+a label-free copy of the chart so text never clutters the disc.
+
+### Keys
+M added to the menu binding list.
+
 ## August 5, 2026 (swim camera) — swimming POV raised
 
 The camera was skimming the water surface while swimming, leaving the
