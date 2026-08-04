@@ -1,5 +1,13 @@
 # Grim World — patch notes
 
+## August 5, 2026 (map follow-up) — M toggles the map both ways
+
+Opening the map releases your mouse cursor, and the key handler used to
+ignore most keys while the cursor was unlocked - so M could open the map
+but not close it. The M toggle now sits above that gate (like Escape
+does): press M to open, press M again to close, no clicking back into the
+game first.
+
 ## August 5, 2026 (the map update) — Asterra in your pocket
 
 ### World map on M
