@@ -1,5 +1,14 @@
 # Grim World — patch notes
 
+## August 5, 2026 (model rewrite 5) — The Plague Rat, properly repulsive
+
+The barrow boss got the loft treatment: a low-slung chest rising into a
+high arched rump, mangy two-tone hide with fur texture, a real rat head
+with a long tapering snout, chisel teeth, glowing toxic eyes and nose,
+thin dish ears, actual whiskers, clawed feet, and a naked segmented tail
+that tapers away in a falling curve. The toxic boils still glow along its
+spine. Same fight, same toxin pools, same loot.
+
 ## August 5, 2026 (model rewrite 4) — sheep worth shearing
 
 The pasture sheep are rebuilt: a slim lofted under-body beneath a lumpy,
