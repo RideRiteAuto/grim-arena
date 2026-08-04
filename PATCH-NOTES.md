@@ -1,5 +1,14 @@
 # Grim World — patch notes
 
+## August 5, 2026 (model rewrite 4) — sheep worth shearing
+
+The pasture sheep are rebuilt: a slim lofted under-body beneath a lumpy,
+vertex-sculpted wool shell (the shell is what shrinks when you shear
+them), a proper dark face with side ears, a little wool cap between the
+ears, a stub wool tail, and jointed legs with hooves that actually trot
+while they wander and stop when they graze. Shearing, wool regrowth and
+the F prompt all work exactly as before.
+
 ## August 5, 2026 (model rewrite 3) — red deer rebuilt
 
 The red deer now use the new build style: slender lofted body with a pale
