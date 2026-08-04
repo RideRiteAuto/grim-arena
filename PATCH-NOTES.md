@@ -1,5 +1,30 @@
 # Grim World — patch notes
 
+## August 5, 2026 (later) — one-piece oars, rowing that actually rows
+
+### Oars a carpenter would sell you
+The oar blades were floating disconnected next to the shafts. Each oar is
+now ONE continuous piece: a grip by the rower's hands, a round shaft
+running through the oarlock, and a throat and blade welded onto the tip of
+that same shaft, all on one axis. The whole stick slopes down from your
+hands into the water like a real oar. On the stroke the blade lifts clear
+of the water on the way forward and drops back in to pull.
+
+### Hands and handles on the same beat
+Your arms and the oars now row on the SAME clock (and other players see
+the same thing), so the hands and the oar handles move together instead of
+drifting apart on two separate timers.
+
+### No more bouncing while rowing
+The run-cycle bob is fully switched off in a boat and while swimming. You
+rise and fall only with the hull now — your seat is glued to the bench,
+including the gentle bob other players see on your boat.
+
+### Swimmers lean the right way
+Swimming forward now pitches you FORWARD into the water instead of
+leaning backward, and turns bank around your direction of travel, so the
+crawl finally reads like swimming.
+
 ## August 5, 2026 (follow-up) — a rowboat a shipwright would recognize
 
 The blocky box-boat is gone. The hull is now built the way real boats are:
