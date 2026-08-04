@@ -1,5 +1,27 @@
 # Grim World — patch notes
 
+## August 4, 2026 (night) — swimming feels like swimming, and H takes you home
+
+### The swimmer got coaching
+Your body now faces the direction you are actually swimming — strokes carry
+you straight instead of crab-gliding wherever the camera points. Turning
+banks you into the turn and the heading follows smoothly, like a real
+swimmer coming about. The stroke itself is calmer and cleaner (no more
+windmilling), your weapon is stowed while you are in the water, and if you
+stop, you float facing the way you were going while the camera orbits free.
+
+### Swim camera fixed
+The camera now rides level with you at the surface instead of hovering
+too high off the water. Boat and land framing are untouched.
+
+### H — teleport to town
+The world is enormous and testing shouldn't be a hike. Press H anywhere to
+warp back to the spawn camp — there's a hint in the bottom-right corner so
+nobody has to remember it. If your rowboat is deployed it is stowed safely
+into your pack first. This is a testing convenience and will likely become
+a proper spell or item later.
+
+
 ## August 4, 2026 (late) — boats for everyone's eyes, and dry ruins
 
 ### Your friends can see your boat now
