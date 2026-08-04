@@ -1,5 +1,24 @@
 # Grim World — patch notes
 
+## August 5, 2026 (model rewrite 7) — sealed seams + armored bodies
+
+### The gaps are gone
+The new trees, ore rocks and sheep wool had visible cracks where mesh
+faces met: the surface sculpting moved each face's copy of a shared
+corner differently, tearing the model open. Sculpting now displaces by
+corner POSITION, so every copy of a corner moves identically and the
+meshes are watertight by construction. Rocks, canopies and wool are
+solid from every angle.
+
+### Knight bodies, upgraded
+Every humanoid (your character, other players, townsfolk, knights) gets
+a body pass: a sculpted lofted cuirass with a waist taper and breastplate
+ridge in place of the straight tube torso, real shoulder pauldrons with
+trim rims that ride the arms, thigh tassets, boot cuffs, and a proper
+helm with a brim, nasal bar, cheek guards - and a visible chin, so
+there is finally a person inside the armor. Same pivots, same gear and
+palette system, so every armor color and weapon works unchanged.
+
 ## August 5, 2026 (model rewrite 6) — bigger, better trees and ore
 
 Every tree and ore node is rebuilt, and all trees are 25 percent bigger.
