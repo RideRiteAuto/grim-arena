@@ -1,5 +1,70 @@
 # Grim World — patch notes
 
+## August 4, 2026 — monsters now run on the server, end to end
+
+The rest of it. Monster movement, decisions, attacks, projectiles and boss
+fights have all moved into Cloudflare. No player's browser simulates anything
+any more, and the idea of one player being "in charge" of the world is gone.
+
+### Monsters are simulated by the server (phase 2)
+Their brain now runs in the same place for everyone: chasing whoever hit them
+or the nearest player, aggro ranges, giving up when dragged too far from home,
+breaking off inside town and camp, wandering, keeping their distance by weapon,
+circling once in reach, guarding and dodging. Wildlife still bolts. Packs still
+shove each other apart so they surround you instead of stacking up.
+
+Every player draws the same feed, so two screens can no longer disagree about
+where a monster is or what it is doing. Running monsters locally still exists,
+but only as a fallback if your connection drops.
+
+Each player is only sent the monsters near them. That is what keeps a much
+bigger world costing the same per player as this one.
+
+### Attacks land at the same moment for everyone (phase 3)
+This is the dodge fix.
+
+The server announces each attack once, in full: the exact instant it begins on
+the shared clock, where the monster is standing, which way it faces, how far the
+swing reaches and how wide it is. Every player plays the identical telegraph at
+the identical moment.
+
+Then your own machine decides whether YOU were inside it when it landed, judged
+against where you actually were. Your dodge is judged against what you saw, not
+against somebody else's stale copy of you. That was the real reason dodging felt
+wrong, and it is gone.
+
+Rolling still gives you invincibility frames, and a swing that reaches all the
+way round (the Hollow King's ground slam) now correctly hits behind him too —
+that was a rounding error that let you stand in the one spot it could not touch.
+
+### Projectiles cost nothing to watch (phase 4)
+The server says where a bolt started, how fast it is going and when it left.
+Every machine draws the identical arc from that, and nothing further crosses the
+network. A boss throwing a volley costs the same as throwing one. Each player
+checks only themselves for a hit.
+
+### Bosses are scripts now (phase 5)
+The Hollow King, Mr. Sailers, Austin Little and the Plague Rat are described as
+data instead of code: phases that change as their health falls, a move list per
+phase, and each move declaring its own cooldown and the range it wants. They
+shout when they change phase, they get faster and hit harder in later phases,
+and the King's slam, leaps, Sailers' charge, taunt and volley, and the Rat's
+pounce and spit all run from that table.
+
+The point of doing it this way: a bigger, meaner boss later is a longer table,
+not new engine code.
+
+### Verified
+Six server suites, all passing: manifest and clock, monster movement and
+interest filtering, boss scripts and projectiles, health/death/loot, ownership
+handover, and message routing. Movement checks confirm monsters close on you and
+stop at their own reach rather than walking into you, that wildlife flees, that
+distant monsters are filtered out of your feed, and that two players are sent
+the same positions. Boss checks confirm phase changes fire with their shout,
+volleys spread rather than stacking, and every projectile carries a full flight
+path. Dodge geometry is checked seven ways, including standing behind a
+full-circle slam and rolling through a hit.
+
 ## August 4, 2026 — server simulation, phase 1 (foundations)
 
 Groundwork for moving monsters fully onto the server. Nothing about how the

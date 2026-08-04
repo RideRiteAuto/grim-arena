@@ -21,7 +21,9 @@
  *     for tabs that froze without managing to say anything
  */
 
-const PROTO = 6;
+import { mulberry32, makeSimNpc, stepNpc, separate } from './sim.js';
+
+const PROTO = 7;
 const RATE_LIMIT = 60;              // msgs/sec per player; the game sends ~20
 const OWNER_STALE_MS = 8000;
 
@@ -110,6 +112,62 @@ const GRIM_RULES = {
   SACK_LIFE_MS: 240000,  // then public, then gone
   SACK_CAP: 40,
 
+  // ---- boss scripts -------------------------------------------------------
+  // A boss is an archetype plus a script the server interprets. Phases switch
+  // on health, each phase has its own move list, and a move describes its own
+  // cooldown, the distance band it wants, and what it does. A bigger, meaner
+  // boss is a longer table here, not new engine code.
+  SCRIPTS: {
+    sailers: {
+      phases: [
+        { untilHpPct: 45, moves: ['charge', 'taunt', 'volley', 'snare'] },
+        { untilHpPct: 0,  moves: ['volley', 'volley', 'charge', 'snare'], spdMul: 1.12, dmgMul: 1.15,
+          onEnter: { shout: "YOU'LL PAY FOR THAT RIVET!" } }
+      ],
+      moves: {
+        charge: { cd: [6, 10], band: [7, 26], state: 'charge', dur: 1.1 },
+        taunt:  { cd: [7, 11], band: [0, 30], state: 'taunt',  dur: 2.1, shout: "WHERE'S THE RIVET?!" },
+        volley: { cd: [6, 10], band: [4, 24], move: 'volley', proj: { kind: 'snare', n: 3, spread: 0.24, speed: 15, dmg: 8 } },
+        snare:  { cd: [2, 4],  band: [0, 16], move: 'snare',  proj: { kind: 'snare', n: 1, spread: 0, speed: 15, dmg: 8 } }
+      }
+    },
+    hollowKing: {
+      phases: [
+        { untilHpPct: 60, moves: ['slam', 'leap', 'melee'] },
+        { untilHpPct: 25, moves: ['slam', 'leap', 'leap', 'melee'], spdMul: 1.15,
+          onEnter: { shout: 'THE HOLLOW STIRS' } },
+        { untilHpPct: 0,  moves: ['slam', 'slam', 'leap', 'melee'], spdMul: 1.25, dmgMul: 1.2,
+          onEnter: { shout: 'THE CROWN BURNS' } }
+      ],
+      moves: {
+        slam:  { cd: [5, 8],  band: [0, 6.2],  move: 'slam' },
+        leap:  { cd: [4, 7],  band: [5, 15],   state: 'leap', dur: 0.9, lunge: 14 },
+        melee: { cd: [1, 2],  band: [0, 3.9],  move: 'gheavy' }
+      }
+    },
+    brawler: {
+      phases: [ { untilHpPct: 0, moves: ['leap', 'bash', 'flourish', 'melee'] } ],
+      moves: {
+        leap:     { cd: [4, 7], band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11 },
+        bash:     { cd: [4, 7], band: [0, 2.6],   move: 'bash' },
+        flourish: { cd: [6, 9], band: [9, 30],    state: 'flourish', dur: 1.2 },
+        melee:    { cd: [1, 2], band: [0, 3.0],   move: 'light' }
+      }
+    },
+    plagueRat: {
+      phases: [
+        { untilHpPct: 50, moves: ['pounce', 'melee'] },
+        { untilHpPct: 0,  moves: ['pounce', 'spit', 'melee'], spdMul: 1.2,
+          onEnter: { shout: 'THE MERE SEETHES' } }
+      ],
+      moves: {
+        pounce: { cd: [4, 7], band: [4, 14],  state: 'leap', dur: 0.85, lunge: 13 },
+        spit:   { cd: [5, 8], band: [3, 20],  move: 'frost', proj: { kind: 'toxin', n: 2, spread: 0.3, speed: 13, dmg: 10 } },
+        melee:  { cd: [1, 2], band: [0, 3.4], move: 'heavy' }
+      }
+    }
+  },
+
   // ---- networking ---------------------------------------------------------
   SIM_HZ: 8,             // server simulation timestep
   SNAP_HZ: 8,            // snapshot rate for monsters in a fight
@@ -176,6 +234,241 @@ export class World {
     try { await this.state.storage.put('world', this.mem); } catch (e) {}
   }
 
+  // ------------------------------------------------------ monster simulation
+  //
+  // Positions, facing, decisions and attacks all happen here. No player's
+  // browser runs any of it, so a slow, hidden or crashed tab cannot stall the
+  // world, and two players can never disagree about what a monster is doing.
+  //
+  // There is deliberately no timer: a Durable Object sleeps between events and
+  // a real-time loop would cost an alarm per tick. Instead the clock advances
+  // when messages arrive, and players already send their own position ten
+  // times a second, so with anyone online the simulation runs at full rate for
+  // nothing. An empty world simply stops, which is correct.
+  ensureSim(w) {
+    if (this.sim && this.sim.length) return this.sim;
+    if (!w.manifest || !Array.isArray(w.manifest.spawns)) return null;
+    this.sim = w.manifest.spawns.map((s, i) => {
+      const n = makeSimNpc(s, i);
+      // map the world's named bosses onto their scripts
+      const nm = (s.n || '').toUpperCase();
+      if (s.king || nm.indexOf('HOLLOW KING') >= 0) n.scriptId = 'hollowKing';
+      else if (nm.indexOf('SAILERS') >= 0 || s.spell === 'snare') n.scriptId = 'sailers';
+      else if ((s.tag && s.tag.rat) || nm.indexOf('PLAGUE RAT') >= 0) n.scriptId = 'plagueRat';
+      else if (s.brawler && s.boss) n.scriptId = 'brawler';
+      return n;
+    });
+    this.colliders = w.manifest.colliders || [];
+    this.safe = (w.manifest.safe || []).map(s => ({ x: s.x, z: s.z, r: s.r }));
+    this.rnd = mulberry32(0x9e3779b9 ^ (w.manifest.hash || '').length);
+    this.lastTick = Date.now();
+    this.evSeq = 0;
+    return this.sim;
+  }
+
+  advance(w, socks) {
+    const sim = this.ensureSim(w);
+    if (!sim || !w.npcs) return;
+    const now = Date.now();
+    const STEP = 1000 / GRIM_RULES.SIM_HZ;
+    let steps = Math.floor((now - (this.lastTick || now)) / STEP);
+    if (steps <= 0) return;
+    // A cold start or a long quiet spell must not be replayed second by
+    // second; catch up a little and then jump.
+    if (steps > 12) { steps = 1; this.lastTick = now - STEP; }
+    this.lastTick += steps * STEP;
+
+    // everyone alive, as the monsters see them
+    const players = [], byId = {};
+    for (const s of socks) {
+      const x = this.meta(s);
+      if (!x || !x.id || x.px == null) continue;
+      const p = { id: x.id, x: x.px, z: x.pz, hp: x.php == null ? 100 : x.php };
+      players.push(p); byId[x.id] = p;
+    }
+
+    const events = [];
+    const ctx = {
+      rules: GRIM_RULES, rnd: this.rnd, players, byId,
+      colliders: this.colliders, safe: this.safe,
+      canAct: (n) => n.state === 'idle' && n.stagger <= 0 && n.frozen <= 0,
+      attack: (n, move, tgt) => this.scheduleAttack(n, move, tgt, events),
+      script: (n, tgt, dp, dt, c) => this.runScript(n, tgt, dp, dt, c, events)
+    };
+
+    const dt = STEP / 1000;
+    for (let s = 0; s < steps; s++) {
+      for (let i = 0; i < sim.length; i++) {
+        const n = sim[i], rec = w.npcs[i];
+        if (!rec) continue;
+        n.hp = rec.hp; n.dead = rec.dead;      // health is the stored world's word
+        if (rec.by) n.aggroPeer = rec.by;
+        stepNpc(n, dt, ctx);
+        // an attack in flight runs its own clock: wind, damage frame, recovery
+        if (n.act) {
+          const m = GRIM_RULES.MOVES[n.act];
+          const tot = m.wind + m.act + m.rec;
+          if (n.st >= tot) { n.act = null; n.state = 'idle'; n.st = 0; }
+        }
+      }
+      separate(sim);
+    }
+    for (const e of events) this.broadcast(socks, e);
+    this.pushSnapshots(socks, sim, now);
+  }
+
+  // An attack is announced once, in full, with the moment it begins on the
+  // server's clock. Every player plays the identical telegraph at the identical
+  // instant; each player's own machine then decides whether THEY were inside
+  // the swing when it landed, judged against where they actually were. That is
+  // what makes a dodge honest instead of being decided on somebody else's
+  // stale copy of your position.
+  scheduleAttack(n, move, tgt, events) {
+    const m = GRIM_RULES.MOVES[move];
+    if (!m) return;
+    n.state = (move === 'frost' || move === 'snare' || move === 'volley' || move === 'storm' || move === 'heal') ? 'cast' : 'attack';
+    n.st = 0; n.act = move; n.hitDone = false;
+    if (m.stam) n.stam = Math.max(0, n.stam - m.stam);
+    if (m.mana) n.mana = Math.max(0, n.mana - m.mana);
+    const dmg = m.dmg ? Math.round((m.dmg[0] + this.rnd() * (m.dmg[1] - m.dmg[0])) * n.dmgScale) : 0;
+    events.push({
+      t: 'atk', ev: ++this.evSeq, i: n.i, m: move, at: Date.now(),
+      w: m.wind, a: m.act, r: m.rec,
+      x: +n.x.toFixed(2), z: +n.z.toFixed(2), yaw: +n.yaw.toFixed(3),
+      rng: m.range || 0, arc: m.arc || 0, dmg: dmg,
+      heavy: !!m.heavy, bash: !!m.bash, proj: !m.range
+    });
+  }
+
+  // Snapshots are the only expensive part, so a player is told about the
+  // monsters near THEM and nothing else. That is what keeps a much larger world
+  // costing the same per player as this one.
+  pushSnapshots(socks, sim, now) {
+    const R = GRIM_RULES;
+    const fast = 1000 / R.SNAP_HZ, slow = 1000 / R.SNAP_IDLE_HZ;
+    for (const ws of socks) {
+      const x = this.meta(ws);
+      if (!x || x.px == null) continue;
+      const rows = [];
+      for (const n of sim) {
+        const d = Math.hypot(n.x - x.px, n.z - x.pz);
+        if (d > R.INTEREST_R) continue;
+        const due = n.aggro ? fast : slow;
+        if (now - (n.sentAt || 0) < due) continue;
+        rows.push([n.i, Math.round(n.x * 10), Math.round(n.z * 10), Math.round(n.yaw * 100),
+                   n.state, Math.round(n.st * 100), Math.round(n.moveAmt * 100), n.act || 0]);
+      }
+      if (!rows.length) continue;
+      this.send(ws, { t: 'nsnap', at: now, r: rows });
+    }
+    for (const n of sim) {
+      const d0 = n.aggro ? fast : slow;
+      if (now - (n.sentAt || 0) >= d0) n.sentAt = now;
+    }
+  }
+
+  // ---------------------------------------------------------- boss scripts
+  //
+  // A boss's behaviour is a data table, not code: phases switch on health,
+  // each phase lists the moves it can use, and each move declares its own
+  // cooldown and the distance band it wants. Adding a bigger boss is adding a
+  // table. Returning true means the script took the turn.
+  runScript(n, tgt, dp, dt, ctx, events) {
+    const S = GRIM_RULES.SCRIPTS[n.scriptId];
+    if (!S) return false;
+
+    // a move already playing owns the clock
+    if (n.state === 'charge' || n.state === 'taunt' || n.state === 'flourish' || n.state === 'leap') {
+      n.scriptT = (n.scriptT || 0) - dt;
+      if (n.lungeT > 0) {
+        n.lungeT -= dt;
+        n.x += n.lungeX * n.lungePow * dt;
+        n.z += n.lungeZ * n.lungePow * dt;
+        n.dirty = 1;
+      }
+      if (n.scriptT <= 0) { n.state = 'idle'; n.st = 0; n.lungeT = 0; }
+      else { n.wx = 0; n.wz = 0; }
+      return true;
+    }
+    if (n.act) return true;                  // an announced attack is running
+
+    // phase by health
+    const pct = n.max ? (n.hp / n.max) * 100 : 100;
+    let ph = S.phases.length - 1;
+    for (let i = 0; i < S.phases.length; i++) {
+      if (pct > S.phases[i].untilHpPct) { ph = i; break; }
+    }
+    if (ph !== n.phase) {
+      n.phase = ph;
+      const on = S.phases[ph].onEnter;
+      if (on) events.push({ t: 'boss', i: n.i, kind: 'phase', phase: ph, shout: on.shout || null });
+    }
+    const phase = S.phases[ph];
+    const spdMul = phase.spdMul || 1, dmgMul = phase.dmgMul || 1;
+
+    n.specialCd = Math.max(0, (n.specialCd || 0) - 0);
+    if (n.specialCd > 0) return false;       // let the ordinary brain steer between moves
+
+    // pick a move that is off cooldown and whose band matches the range
+    if (!n.cds) n.cds = {};
+    const options = phase.moves.filter(k => {
+      const mv = S.moves[k];
+      if (!mv) return false;
+      if ((n.cds[k] || 0) > Date.now()) return false;
+      return dp >= mv.band[0] && dp <= mv.band[1];
+    });
+    if (!options.length) return false;
+    const key = options[Math.floor(ctx.rnd() * options.length)];
+    const mv = S.moves[key];
+    n.cds[key] = Date.now() + (mv.cd[0] + ctx.rnd() * (mv.cd[1] - mv.cd[0])) * 1000;
+
+    if (mv.proj) {
+      this.scheduleAttack(n, mv.move, tgt, events);
+      this.fireProjectiles(n, tgt, mv, dmgMul, events);
+      return true;
+    }
+    if (mv.move) {
+      const before = n.dmgScale;
+      n.dmgScale = before * dmgMul;
+      this.scheduleAttack(n, mv.move, tgt, events);
+      n.dmgScale = before;
+      return true;
+    }
+    // a pure state move: charge, leap, taunt, flourish
+    n.state = mv.state; n.st = 0; n.scriptT = mv.dur || 1;
+    n.wx = 0; n.wz = 0;
+    if (mv.lunge) {
+      const d = Math.hypot(tgt.x - n.x, tgt.z - n.z) || 1;
+      n.lungeX = (tgt.x - n.x) / d; n.lungeZ = (tgt.z - n.z) / d;
+      n.lungePow = mv.lunge * spdMul; n.lungeT = mv.dur || 0.9;
+    }
+    events.push({ t: 'boss', i: n.i, kind: 'move', move: key, state: mv.state, dur: mv.dur || 1,
+                  at: Date.now(), shout: mv.shout || null,
+                  x: +n.x.toFixed(2), z: +n.z.toFixed(2), yaw: +n.yaw.toFixed(3) });
+    return true;
+  }
+
+  // Projectiles are announced once with a start point, a velocity and a time.
+  // Every machine then draws the identical arc without another byte crossing
+  // the network, and each player checks only themselves for a hit. That also
+  // means a boss throwing fifty bolts costs the network nothing extra.
+  fireProjectiles(n, tgt, mv, dmgMul, events) {
+    const p = mv.proj;
+    const at = Date.now() + Math.round((GRIM_RULES.MOVES[mv.move] || { wind: 0.4 }).wind * 1000);
+    const base = Math.atan2(tgt.x - n.x, tgt.z - n.z);
+    const count = p.n || 1;
+    for (let k = 0; k < count; k++) {
+      const off = count === 1 ? 0 : (k - (count - 1) / 2) * (p.spread || 0);
+      const a = base + off;
+      events.push({
+        t: 'proj', i: n.i, id: ++this.evSeq, k: p.kind, at: at,
+        x: +(n.x + Math.sin(a) * 1.1).toFixed(2), y: 1.7, z: +(n.z + Math.cos(a) * 1.1).toFixed(2),
+        vx: +(Math.sin(a) * (p.speed || 15)).toFixed(2), vy: 0, vz: +(Math.cos(a) * (p.speed || 15)).toFixed(2),
+        dmg: Math.round((p.dmg || 8) * dmgMul), life: 2.4
+      });
+    }
+  }
+
   async fetch(request) {
     const url = new URL(request.url);
 
@@ -187,6 +480,8 @@ export class World {
         proto: PROTO,
         players: socks.length,
         sim: owner ? owner.meta.id : null,
+        simNpcs: this.sim ? this.sim.length : 0,
+        simErr: this.simErr || null,
         names: socks.map(s => (this.meta(s) || {}).name || '?')
       });
     }
@@ -223,7 +518,12 @@ export class World {
     let m;
     try { m = JSON.parse(raw); } catch (e) { this.setMeta(ws, meta); return; }
     if (!m || typeof m.t !== 'string') { this.setMeta(ws, meta); return; }
-    if (m.t === 's') meta.bg = m.bg ? 1 : 0;
+    if (m.t === 's') {
+      meta.bg = m.bg ? 1 : 0;
+      // monsters need to know where everyone is standing
+      if (Array.isArray(m.p)) { meta.px = m.p[0]; meta.pz = m.p[2]; }
+      if (typeof m.h === 'number') meta.php = m.h;
+    }
     this.setMeta(ws, meta);
     if (meta.count > RATE_LIMIT) return;
 
@@ -269,6 +569,14 @@ export class World {
     }
     // The owner no longer speaks for monster health or death; the server does.
     if (m.t === 'ndead' || m.t === 'lok' || m.t === 'lno' || m.t === 'skupd' || m.t === 'sknew' || m.t === 'skgone') return;
+
+    // every message is a heartbeat for the simulation
+    const world = await this.world();
+    if (world.manifest) { try { this.advance(world, socks); } catch (e) { this.simErr = String(e && e.stack || e).slice(0, 300); } }
+
+    // With the server driving monsters, a player's world snapshot is no longer
+    // truth and is dropped; players speak only for themselves.
+    if (m.t === 'w' && world.manifest) return;
 
     if (!RELAYED.has(m.t)) return;
     if (OWNER_ONLY.has(m.t) && (!owner || meta.id !== owner.meta.id)) return;
@@ -341,6 +649,7 @@ export class World {
 
     if (m.t === 'nhit') {
       if (!w.npcs) return;
+      try { this.advance(w, socks); } catch (e) {}
       const i = m.i | 0;
       const n = w.npcs[i];
       if (!n || n.dead || n.hp <= 0) return;

@@ -75,6 +75,62 @@ const GRIM_RULES = {
   SACK_LIFE_MS: 240000,  // then public, then gone
   SACK_CAP: 40,
 
+  // ---- boss scripts -------------------------------------------------------
+  // A boss is an archetype plus a script the server interprets. Phases switch
+  // on health, each phase has its own move list, and a move describes its own
+  // cooldown, the distance band it wants, and what it does. A bigger, meaner
+  // boss is a longer table here, not new engine code.
+  SCRIPTS: {
+    sailers: {
+      phases: [
+        { untilHpPct: 45, moves: ['charge', 'taunt', 'volley', 'snare'] },
+        { untilHpPct: 0,  moves: ['volley', 'volley', 'charge', 'snare'], spdMul: 1.12, dmgMul: 1.15,
+          onEnter: { shout: "YOU'LL PAY FOR THAT RIVET!" } }
+      ],
+      moves: {
+        charge: { cd: [6, 10], band: [7, 26], state: 'charge', dur: 1.1 },
+        taunt:  { cd: [7, 11], band: [0, 30], state: 'taunt',  dur: 2.1, shout: "WHERE'S THE RIVET?!" },
+        volley: { cd: [6, 10], band: [4, 24], move: 'volley', proj: { kind: 'snare', n: 3, spread: 0.24, speed: 15, dmg: 8 } },
+        snare:  { cd: [2, 4],  band: [0, 16], move: 'snare',  proj: { kind: 'snare', n: 1, spread: 0, speed: 15, dmg: 8 } }
+      }
+    },
+    hollowKing: {
+      phases: [
+        { untilHpPct: 60, moves: ['slam', 'leap', 'melee'] },
+        { untilHpPct: 25, moves: ['slam', 'leap', 'leap', 'melee'], spdMul: 1.15,
+          onEnter: { shout: 'THE HOLLOW STIRS' } },
+        { untilHpPct: 0,  moves: ['slam', 'slam', 'leap', 'melee'], spdMul: 1.25, dmgMul: 1.2,
+          onEnter: { shout: 'THE CROWN BURNS' } }
+      ],
+      moves: {
+        slam:  { cd: [5, 8],  band: [0, 6.2],  move: 'slam' },
+        leap:  { cd: [4, 7],  band: [5, 15],   state: 'leap', dur: 0.9, lunge: 14 },
+        melee: { cd: [1, 2],  band: [0, 3.9],  move: 'gheavy' }
+      }
+    },
+    brawler: {
+      phases: [ { untilHpPct: 0, moves: ['leap', 'bash', 'flourish', 'melee'] } ],
+      moves: {
+        leap:     { cd: [4, 7], band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11 },
+        bash:     { cd: [4, 7], band: [0, 2.6],   move: 'bash' },
+        flourish: { cd: [6, 9], band: [9, 30],    state: 'flourish', dur: 1.2 },
+        melee:    { cd: [1, 2], band: [0, 3.0],   move: 'light' }
+      }
+    },
+    plagueRat: {
+      phases: [
+        { untilHpPct: 50, moves: ['pounce', 'melee'] },
+        { untilHpPct: 0,  moves: ['pounce', 'spit', 'melee'], spdMul: 1.2,
+          onEnter: { shout: 'THE MERE SEETHES' } }
+      ],
+      moves: {
+        pounce: { cd: [4, 7], band: [4, 14],  state: 'leap', dur: 0.85, lunge: 13 },
+        spit:   { cd: [5, 8], band: [3, 20],  move: 'frost', proj: { kind: 'toxin', n: 2, spread: 0.3, speed: 13, dmg: 10 } },
+        melee:  { cd: [1, 2], band: [0, 3.4], move: 'heavy' }
+      }
+    }
+  },
+
   // ---- networking ---------------------------------------------------------
   SIM_HZ: 8,             // server simulation timestep
   SNAP_HZ: 8,            // snapshot rate for monsters in a fight
