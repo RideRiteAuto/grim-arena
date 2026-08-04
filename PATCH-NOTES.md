@@ -1,5 +1,14 @@
 # Grim World — patch notes
 
+## August 5, 2026 (model rewrite 3) — red deer rebuilt
+
+The red deer now use the new build style: slender lofted body with a pale
+belly, a properly upright neck with an alert, small head, big swiveling
+ears, long thin legs with real knees and dark hooves, a stub tail, and
+three-tined antlers on the stags. They graze with their head high, flick
+their ears, and stretch flat-out when they bolt. Same skittish behavior,
+same loot.
+
 ## August 5, 2026 (model rewrite 2) — goblins are goblins now
 
 The goblin was a knight scaled down 38 percent. It is now a real goblin
