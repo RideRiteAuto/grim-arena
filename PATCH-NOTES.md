@@ -1,5 +1,26 @@
 # Grim World — patch notes
 
+## August 5, 2026 (model rewrite 8) — villains with identity, a donkey worth riding
+
+### Every villain now reads at a glance
+The knight-body villains got their own identity layered on the upgraded
+base: BANDITS wear dark hoods and cowls; THE BANDIT CAPTAIN wears a
+blood-red hood and a bone skull strapped to his off arm; FROST WRAITHS
+float in full tattered robes with no legs and burning ice-blue eyes; THE
+HOLLOW KING wears a five-spiked gold crown over sickly green glowing
+eyes.
+
+### The donkey, rebuilt
+Lofted round-bellied body with fur texture and pale belly shading, a real
+neck and long-eared donkey head with a dark nose, a mane ridge, lofted
+legs with hooves, a rope tail with a tuft, and a proper saddle - red
+blanket, leather seat and girth strap. Riding, the trailing companion,
+swimming and turbo all unchanged.
+
+This completes the first full pass of the model rewrite: wolf, goblin,
+deer, sheep, Plague Rat, trees, ore, the humanoid base, every villain,
+and the donkey.
+
 ## August 5, 2026 (model rewrite 7) — sealed seams + armored bodies
 
 ### The gaps are gone
