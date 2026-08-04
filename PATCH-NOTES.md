@@ -1,5 +1,16 @@
 # Grim World — patch notes
 
+## August 5, 2026 (model rewrite 2) — goblins are goblins now
+
+The goblin was a knight scaled down 38 percent. It is now a real goblin
+built from scratch: hunched pot-bellied body, knuckle-length arms with
+claws, bowed legs and big flat feet, a wide skull with a snub nose, heavy
+brow, underbite tusks, glowing amber eyes and huge pointed ears. It wears
+proper goblin scrap: one stolen spiked pauldron, a leather chest strap, a
+loincloth and a dented metal skullcap, and it fights with a rusty cleaver
+and a scrap-wood buckler. All twenty goblins (town fields and the castle
+ruins camp) use the new build. Same stats, same quests, same loot.
+
 ## August 5, 2026 (new wolves + bigger map) — the model rewrite begins
 
 ### Dire wolves, rebuilt
