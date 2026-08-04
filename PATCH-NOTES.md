@@ -1,5 +1,21 @@
 # Grim World — patch notes
 
+## August 5, 2026 (server combat sync) — the fixes reach the server brain
+
+Mystery solved on the lingering combat weirdness: for your first few
+seconds in the world, monsters run on YOUR machine's AI (which had all
+the recent combat fixes) - then the relay server takes over every
+monster at once, and the server's copy of the AI still had the old
+behavior. That is why combat felt right at login and went strange
+moments later, all monsters at the same time.
+
+The server brain now runs the exact same rules as the client: melee
+starts from 85 percent of reach so visible swings connect, a first
+attack is near-guaranteed within about half a second of reaching you,
+and the attack dice are clamped against slow ticks. One combat feel,
+from the first second to the last.
+
+
 ## August 5, 2026 (performance) — shadow diet + steady combat dice
 
 ### Why it slowed down
@@ -206,16 +222,3 @@ trim rims that ride the arms, thigh tassets, boot cuffs, and a proper
 helm with a brim, nasal bar, cheek guards - and a visible chin, so
 there is finally a person inside the armor. Same pivots, same gear and
 palette system, so every armor color and weapon works unchanged.
-
-
-## August 5, 2026 (model rewrite 6) — bigger, better trees and ore
-
-Every tree and ore node is rebuilt, and all trees are 25 percent bigger.
-Field trees now have tapered lofted trunks with a slight natural lean,
-root flares at the base, and organically jittered two-tone canopies that
-still sway in the wind. The big oaks get thick flared trunks and broad
-layered crowns. Pines get taller lofted trunks, four staggered needle
-tiers and a crown spike. Ore rocks are now weathered boulder clusters
-with vertex-sculpted faces and six copper-glinting ore studs. Chopping,
-mining, respawns and multiplayer sync all unchanged - these builders are
-also the base set for the zone dressing work coming next.

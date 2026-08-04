@@ -193,21 +193,33 @@ function stepNpc(n, dt, ctx) {
   if (ctx.canAct(n) && !n.blocking) {
     const M = R.MOVES;
     const MELEE_RATE = 2.6;
-    if (n.weapon === 0 && dp < M.light.range && rnd() < MELEE_RATE * n.aiD * dt) {
-      ctx.attack(n, rnd() < 0.26 ? 'heavy' : 'light', tgt);
-    } else if (n.weapon === 1 && dp < 16 && n.mana > 25 && rnd() < (n.spell === 'snare' ? 1.3 : 0.9) * n.aiD * dt) {
+    // Mirrors the client combat-feel fix (Aug 5): melee starts from 85% of
+    // max reach so the swing you see actually connects; the longer a monster
+    // stands in reach without swinging the more certain the next swing
+    // becomes (first attack near-guaranteed inside ~0.6s); and the dice are
+    // clamped so a slow tick can never burst-fire attacks.
+    const rdt = Math.min(dt, 0.05);
+    const meleeGate = n.weapon === 0 ? M.light.range * 0.85
+      : n.weapon === 5 ? M.glight.range * 0.85
+      : (n.weapon === 3 || n.weapon === 4 || n.weapon === 9) ? M[n.beast ? 'claw' : 'chop'].range * 0.85
+      : 0;
+    n.inR = (meleeGate && dp < meleeGate && n.state === 'idle') ? (n.inR || 0) + dt : 0;
+    const eager = 1 + Math.min(4, (n.inR || 0) * 5);
+    if (n.weapon === 0 && dp < meleeGate && rnd() < MELEE_RATE * eager * n.aiD * rdt) {
+      ctx.attack(n, rnd() < 0.26 ? 'heavy' : 'light', tgt); n.inR = 0;
+    } else if (n.weapon === 1 && dp < 16 && n.mana > 25 && rnd() < (n.spell === 'snare' ? 1.3 : 0.9) * n.aiD * rdt) {
       ctx.attack(n, n.spell === 'snare' ? 'snare' : 'frost', tgt);
     } else if (n.weapon === 5) {
       // two-handers: a wide cleave, and the overhead when it commits
       const mv = rnd() < 0.26 ? 'gheavy' : 'glight';
-      if (dp < M[mv].range && rnd() < MELEE_RATE * n.aiD * dt) ctx.attack(n, mv, tgt);
+      if (dp < M[mv].range * 0.85 && rnd() < MELEE_RATE * eager * n.aiD * rdt) { ctx.attack(n, mv, tgt); n.inR = 0; }
     } else if (n.weapon === 3 || n.weapon === 4 || n.weapon === 9) {
       // A beast rakes with a paw and occasionally commits to a bite, the same
       // 26% mix a sword-and-shield fighter uses for its heavy. Everyone else
       // swings the tool in their hands, or their fists.
       const mv = n.beast ? (rnd() < 0.26 ? 'bite' : 'claw') : 'chop';
-      if (dp < M[mv].range && rnd() < MELEE_RATE * n.aiD * dt) ctx.attack(n, mv, tgt);
-    } else if (n.weapon === 2 && dp < 20 && rnd() < 1.1 * n.aiD * dt) {
+      if (dp < M[mv].range * 0.85 && rnd() < MELEE_RATE * eager * n.aiD * rdt) { ctx.attack(n, mv, tgt); n.inR = 0; }
+    } else if (n.weapon === 2 && dp < 20 && rnd() < 1.1 * n.aiD * rdt) {
       ctx.attack(n, rnd() < 0.5 ? 'rapid' : 'shot', tgt);
     }
   }
