@@ -12,6 +12,12 @@ SRC = '/tmp/game-src.html'
 RULES = 'shared-rules.js'
 BEGIN = '/* SHARED-RULES-BEGIN */'
 END = '/* SHARED-RULES-END */'
+# World generator: baked data + runtime module, injected into the GAME only
+# for now. When the server sim needs terrain, add the same markers to
+# relay-worker.js and extend sync_world's target list.
+WORLD_FILES = ['worldgen-data.js', 'worldgen.js']
+WBEGIN = '/* WORLD-GEN-BEGIN */'
+WEND = '/* WORLD-GEN-END */'
 
 def inject(text, rules, what):
     """Replace everything between the markers with the shared rules body.
@@ -40,6 +46,17 @@ def sync_rules():
             io.open(f, 'w', encoding='utf-8').write(o)
     print('shared rules synced (%d bytes) into game source + relay-worker.js' % n)
 
+def sync_world():
+    body = '\n'.join(io.open(f, encoding='utf-8').read().rstrip() for f in WORLD_FILES)
+    src = io.open(SRC, encoding='utf-8').read()
+    a, b = src.find(WBEGIN), src.find(WEND)
+    if a < 0 or b < 0 or b < a:
+        raise SystemExit('world-gen markers missing in ' + SRC)
+    out = src[:a] + WBEGIN + '\n' + body + '\n' + src[b:]
+    if out != src:
+        io.open(SRC, 'w', encoding='utf-8').write(out)
+    print('world gen synced (%d bytes) into game source' % len(body))
+
 def find_doc_line(lines):
     # The document payload is the JSON string line starting with "<!DOCTYPE
     for i, ln in enumerate(lines):
@@ -57,6 +74,7 @@ def extract():
 
 def pack():
     sync_rules()
+    sync_world()
     doc = io.open(SRC, encoding='utf-8').read()
     payload = json.dumps(doc, ensure_ascii=False).replace('</', '<\\u002F')
     for b in BUNDLES:

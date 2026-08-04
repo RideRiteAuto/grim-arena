@@ -15,7 +15,9 @@ const GRIM_RULES = {
   V: 1,
 
   // ---- world bounds -------------------------------------------------------
-  WORLD_R: 168,          // open-world edge, clamped identically on both sides
+  WORLD_R: 4800,         // Asterra chart radius: covers the whole baked map;
+                         // real bounds are the coastline + deep water + chart
+                         // edge, enforced by GRIM_WORLD.walkable on the client
   ARENA_R: 23,           // legacy duel arena
 
   // ---- movement -----------------------------------------------------------

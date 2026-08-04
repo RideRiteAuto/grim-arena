@@ -1,5 +1,46 @@
 # Grim World — patch notes
 
+## August 4, 2026 (later) — ASTERRA: the whole new world is under your feet
+
+### The world map is real now
+The old 336m circle of scrubland is gone. The full world of Asterra from the
+world map is generated under the game: two continents (Valewold in the west,
+Ashmar in the east), the Sundered Sea between them, the Shattered Isles,
+Driftwatch Isle, the Ironspire and Ember mountain ranges, Lake Argent, the
+Great River and the Cinder Run, snowfields in the Frostwild, marsh in the
+Mistfen, desert in the Sunscorch Barrens. It is about 6.6km east to west —
+roughly 300 times the area of the old world — and every hill and coastline
+matches the map because the terrain is baked straight from the map file.
+
+The land streams in around you in chunks as you walk, detailed up close and
+coarser in the distance, and it is generated from a seed, so every player
+stands on exactly the same ground (verified: browser and server-side height
+checks agree to the millimeter).
+
+### Where you are now
+The town, the bank, the arena, and everyone you know now stand at THE CAPITAL
+site on the southeast shore of Lake Argent, in the Heartlands. Your character,
+inventory, bank, skills, and quests are untouched. If your saved position was
+somewhere in the old world you will find yourself in or near town.
+
+### What stops you (for now)
+Deep water. You can wade in up to about waist depth; past that the coastline
+and rivers hold you back, and you slide along the shore instead of sticking to
+it. Swimming ships next, then boats. Bridges are also coming with the water
+work — until then the Great River still has a shallow crossing at the Argent
+Bridge site.
+
+### Honest list of what is NOT in yet
+Trees, rocks, and monsters outside the capital area (the wider world is empty
+land so far — that is the next phase along with the other towns), swimming,
+boats, the world map screen, and the housing districts. If you sail your eyes
+along the horizon and see bare hills, that is intentional, not broken.
+
+### If anything looks wrong after the update
+Hard-refresh the page (Ctrl+Shift+R) so the new bundle loads. Old cached pages
+and the new world disagree about the ground.
+
+
 ## August 4, 2026 (night) — you come back where you left, and F loots
 
 ### The world remembers where you logged out

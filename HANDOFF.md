@@ -13,6 +13,25 @@ Edit the bundles via `repack.py`:
 The bundle embeds the game document as a JSON string; `repack.py` escapes `</`
 so the payload cannot terminate the outer script tag.
 
+## Asterra world generator (Aug 4, phase A)
+
+- The terrain is generated, not modeled: `bake_world.py` parses
+  "Asterra World Map v2.html" (the map IS the source of truth) into
+  `worldgen-data.js` (elevation + zone layers, deflate+base64);
+  `worldgen.js` is the pure runtime (GRIM_WORLD.height/zone/waterDepth/
+  walkable). repack.py injects BOTH into the bundle between the
+  WORLD-GEN markers on every pack. Edit worldgen.js or rerun bake_world.py,
+  then `repack.py pack` — never edit the injected copy.
+- World coords: capital = (0,0), 4 m per map px, sea level y = 0. Terrain
+  streams as 64m chunks (see initTerrain/stepTerrain/buildChunk in the game
+  class). groundY() now defers to GRIM_WORLD.height — it is still pure and
+  identical everywhere, same as always.
+- Movement is bounded by GRIM_WORLD.walkable (deep water + chart edge), not
+  a radius. WORLD_R in shared rules is 4800 and only validates saves.
+- Phases remaining (see WORLD-GEN-PLAN.md in the Drive design folder and
+  the project): B water/swimming/bridges, C props/towns/map screen,
+  D boats, E housing districts + mailbox claims.
+
 ## Inventory 2.0 (Aug 3)
 
 - `ITEMS()` registry: every item has stack/slot/hands/wieldAs/stats/value/icon.
