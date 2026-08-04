@@ -17,7 +17,7 @@ const GRIM_RULES = {
   // relay REPLACES its stored manifest even with players online, so a new
   // world ships without the old one squatting the server. Bump it whenever
   // the terrain bake or manifest layout changes.
-  WORLD_GEN: 2,
+  WORLD_GEN: 3,
 
   // ---- world bounds -------------------------------------------------------
   WORLD_R: 4800,         // Asterra chart radius: covers the whole baked map;

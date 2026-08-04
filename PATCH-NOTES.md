@@ -1,5 +1,41 @@
 # Grim World — patch notes
 
+## August 4, 2026 (late) — boats for everyone's eyes, and dry ruins
+
+### Your friends can see your boat now
+The rowboat is synced: everyone in the world sees the hull, sees it pointed
+the right way, and sees the oars pulling at your actual rowing pace.
+
+### You sit and row like you mean it
+Proper rowing pose: seated low in an open hull (the boat got rebuilt — open
+cockpit, bench, real pivoting oars), legs forward, arms pulling the stroke,
+weapon stowed while your hands are on the oars. The hull trims forward as
+you pick up speed. No more standing statue on a floating box.
+
+### Getting OUT of the boat works now
+X hops you out and actually steps you ASHORE: the game walks uphill out of
+the water and puts you a stride past the waterline, so the boat can't
+scoop you straight back in. Out at sea with no shore in reach, X drops you
+in the water beside the hull as before — touch the hull to climb back in
+(and that grab now only happens when you're properly IN the water, never
+while you're walking the beach).
+
+### Boat camera behaves like land camera
+Afloat, the camera now treats the water surface as the ground, exactly as
+if you were standing on a flat field at sea level. No more sagging half
+underwater or hugging the hull.
+
+### The castle ruins are back on dry land
+The old ruins site ended up under Lake Argent when the real world arrived.
+The whole site — walls, towers, rubble, and its goblins — now stands on the
+plateau EAST of town. Scattered trees and rocks that were left standing in
+the lake and rivers have all stepped out onto dry ground too (mining rocks
+and choppable trees stay in sync for multiplayer — everyone sees them in
+the same new spots).
+
+Everyone should hard-refresh (Ctrl+Shift+R) after this one.
+
+
 ## August 4, 2026 (evening) — you can SWIM, and everyone owns a rowboat
 
 ### Swimming is in
