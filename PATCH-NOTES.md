@@ -1,5 +1,16 @@
 # Grim World — patch notes
 
+## August 5, 2026 (follow-up) — a rowboat a shipwright would recognize
+
+The blocky box-boat is gone. The hull is now built the way real boats are:
+six cross-sections lofted from a flat transom stern to a raised, pointed
+bow and skinned into one watertight shell — curved, flared sides, a sheer
+line that sweeps up toward the stem, gunwale rails that follow the curve,
+floorboards, a rowing bench, and a small foredeck sealing the bow. No more
+seeing the water through the front of the boat, no more panels that don't
+meet. Same seat, same oars, same controls.
+
+
 ## August 5, 2026 — you SIT in the boat, and swimmers stopped barrel-rolling
 
 ### Rowing, seated, like a person
