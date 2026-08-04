@@ -1,5 +1,38 @@
 # Grim World — patch notes
 
+## August 5, 2026 (combat) — the splat now lands on the swing, and corpses stop swinging
+
+### Hits landed before the swing did, by exactly your ping
+The damage and the hit splat were scheduled off the swing's true start
+instant, but the swing ANIMATION was being re-seeded by every status
+update arriving from the server. Those updates carry the phase the server
+saw one network trip ago, so each one quietly dragged the animation
+backwards while the damage stayed put. You got hit roughly one ping
+before the blade looked like it arrived, and the gap jittered as your
+connection did.
+
+Measured on a stepped 60fps clock, before and after, at three
+connection speeds. Gap between the splat and the swing:
+
+  ping  60ms   before  -44ms    after  0ms
+  ping 150ms   before -134ms    after  0ms
+  ping 300ms   before -284ms    after  0ms
+
+The swing animation now rides the exact same clock its damage does, and
+a status update can no longer touch a swing that is already playing. When
+one does set the phase (a swing you only learn about late), it adds the
+time the message spent in transit, so it starts where the monster is now
+rather than where it was.
+
+### Corpses no longer get one last swing
+A swing is announced slightly before it begins. Nothing checked whether
+the monster was still alive when that moment arrived, so a monster killed
+in that window played its whole attack on top of its own body, and could
+still hurt you. Killing a monster now cancels any swing in flight: no
+animation, no damage, no splat. Verified alongside a control where the
+monster is left alive and still swings and hits normally.
+
+
 ## August 5, 2026 (frame rate) — the big performance pass
 
 ### Measured on real hardware first
@@ -238,14 +271,3 @@ Also shipped: Zone Dressing Plan v3 in the repo - the complete bestiary
 attack), the wildlife roster with town-pet protection, all gathering
 numbers (XP curve, node stats, tool recipes), and the zone-by-zone
 rollout order.
-
-
-## August 5, 2026 (boat camera fix) — no more staring into the deep
-
-The camera aims at a point anchored to the ground height under the
-player. On land that is where you stand - but in a boat it is the SEABED,
-so over deep water the aim point sat meters underwater, the camera
-pitched over the top of you, and you were left staring straight down at
-the waves. The deeper the water, the worse the flip. The aim point now
-clamps to the waterline whenever you are afloat (boat or swimming), so
-the chase view stays level over any depth.
