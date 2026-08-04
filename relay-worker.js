@@ -95,7 +95,17 @@ const GRIM_RULES = {
     claw:   { wind: .26, act: .12, rec: .26, dmg: [12, 18], range: 2.8, arc: 2.0, stam: 5 },
     bite:   { wind: .44, act: .14, rec: .38, dmg: [20, 28], range: 3.0, arc: 2.2, stam: 12, heavy: true },
     shot:   { wind: .06, act: .04, rec: .30 },
-    rapid:  { wind: .12, act: .62, rec: .26, stam: 14 }
+    rapid:  { wind: .12, act: .62, rec: .26, stam: 14 },
+    // The landing of a leap or a pounce. Same story as chop above: the shape
+    // used to be written inline in the client ("at 0.7 through the hop, hit for
+    // 14-20 over 2.6m"), and when the fight moved to the server that line
+    // stopped running for monsters. The result was that the Hollow King's leap,
+    // the Plague Rat's pounce and the Bandit Captain's leap all became pure
+    // theatre: they crossed the ground at you and did nothing at all. These are
+    // the original authored numbers, moved somewhere both sides can read them.
+    // land is the fraction of the move's duration at which the boss touches
+    // down, so a longer hop lands later without needing its own table.
+    leap:   { land: .78, dmg: [14, 20], range: 2.6, arc: 2.8, heavy: true }
   },
 
   // ---- safe ground --------------------------------------------------------
@@ -174,7 +184,7 @@ const GRIM_RULES = {
         cleave: { cd: [0.6, 1.1], band: [0, 3.6],  move: 'glight' },
         crush:  { cd: [3, 5],     band: [0, 3.9],  move: 'gheavy' },
         slam:   { cd: [4.5, 7],   band: [0, 5.2],  move: 'slam' },
-        leap:   { cd: [4, 7],     band: [5, 15],   state: 'leap', dur: 0.9, lunge: 14 }
+        leap:   { cd: [4, 7],     band: [5, 15],   state: 'leap', dur: 0.9, lunge: 14, hit: 'leap' }
       }
     },
     // The Bandit Captain. Leaps and shield bashes are what make him read as a
@@ -186,7 +196,7 @@ const GRIM_RULES = {
     brawler: {
       phases: [ { untilHpPct: 0, moves: ['leap', 'bash', 'melee'] } ],
       moves: {
-        leap:     { cd: [5, 8],    band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11 },
+        leap:     { cd: [5, 8],    band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11, hit: 'leap' },
         bash:     { cd: [5, 8],    band: [0, 2.6],   move: 'bash' },
         melee:    { cd: [0.5, 1],  band: [0, 3.0],   move: 'light' }
       }
@@ -204,7 +214,7 @@ const GRIM_RULES = {
       moves: {
         slash:  { cd: [0.6, 1.1], band: [0, 2.8], move: 'claw' },
         maul:   { cd: [3, 5],     band: [0, 3.0], move: 'bite' },
-        pounce: { cd: [5, 8],     band: [4, 14],  state: 'leap', dur: 0.85, lunge: 13 },
+        pounce: { cd: [5, 8],     band: [4, 14],  state: 'leap', dur: 0.85, lunge: 13, hit: 'leap' },
         // band starts at zero on purpose: the rat fights with its face in
         // yours, so a spit gated at three metres out simply never happened
         spit:   { cd: [4, 7],     band: [0, 20],  move: 'frost', proj: { kind: 'toxin', n: 2, spread: 0.3, speed: 14, dmg: 11 } }
@@ -537,8 +547,25 @@ export class World {
       n.lungeX = (tgt.x - n.x) / d; n.lungeZ = (tgt.z - n.z) / d;
       n.lungePow = mv.lunge * spdMul; n.lungeT = mv.dur || 0.9;
     }
+    // A leap that comes down on top of you has to actually hurt. The landing
+    // blow rides along with the move, timed as an offset from the move's own
+    // start so it cannot drift with the clock, and shaped from the shared move
+    // table rather than from numbers written out here. Each player judges it on
+    // their own machine against where the boss ACTUALLY lands, which is the
+    // entire point of a lunge: it closes the gap, so the blow must be measured
+    // after it closes, not from where the boss took off.
+    let hit = null;
+    if (mv.hit) {
+      const hm = GRIM_RULES.MOVES[mv.hit];
+      if (hm && hm.dmg) {
+        hit = { m: mv.hit,
+                t: Math.round((mv.dur || 0.9) * (hm.land == null ? 0.78 : hm.land) * 1000),
+                rng: hm.range, arc: hm.arc, heavy: !!hm.heavy,
+                dmg: Math.round((hm.dmg[0] + ctx.rnd() * (hm.dmg[1] - hm.dmg[0])) * n.dmgScale * dmgMul) };
+      }
+    }
     events.push({ t: 'boss', i: n.i, kind: 'move', move: key, state: mv.state, dur: mv.dur || 1,
-                  at: Date.now(), shout: mv.shout || null,
+                  at: Date.now(), shout: mv.shout || null, hit: hit,
                   x: +n.x.toFixed(2), z: +n.z.toFixed(2), yaw: +n.yaw.toFixed(3) });
     return true;
   }

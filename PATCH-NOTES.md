@@ -1,5 +1,36 @@
 # Grim World — patch notes
 
+## August 5, 2026 (combat) — boss leaps and pounces actually hurt again
+
+The Hollow King's leap, the Plague Rat's pounce and the Bandit Captain's leap
+have been dealing exactly zero damage. They crossed the ground at you, landed
+on your head, and did nothing at all. Pure theatre.
+
+Same cause as the harmless woodcutters a few patches back. The damage for a
+landing used to be written out inline in the game ("at 0.7 through the hop, hit
+for 14-20 over 2.6m"), and when the fight moved to the server that line stopped
+running for monsters. Nothing replaced it, so the move went out with no blow
+attached.
+
+The landing is now part of the shared rule book like every other attack, using
+the original authored numbers: 14 to 20 damage, 2.6m reach, wide arc, counts as
+a heavy hit so it breaks a block. It is timed as an offset from the start of the
+hop rather than a wall-clock stamp, so it cannot drift, and it is judged against
+where the boss ACTUALLY comes down. That last part matters: the whole point of a
+lunge is that it closes the distance, so measuring the blow from the take-off
+point would have made it miss almost every time.
+
+Phase damage multipliers reach it, so the Hollow King's final phase lands
+harder. Charges and taunts still carry no blow, which is correct: they are
+positioning and noise, not attacks.
+
+Verified with a server-side test asserting all three bosses emit a correctly
+shaped landing blow (and that charges and taunts emit none), plus six in-browser
+assertions: landing on top of you hurts, landing short does not, it damages
+exactly once however many frames poll it, a boss killed in mid-air deals
+nothing, a charge deals nothing, and nothing lands before touchdown.
+
+
 ## August 5, 2026 (combat) — melee is judged against the monster you can see
 
 This is the other half of the fix below. That one put the swing ANIMATION on
