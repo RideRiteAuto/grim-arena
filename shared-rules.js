@@ -190,8 +190,267 @@ const GRIM_RULES = {
   SNAP_HZ: 10,           // snapshot rate for any monster that is moving
   SNAP_IDLE_HZ: 2,       // snapshot rate for monsters genuinely standing still
   INTEREST_R: 60,        // a player is only told about monsters this close
-  CLOCK_SAMPLES: 8       // rolling median window for server-time offset
+  CLOCK_SAMPLES: 8,      // rolling median window for server-time offset
+
+  // ---- zones --------------------------------------------------------------
+  // The terrain bake stores a zone id per grid cell and GRIM_WORLD.zone(x, z)
+  // reads it. That id is a TERRAIN label, not a design zone: the bake splits
+  // Ember into two altitude bands and carries an EASTRIDGE the design plan
+  // never names. This table is the one place the two vocabularies meet, so
+  // dressing, spawn tables and node tables all key off design zones and the
+  // bake stays free to resplit terrain without touching content.
+  //
+  // Index matches WG_ZONES in worldgen-data.js exactly. Do not reorder.
+  //   0 SEA  1 FROSTWILD  2 IRONSPIRE  3 HEARTLANDS  4 GREENWOOD  5 SUNCOAST
+  //   6 WINDSCAR  7 EMBER  8 EMBER_HI  9 MISTFEN  10 SUNSCORCH  11 EASTRIDGE
+  //   12 ISLES
+  ZONE_OF_BAKE: ['SEA', 'FROSTWILD', 'IRONSPIRE', 'HEARTLANDS', 'GREENWOOD', 'SUNCOAST',
+                 'WINDSCAR', 'EMBER', 'EMBER', 'MISTFEN', 'SUNSCORCH', 'EASTRIDGE', 'ISLES'],
+  // EMBER_HI (bake 8) is the volcanic core: same design zone as EMBER, but it
+  // is the only ground that rolls the deep Ember nodes. Flagged here rather
+  // than with a second zone name so nothing downstream has to special-case it.
+  ZONE_DEEP_BAKE: { 8: 'EMBER' },
+
+  ZONES: {
+    SEA:        { name: 'Open Water',        cont: '-',        band: [0, 0],   dress: false },
+    HEARTLANDS: { name: 'Heartlands',        cont: 'Valewold', band: [1, 5] },
+    GREENWOOD:  { name: 'Greenwood Marches', cont: 'Valewold', band: [4, 9] },
+    FROSTWILD:  { name: 'Frostwild North',   cont: 'Valewold', band: [8, 14] },
+    IRONSPIRE:  { name: 'Ironspire Mountains', cont: 'Valewold', band: [10, 16] },
+    SUNCOAST:   { name: 'Sun Coast',         cont: 'Valewold', band: [6, 12] },
+    WINDSCAR:   { name: 'Windscar Steppe',   cont: 'Ashmar',   band: [12, 18] },
+    EMBER:      { name: 'Ember Highlands',   cont: 'Ashmar',   band: [16, 22] },
+    MISTFEN:    { name: 'Mistfen Wetlands',  cont: 'Ashmar',   band: [14, 20] },
+    SUNSCORCH:  { name: 'Sunscorch Barrens', cont: 'Ashmar',   band: [18, 24] },
+    // Not in the design plan, but it is in the bake and players can walk on
+    // it, so it gets a set rather than staying bald. Rocky highland dressing
+    // with LOOSE STONE only: iron and coal stay Ironspire-exclusive, which is
+    // canon, so this ridge is scenery and stone, never a second ore country.
+    EASTRIDGE:  { name: 'Eastridge',         cont: 'Ashmar',   band: [12, 18] },
+    ISLES:      { name: 'Shattered Isles',   cont: 'Ashmar',   band: [10, 16] }
+  },
+
+  // ---- gathering ----------------------------------------------------------
+  // Three skills, one curve, tiered nodes, tiered tools. A node needs BOTH a
+  // skill level and a tool tier; the trade economy is the tool ladder, because
+  // no single zone's ground can build the top tiers.
+  GATHER: {
+    SKILLS: ['WOODCUTTING', 'MINING', 'FORAGING'],
+    MAX_LEVEL: 99,
+    // XP to advance from level n to n+1. Total to 99 is about 2.84M.
+    XP_BASE: 75,
+    XP_RATE: 1.085,
+    // Every tier gathers 15 percent faster than the one below it.
+    TOOL_SPEED: 1.15,
+    // Tier 3 reuses IRON AXE and IRON PICKAXE, which already ship as items, so
+    // a veteran's existing tools become tier 3 rather than being renamed out
+    // from under them. New characters are granted the crude pair instead of
+    // the iron pair, which is the "everyone logs in with these" line in the
+    // plan. Foraging tier 1 is bare hands, so it has no item.
+    TOOLS: [
+      { tier: 1, name: 'CRUDE',      axe: 'CRUDE AXE',      pick: 'CRUDE PICK',          sickle: null },
+      { tier: 2, name: 'COPPER',     axe: 'COPPER AXE',     pick: 'COPPER PICKAXE',      sickle: 'COPPER SICKLE' },
+      { tier: 3, name: 'IRON',       axe: 'IRON AXE',       pick: 'IRON PICKAXE',        sickle: 'IRON SICKLE' },
+      { tier: 4, name: 'STEEL',      axe: 'STEEL AXE',      pick: 'STEEL PICKAXE',       sickle: 'STEEL SICKLE' },
+      { tier: 5, name: 'OBSIDIAN',   axe: 'OBSIDIAN AXE',   pick: 'OBSIDIAN PICKAXE',    sickle: 'OBSIDIAN SICKLE' },
+      { tier: 6, name: 'MASTERWORK', axe: 'MASTERWORK AXE', pick: 'MASTERWORK PICKAXE',  sickle: 'MASTERWORK SICKLE' }
+    ],
+    TOOL_FOR: { WOODCUTTING: 'axe', MINING: 'pick', FORAGING: 'sickle' },
+
+    // Tool tiers are deliberately NOT a straight band off node level. Every
+    // tier's recipe needs material that a LOWER tier can already reach, or the
+    // ladder eats its own tail: copper ore at level 10 cannot need a copper
+    // pick, and obsidian flows cannot need an obsidian pick. Tier 6 gates
+    // nothing but the three level-90 rares, which is the point of a prestige
+    // tool.
+    //
+    // hp = swings to harvest, xp = per harvest (node level x 5),
+    // respawn = seconds, yield = [item, min, max], deep = interior of the zone
+    // only (the rares). zones lists every design zone the node rolls in.
+    NODES: {
+      // ---- legacy set: the arena and camp resources that already shipped.
+      // Their gates and yields are unchanged on purpose. Retuning them would
+      // lock existing players out of the smithing quest's iron and out of oaks
+      // they can already fell, which is a live-save regression, not content.
+      tree:      { skill: 'WOODCUTTING', lvl: 1,  tool: 1, hp: 3,  xp: 15,  respawn: 45,  yield: ['LOGS', 2, 2],        legacy: true },
+      oak:       { skill: 'WOODCUTTING', lvl: 5,  tool: 1, hp: 5,  xp: 60,  respawn: 90,  yield: ['OAK LOGS', 3, 3],    legacy: true },
+      rock:      { skill: 'MINING',      lvl: 1,  tool: 1, hp: 4,  xp: 20,  respawn: 60,  yield: ['IRON ORE', 2, 2],    legacy: true },
+
+      // ---- woodcutting
+      poplar:    { skill: 'WOODCUTTING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 45,  yield: ['LOGS', 1, 2],
+                   zones: ['HEARTLANDS', 'GREENWOOD', 'SUNCOAST', 'WINDSCAR', 'EASTRIDGE'] },
+      zoak:      { skill: 'WOODCUTTING', lvl: 10, tool: 1, hp: 3,  xp: 50,  respawn: 45,  yield: ['OAK LOGS', 1, 2],
+                   zones: ['HEARTLANDS', 'GREENWOOD'] },
+      palm:      { skill: 'WOODCUTTING', lvl: 20, tool: 2, hp: 3,  xp: 100, respawn: 45,  yield: ['PALM LOGS', 1, 2],
+                   zones: ['SUNCOAST', 'ISLES'] },
+      willow:    { skill: 'WOODCUTTING', lvl: 30, tool: 2, hp: 5,  xp: 150, respawn: 45,  yield: ['WILLOW LOGS', 1, 2],
+                   zones: ['MISTFEN'] },
+      bogoak:    { skill: 'WOODCUTTING', lvl: 30, tool: 2, hp: 5,  xp: 150, respawn: 45,  yield: ['BOG OAK LOGS', 1, 2],
+                   zones: ['MISTFEN'] },
+      elder:     { skill: 'WOODCUTTING', lvl: 40, tool: 3, hp: 5,  xp: 200, respawn: 45,  yield: ['ELDER LOGS', 1, 2],
+                   zones: ['GREENWOOD'] },
+      acacia:    { skill: 'WOODCUTTING', lvl: 50, tool: 4, hp: 5,  xp: 250, respawn: 45,  yield: ['ACACIA LOGS', 1, 2],
+                   zones: ['WINDSCAR'] },
+      icewood:   { skill: 'WOODCUTTING', lvl: 60, tool: 4, hp: 7,  xp: 300, respawn: 45,  yield: ['ICEWOOD', 1, 2],
+                   zones: ['FROSTWILD'] },
+      emberbark: { skill: 'WOODCUTTING', lvl: 75, tool: 5, hp: 7,  xp: 375, respawn: 45,  yield: ['EMBERBARK', 1, 2],
+                   zones: ['EMBER'] },
+      elderking: { skill: 'WOODCUTTING', lvl: 90, tool: 6, hp: 10, xp: 450, respawn: 480, yield: ['ANCIENT ELDER LOGS', 1, 2],
+                   zones: ['GREENWOOD'], deep: true, rare: true },
+
+      // ---- mining
+      stone:     { skill: 'MINING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 60,  yield: ['LOOSE STONE', 1, 2],
+                   zones: ['HEARTLANDS', 'GREENWOOD', 'IRONSPIRE', 'FROSTWILD', 'SUNCOAST', 'WINDSCAR', 'EMBER', 'SUNSCORCH', 'EASTRIDGE', 'ISLES'] },
+      copper:    { skill: 'MINING', lvl: 10, tool: 1, hp: 3,  xp: 50,  respawn: 60,  yield: ['COPPER ORE', 1, 2],
+                   zones: ['IRONSPIRE'] },
+      salt:      { skill: 'MINING', lvl: 20, tool: 2, hp: 3,  xp: 100, respawn: 60,  yield: ['SALT', 1, 2],
+                   zones: ['SUNCOAST'] },
+      ironore:   { skill: 'MINING', lvl: 30, tool: 2, hp: 5,  xp: 150, respawn: 60,  yield: ['IRON ORE', 1, 2],
+                   zones: ['IRONSPIRE'] },
+      coal:      { skill: 'MINING', lvl: 40, tool: 3, hp: 5,  xp: 200, respawn: 60,  yield: ['COAL', 1, 2],
+                   zones: ['IRONSPIRE'] },
+      saltpeter: { skill: 'MINING', lvl: 50, tool: 4, hp: 5,  xp: 250, respawn: 60,  yield: ['SALTPETER', 1, 2],
+                   zones: ['WINDSCAR'] },
+      glasssand: { skill: 'MINING', lvl: 55, tool: 4, hp: 7,  xp: 275, respawn: 60,  yield: ['GLASS SAND', 1, 2],
+                   zones: ['SUNSCORCH'] },
+      gold:      { skill: 'MINING', lvl: 65, tool: 4, hp: 7,  xp: 325, respawn: 60,  yield: ['GOLD ORE', 1, 2],
+                   zones: ['EMBER'] },
+      obsidian:  { skill: 'MINING', lvl: 80, tool: 4, hp: 7,  xp: 400, respawn: 60,  yield: ['OBSIDIAN', 1, 2],
+                   zones: ['EMBER'] },
+      embercryst:{ skill: 'MINING', lvl: 90, tool: 6, hp: 10, xp: 450, respawn: 480, yield: ['EMBER CRYSTAL', 1, 2],
+                   zones: ['EMBER'], deep: true, rare: true },
+
+      // ---- foraging
+      berry:     { skill: 'FORAGING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 35,  yield: ['BERRIES', 1, 2],
+                   zones: ['HEARTLANDS'] },
+      mushroom:  { skill: 'FORAGING', lvl: 15, tool: 1, hp: 3,  xp: 75,  respawn: 35,  yield: ['MUSHROOMS', 1, 2],
+                   zones: ['GREENWOOD'] },
+      reeds:     { skill: 'FORAGING', lvl: 25, tool: 2, hp: 5,  xp: 125, respawn: 35,  yield: ['REEDS', 1, 2],
+                   zones: ['MISTFEN'] },
+      holly:     { skill: 'FORAGING', lvl: 35, tool: 3, hp: 5,  xp: 175, respawn: 35,  yield: ['HOLLY', 1, 2],
+                   zones: ['FROSTWILD'] },
+      fenroot:   { skill: 'FORAGING', lvl: 45, tool: 3, hp: 5,  xp: 225, respawn: 35,  yield: ['FENROOT', 1, 2],
+                   zones: ['MISTFEN'] },
+      pearl:     { skill: 'FORAGING', lvl: 50, tool: 4, hp: 5,  xp: 250, respawn: 35,  yield: ['PEARL', 1, 1],
+                   zones: ['SUNCOAST'], water: true },
+      dyeflower: { skill: 'FORAGING', lvl: 55, tool: 4, hp: 7,  xp: 275, respawn: 35,  yield: ['DYE FLOWERS', 1, 2],
+                   zones: ['SUNSCORCH'] },
+      coral:     { skill: 'FORAGING', lvl: 65, tool: 4, hp: 7,  xp: 325, respawn: 35,  yield: ['CORAL', 1, 2],
+                   zones: ['ISLES'], water: true },
+      spice:     { skill: 'FORAGING', lvl: 70, tool: 4, hp: 7,  xp: 350, respawn: 35,  yield: ['SPICE', 1, 2],
+                   zones: ['SUNSCORCH'] },
+      firelily:  { skill: 'FORAGING', lvl: 75, tool: 5, hp: 7,  xp: 375, respawn: 35,  yield: ['FIRE LILY', 1, 2],
+                   zones: ['EMBER'] },
+      lotus:     { skill: 'FORAGING', lvl: 90, tool: 6, hp: 10, xp: 450, respawn: 480, yield: ['BLACK LOTUS', 1, 1],
+                   zones: ['MISTFEN'], deep: true, rare: true }
+    },
+
+    // 5 percent of harvests drop a bonus on top of the yield. Future hooks.
+    BONUS_CHANCE: 0.05,
+    BONUS: { WOODCUTTING: 'BIRD NEST', MINING: 'GEM SHARD', FORAGING: 'WILD SEED' },
+
+    // Crafted at the town forge. Every recipe above copper reaches into ground
+    // the crafter's home zone does not have. That is the trade economy: it is
+    // the same system as the skill ladder, wearing a different hat.
+    RECIPES: {
+      2: { need: [['COPPER ORE', 8], ['LOGS', 2]] },
+      3: { need: [['IRON ORE', 10], ['LOGS', 4]] },
+      4: { need: [['IRON ORE', 8], ['COAL', 6], ['OAK LOGS', 2]] },
+      5: { need: [['OBSIDIAN', 6], ['ACACIA LOGS', 2]], head: 4 },
+      6: { need: [['ICEWOOD', 2], ['GOLD ORE', 1]], head: 5 }
+    },
+
+    // Per 64m chunk, from the design plan's density budget.
+    CLUTTER_PER_CHUNK: [14, 22],
+    NODES_PER_CHUNK: [2, 4],
+    ROAD_CLEAR: 7,         // metres kept clear either side of a road centreline
+    TOWN_CLEAR: 60         // metres kept clear around every safe zone
+  }
 };
+
+// ---- gathering maths --------------------------------------------------------
+// One curve, computed once, shared by the client and any future server check.
+// XP to go from level n to n+1 is floor(75 * 1.085^n); the table below is the
+// cumulative total needed to BE level n.
+let GRIM_XP_TABLE = null;
+function grimXpTable() {
+  if (GRIM_XP_TABLE) return GRIM_XP_TABLE;
+  const G = GRIM_RULES.GATHER;
+  const t = [0, 0];                       // index 1 = level 1 = 0 xp
+  for (let n = 1; n < G.MAX_LEVEL; n++) t[n + 1] = t[n] + Math.floor(G.XP_BASE * Math.pow(G.XP_RATE, n));
+  GRIM_XP_TABLE = t;
+  return t;
+}
+// Total XP required to reach a level.
+function grimXpForLevel(lvl) {
+  const t = grimXpTable();
+  return t[Math.max(1, Math.min(GRIM_RULES.GATHER.MAX_LEVEL, lvl | 0))];
+}
+// Level from a raw XP total.
+function grimLevelFromXp(xp) {
+  const t = grimXpTable(), max = GRIM_RULES.GATHER.MAX_LEVEL;
+  xp = Math.max(0, xp || 0);
+  let lo = 1, hi = max;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (t[mid] <= xp) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+// The pre-zone-update curve, kept only so saves can be migrated off it.
+function grimLegacyLevel(xp) { return Math.min(99, Math.max(1, Math.floor(Math.pow((xp || 0) / 60, 0.6)) + 1)); }
+function grimLegacyXpForLevel(lvl) { return lvl <= 1 ? 0 : Math.ceil(60 * Math.pow(lvl - 1, 5 / 3)); }
+// Convert a stored XP value from the old curve to the new one, preserving both
+// the level and the fraction of progress through it. Nobody loses a level.
+function grimMigrateXp(oldXp) {
+  oldXp = Math.max(0, oldXp || 0);
+  if (!oldXp) return 0;
+  const L = grimLegacyLevel(oldXp);
+  if (L >= GRIM_RULES.GATHER.MAX_LEVEL) return grimXpForLevel(GRIM_RULES.GATHER.MAX_LEVEL);
+  const a = grimLegacyXpForLevel(L), b = grimLegacyXpForLevel(L + 1);
+  const frac = b > a ? Math.max(0, Math.min(1, (oldXp - a) / (b - a))) : 0;
+  const na = grimXpForLevel(L), nb = grimXpForLevel(L + 1);
+  return Math.floor(na + frac * (nb - na));
+}
+
+// ---- deterministic placement ------------------------------------------------
+// Every prop, node and spawn point in the world comes out of these. There is no
+// Math.random anywhere in placement: two players standing in the same field must
+// see the identical tree in the identical spot, because harvest state syncs by
+// node id and a node id is only meaningful if both machines generated the same
+// node list from the same inputs.
+function grimSeed(cx, cz, salt) {
+  // 32-bit integer hash of (chunkX, chunkZ, salt, WORLD_GEN). Signed inputs are
+  // folded into unsigned space first so negative chunks hash as cleanly as
+  // positive ones.
+  let h = 0x811c9dc5 ^ (GRIM_RULES.WORLD_GEN * 0x9e3779b1);
+  const mix = (v) => {
+    h ^= (v | 0);
+    h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
+  };
+  mix(cx); mix(cz);
+  if (typeof salt === 'string') { for (let i = 0; i < salt.length; i++) mix(salt.charCodeAt(i)); }
+  else if (salt !== undefined) mix(salt);
+  return h >>> 0;
+}
+// mulberry32: small, fast, and identical on every engine because every step is
+// an integer op. Returns a function yielding [0, 1).
+function grimRnd(seed) {
+  let a = (seed >>> 0) || 1;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1) >>> 0;
+    t = (t ^ (t + Math.imul(t ^ (t >>> 7), t | 61))) >>> 0;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// Design zone name for a baked zone id, plus whether that id is the deep band.
+function grimZoneName(bakeId) { return GRIM_RULES.ZONE_OF_BAKE[bakeId | 0] || 'HEARTLANDS'; }
+function grimZoneIsDeep(bakeId) { return !!GRIM_RULES.ZONE_DEEP_BAKE[bakeId | 0]; }
+// Stable id for a streamed node. Chunk coords plus its slot in that chunk's
+// deterministic list, so every client names the same node the same thing.
+function grimNodeId(cx, cz, i) { return cx + ':' + cz + ':' + i; }
 
 // Roll a loot table entry set. Both sides call this with the same tag object.
 // `rnd` is injected so the server can use a seeded generator and the client can

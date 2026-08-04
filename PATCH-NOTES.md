@@ -1,5 +1,45 @@
 # Grim World — patch notes
 
+## August 4, 2026 (zones-1) - Gathering skills and the zone dressing engine
+
+The world stops being bald. Ground outside the towns and roads now grows its own trees, bushes, stones and sticks, and the harvestable nodes in it are the ones that zone is supposed to have.
+
+WHAT LANDED
+
+- One level curve for every skill, defined in shared rules so the game and the server can never disagree about it. 2,838,130 XP to 99. Levels 1 to 40 come fast, the 50s are earned, 99 is a long haul.
+- Your existing skill XP was written against the old curve, so it is converted once on load. Your level does not change and neither does your progress through it. The old numbers are kept in your save under a backup key for one release, so this is reversible if anything looks wrong.
+- FORAGING is in. Eight skills now, so total level runs to 792.
+- Harvesting checks TWO things: your skill level and your tool tier. When you cannot take something, the message says which one stopped you and what fixes it, for example REQUIRES WOODCUTTING 5 or NEEDS A STEEL AXE. No more silent refusals.
+- Tool ladder from crude to masterwork. New characters start with crude tools. If you already own the iron axe and pickaxe, the game now reads those as tier 3, so nobody was downgraded.
+- Every tool and every gathered material is generated from the same table the gate check reads, so nothing can be required and missing.
+- Better tools and higher skill gather faster.
+- The dressing engine places props per 64m chunk from a seeded hash of the chunk and the world generation number. Same ground, same props, on every machine, forever. Nothing is placed in water, on a road, inside a town safe zone, or on a cliff face.
+- Ground clutter is merged into one mesh per chunk, no shadows, frozen matrix. A dressed chunk costs one draw call no matter how much is on it.
+- Harvestable nodes are real objects and run through the same depletion and refill code the old resources always used. Trees fall and leave a stump, ore veins empty out, picked plants leave their stalks. Walk away from a node you emptied and it is still empty when you come back.
+
+MEASURED, NOT ASSUMED
+
+Standing in the Heartlands at (-340, 200), worst frame over a full turn on the spot:
+
+- dressing off: 5,249 meshes, 1,269 draw calls
+- dressing on: 5,429 meshes, 1,286 draw calls
+
+So the whole dressing pass costs about 180 meshes and 17 draw calls. Greenwood at (-600, 420) read 5,417 meshes and 1,308 draw calls with 71 harvestable nodes and 25 dressed chunks loaded. Both are inside the 7,000 mesh and 1,400 draw call budget.
+
+Determinism was checked by booting the game twice from scratch and comparing the generated prop lists for 31 chunks: identical, down to position, rotation, scale, node kind and node id. 139 generated props were checked against the placement rules: none in water, none on a road, none in a town.
+
+Walking a twelve stop loop away and back left the mesh count where it started, so chunks are releasing their props properly.
+
+WHAT IS NOT IN YET
+
+Zone art is next, one zone at a time, starting with the Heartlands. Right now every zone uses the same shapes in its own colours. The new creature rigs, the tool forge recipes and the monsters are still to come.
+
+KNOWN, AND HONEST ABOUT IT
+
+- The arena and camp trees and iron rocks kept their old levels and yields on purpose. Retuning them to the new tables would have locked existing players out of the iron their smithing quest needs.
+- In a shared world the host still counts one swing as one swing, so a better tool does not yet make you faster when someone else is hosting. Single player and hosting are correct. This is on the list for the balance pass.
+
+
 ## August 5, 2026 (combat) — boss leaps and pounces actually hurt again
 
 The Hollow King's leap, the Plague Rat's pounce and the Bandit Captain's leap
@@ -335,59 +375,3 @@ The pack grid is now 7 wide instead of a tall 4-wide column, the panel
 is tighter with the dead space gone, and GEAR STATS is a compact
 two-column readout that skips zero stats, with a damage-reduction bar
 and a pointer to the K page.
-
-
-## August 5, 2026 (harvest feel) — falling trees, empty veins, deeper mana
-
-### Trees fall again - and properly this time
-Felled trees stopped falling entirely (a side effect of the server sim
-taking over: the visual feed that used to carry it went quiet). Resource
-visuals now run locally on every player's screen, so they can never go
-missing again. And the fall is real now: the tree hinges over at its
-base, accelerates, THUDS onto the ground with a screen shake, rests a
-beat still joined to the stump, then sinks away - leaving a cut STUMP
-standing where it grew until the tree regrows.
-
-### Ore veins go empty instead of vanishing
-Mined-out rocks no longer blink out of existence. The boulders stay, and
-the colored ore nuggets disappear - one look tells you the vein is empty.
-When the refill clock runs out, the nuggets return.
-
-### Honest feedback, tiered refill clocks
-Swinging at a stump says ONLY A STUMP REMAINS - THE TREE IS REGROWING;
-picking at an empty vein says THE VEIN IS EMPTY - THE ORE WILL REFILL
-SOON. Refill times now scale by tier: field trees and pines 45s, iron
-veins 60s, the great oaks 90s.
-
-### Deeper mana pool
-Player mana is up 50 percent (100 to 150). Costs are unchanged, so every
-caster gets half again as many spells before running dry. The mana bar
-scales to the new pool.
-
-
-## August 5, 2026 (clean menu) — the menu is just the menu
-
-HUD pieces were leaking onto the menu screen: the action bar, the
-compass, the minimap, the health bars and quest tracker, and the
-floating key hints (H teleport, X dismount, B boat). A central HUD
-blackout now runs every frame: the moment the menu overlay is up (or
-before you log in), every HUD element hides, and everything returns the
-instant you resume play. The pause screen is finally just the pause
-screen.
-
-
-## August 5, 2026 (player polish) — a hero worth following
-
-The chase camera stares at your back all day, and your back was a flat
-blue rectangle. The cape is now a draped, curved loft: it falls from a
-shoulder mantle with a gold clasp, curves away from the armor, widens
-toward a split-tail hem, and still sways as you move. The body got the
-matching pass: forearm bracers with elbow cops, knee plates and shin
-greaves over the boots, and a flared neck guard on the back of the helm.
-Applies to you, other players, and every knight-built NPC.
-
-Also shipped: Zone Dressing Plan v3 in the repo - the complete bestiary
-(30+ monsters, each with a rig, stats, loot, and its own SIGNATURE
-attack), the wildlife roster with town-pet protection, all gathering
-numbers (XP curve, node stats, tool recipes), and the zone-by-zone
-rollout order.
