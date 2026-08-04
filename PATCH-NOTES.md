@@ -1,5 +1,30 @@
 # Grim World — patch notes
 
+## August 4, 2026 (zones-2a) - Zone art: every tree its own shape, every zone its own ground
+
+Phase 2 begins with the look. The engine already placed props correctly, it just placed the same four props everywhere in different colours. Now a zone looks like itself.
+
+WHAT CHANGED
+
+- Every tree species has its own silhouette instead of one shape recoloured. A poplar is tall and narrow with its canopy stacked up the trunk, an oak is short and wide, an elder is huge, a pine is a spire, a palm is a bare trunk with a crown on top, a bog oak and an emberbark are bare snags. Orchard apples carry fruit, which at fifty metres is the entire difference between an apple tree and a small oak.
+- Every zone has its own ground cover. The Heartlands get tall grass, wheat, wildflowers and field stones, with hay bales on the farmland ring near the capital. Greenwood gets ferns and fallen logs. Frostwild gets snow drifts. Ironspire gets scree and boulders. Windscar gets dry grass and sun bleached bones. Ember gets ash drifts and obsidian shards. Mistfen gets reeds. Sunscorch gets bone and glass glitter. The coast and isles get shells and driftwood.
+- Clutter grows in CLUMPS now. Grass grows in patches, stones collect in drifts, ferns cluster. Scattering props evenly put one every twelve metres, which reads as litter, not as ground.
+- Grass is a tuft of leaning blades rather than a single blade. A three sided cone seen side on is a flat triangle, so the first pass gave fields of little gold shards standing on end.
+- Ground cover density is up roughly four times, from the plan's 14 to 22 props per chunk to 55 to 85.
+
+ABOUT THAT DENSITY
+
+The plan's 14 to 22 was written before the clutter was merged. Merged, a chunk's entire ground cover is ONE draw call no matter how much is on it, so the low number bought nothing and left the starter fields looking bald. It was raised and then measured, not assumed.
+
+Heartlands, worst frame over a full turn on the spot: 5,427 meshes and 1,288 draw calls with dressing on, against 5,252 and 1,274 with it off. Greenwood: 5,419 meshes, 1,303 draw calls. Four times the ground cover cost about 14 draw calls. Both well inside the 7,000 mesh and 1,400 draw call budget.
+
+Determinism still holds: two fresh boots generate identical prop lists. 652 generated props were checked against the placement rules with none in water, on a road, or in a town. One bug was caught that way and fixed: the first member of each clump was skipping the water check because the site had already passed it, but a clump member sits offset from its site.
+
+STILL TO COME IN PHASE 2
+
+The Heartlands creatures: boar, giant rat and the young goblin's shriek.
+
+
 ## August 5, 2026 (art) — the Plague Rat is solid again, and so is everything else
 
 You could see straight through the Plague Rat into the inside of its own body.
@@ -348,35 +373,3 @@ attacks, on top of the earlier timing fixes. If your machine still dips,
 GRAPHICS: LOW on the menu turns shadows off entirely - and the coming
 zone dressing engine batches its scenery from day one so density stays
 cheap.
-
-
-## August 5, 2026 (clean cuts) — stumps only exist once the tree is cut
-
-The stump used to be a separate shape hiding inside the trunk, and its
-edges peeked through the bark on standing trees. Stumps are now cut from
-the trunk's own base profile and stay completely INVISIBLE while the
-tree stands - the bark is seamless - then appear at the exact moment the
-tree breaks off and falls, and vanish again when it regrows. The break
-reads clean: falling trunk, pale sawn face, stump left behind.
-
-
-## August 5, 2026 (combat feel) — swings that land when they look like they land
-
-### No more whiffed openers
-Monsters used to start their first swing at the very edge of their reach,
-so the opening attacks you SAW often missed - swings with no damage and
-no hit splat, which read as animation and damage being out of sync.
-Melee attacks now start from 85 percent of max reach, so the swing you
-see is a swing that connects.
-
-### No more doorstep hesitation
-Attack decisions were a per-frame coin flip that could leave a monster
-standing in your face for over a second. The longer an NPC stands in
-reach without swinging, the more certain the next swing now becomes - a
-first attack is near-guaranteed within about half a second of arrival.
-
-### Bites synced to damage
-The four-legged attack lunge (wolves and their coming kin) peaked early,
-before the damage moment. It now reaches full extension exactly on the
-frame the damage lands, then recovers - the bite you see is the bite
-that hits.

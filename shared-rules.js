@@ -278,24 +278,34 @@ const GRIM_RULES = {
 
       // ---- woodcutting
       poplar:    { skill: 'WOODCUTTING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 45,  yield: ['LOGS', 1, 2],
+                   shape: 'poplar',
                    zones: ['HEARTLANDS', 'GREENWOOD', 'SUNCOAST', 'WINDSCAR', 'EASTRIDGE'] },
       zoak:      { skill: 'WOODCUTTING', lvl: 10, tool: 1, hp: 3,  xp: 50,  respawn: 45,  yield: ['OAK LOGS', 1, 2],
+                   shape: 'broad',
                    zones: ['HEARTLANDS', 'GREENWOOD'] },
       palm:      { skill: 'WOODCUTTING', lvl: 20, tool: 2, hp: 3,  xp: 100, respawn: 45,  yield: ['PALM LOGS', 1, 2],
+                   shape: 'palm',
                    zones: ['SUNCOAST', 'ISLES'] },
       willow:    { skill: 'WOODCUTTING', lvl: 30, tool: 2, hp: 5,  xp: 150, respawn: 45,  yield: ['WILLOW LOGS', 1, 2],
+                   shape: 'willow',
                    zones: ['MISTFEN'] },
       bogoak:    { skill: 'WOODCUTTING', lvl: 30, tool: 2, hp: 5,  xp: 150, respawn: 45,  yield: ['BOG OAK LOGS', 1, 2],
+                   shape: 'snag',
                    zones: ['MISTFEN'] },
       elder:     { skill: 'WOODCUTTING', lvl: 40, tool: 3, hp: 5,  xp: 200, respawn: 45,  yield: ['ELDER LOGS', 1, 2],
+                   shape: 'elder',
                    zones: ['GREENWOOD'] },
       acacia:    { skill: 'WOODCUTTING', lvl: 50, tool: 4, hp: 5,  xp: 250, respawn: 45,  yield: ['ACACIA LOGS', 1, 2],
+                   shape: 'broad',
                    zones: ['WINDSCAR'] },
       icewood:   { skill: 'WOODCUTTING', lvl: 60, tool: 4, hp: 7,  xp: 300, respawn: 45,  yield: ['ICEWOOD', 1, 2],
+                   shape: 'pine',
                    zones: ['FROSTWILD'] },
       emberbark: { skill: 'WOODCUTTING', lvl: 75, tool: 5, hp: 7,  xp: 375, respawn: 45,  yield: ['EMBERBARK', 1, 2],
+                   shape: 'snag',
                    zones: ['EMBER'] },
       elderking: { skill: 'WOODCUTTING', lvl: 90, tool: 6, hp: 10, xp: 450, respawn: 480, yield: ['ANCIENT ELDER LOGS', 1, 2],
+                   shape: 'elder',
                    zones: ['GREENWOOD'], deep: true, rare: true },
 
       // ---- mining
@@ -360,8 +370,12 @@ const GRIM_RULES = {
       6: { need: [['ICEWOOD', 2], ['GOLD ORE', 1]], head: 5 }
     },
 
-    // Per 64m chunk, from the design plan's density budget.
-    CLUTTER_PER_CHUNK: [14, 22],
+    // Per 64m chunk. The design plan says 14 to 22, which was written before
+    // the clutter was merged. Merged, a chunk's entire ground cover is ONE draw
+    // call whatever the count, so the old number bought nothing and left the
+    // starter fields looking bald: one clump every twenty metres. Raised, and
+    // the cost was measured rather than assumed. Draw calls do not move.
+    CLUTTER_PER_CHUNK: [55, 85],
     NODES_PER_CHUNK: [2, 4],
     ROAD_CLEAR: 7,         // metres kept clear either side of a road centreline
     TOWN_CLEAR: 60         // metres kept clear around every safe zone
