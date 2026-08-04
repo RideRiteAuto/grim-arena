@@ -1,5 +1,26 @@
 # Grim World — patch notes
 
+## August 5, 2026 (rowing follow-up) — hands on the grips, both hands busy
+
+### Hands meet the handles
+The arms were rowing a half-cycle out of step with the oars — reaching
+forward while the handles swung back. The stroke phases are now aligned:
+arms reach forward exactly when the handles swing forward, pull back as
+they come back, and the arms angle inward to the grips instead of splaying
+out to the gunwales. The oarlocks moved slightly ahead of the bench so the
+handles sit in front of the rower where his hands are.
+
+### The blade works the water properly
+The blade was lifting during the pull and dragging during the return —
+backwards. It now stays buried through the pull and lifts clear on the
+way forward, like actual rowing.
+
+### Rowing takes both hands
+Weapons AND the shield now stow automatically the moment you board, and
+come back when you step off. Attacks, guard, and every spell (including
+quick heal) are disabled while boating or swimming — no casting frost
+bolts from the rowing bench.
+
 ## August 5, 2026 (hotfix) — un-piling the great monster huddle
 
 The "keep creatures out of the water" pass had a bad wet test: it treated
