@@ -1,5 +1,34 @@
 # Grim World — patch notes
 
+## August 5, 2026 — you SIT in the boat, and swimmers stopped barrel-rolling
+
+### Rowing, seated, like a person
+You now sit down IN the hull — hips on the bench, legs locked forward,
+no more hovering above the boat. Your body is bolted to the hull: it
+cannot spin on deck anymore. Only your head turns to follow the camera,
+clamped to a natural range.
+
+### The boat drives like a boat
+W rows forward along the hull's heading and S back-paddles; A and D steer
+the hull; the mouse is pure free-look. You can hold W dead straight while
+looking all around — driving and looking are fully separate now. Shift is
+still the full-speed row. The camera also rides higher and a touch farther
+back while aboard, so you see the boat and the water instead of a wall of
+knight.
+
+### The swimming barrel-roll is dead
+Turning while swimming rolled your whole body over like a spit-roast —
+a rotation-order bug: the body was laid prone first and then turned around
+its own tilted axis. Rotation now yaws flat around the world's up axis
+first, then tilts. Turns pivot cleanly with a gentle bank, no more
+backflips.
+
+### Wading before swimming
+At rest or moving slowly in deep water you tread more upright; the body
+lays down into the full prone stroke as you pick up speed, and stands back
+up as you slow. The transition is blended, not snapped.
+
+
 ## August 5, 2026 (small hours) — B for boat, and everyone out of the pool
 
 ### B — launch / stow the rowboat
