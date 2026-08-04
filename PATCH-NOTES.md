@@ -1,5 +1,16 @@
 # Grim World — patch notes
 
+## August 5, 2026 (map pan and zoom) — get a closer look
+
+The world map now pans and zooms. Drag with the mouse to move around,
+scroll to zoom up to 6x - the zoom centers on your cursor, and since the
+chart is vector art it stays razor sharp all the way in. The view is
+clamped to the chart: no amount of dragging or zooming can show blank
+space past the map edges. Your view (position and zoom) is remembered for
+the whole play session, so the map reopens right where you left it, and
+resets fresh on the next login. The arrow keeps its normal size at every
+zoom level.
+
 ## August 5, 2026 (map follow-up) — M toggles the map both ways
 
 Opening the map releases your mouse cursor, and the key handler used to
