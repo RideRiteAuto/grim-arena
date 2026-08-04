@@ -133,8 +133,15 @@ function stepNpc(n, dt, ctx) {
   }
 
   // ---- face the target ---------------------------------------------------
+  // A committed swing does NOT steer. The attack event carries the facing the
+  // blow was launched with, and every player judges their own dodge against
+  // the monster they can see; if the monster keeps turning through its own
+  // commit window those two stop describing the same arc, and worse, a
+  // monster that tracks you all the way through its wind-up cannot be dodged
+  // by moving, which is the whole point of a telegraph. It aimed when it
+  // decided to swing. It lives with that until the swing is over.
   const tox = (tgt.x - n.x) / (dp || 1), toz = (tgt.z - n.z) / (dp || 1);
-  n.yaw = Math.atan2(tox, toz);
+  if (!n.act) n.yaw = Math.atan2(tox, toz);
 
   n.aiT -= dt; n.aiSwitch -= dt;
   if (n.aiT <= 0) { n.aiT = 1.1 + rnd() * 1.6; n.aiStrafe = rnd() < 0.5 ? -1 : 1; }

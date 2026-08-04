@@ -225,3 +225,25 @@ not been ruled out — measure before promising.
    loot rolls server-side are exempt.
 9. Free tier only: no paid services, no accounts Kevin has to pay for.
 10. Update PATCH-NOTES.md with every push, in plain language.
+11. **A monster's blow is judged from the monster you can SEE, never from the
+    sample carried in the attack message.** The `atk` event's `x`/`z`/`yaw` are
+    the monster's pose when it began winding up; the body on screen is drawn
+    from the live position feed and has moved on by the time the blade lands
+    (measured: 0.82m and 20 degrees across one 0.66s swing). `judgeMyDodge`
+    takes geometry from the entity and only reach/arc/damage from the event,
+    and it is fired from the render loop by `stepServerSwing` on the frame the
+    animation reaches its damage window — never from a `setTimeout`. Kevin
+    burned days on this one. Do not "simplify" it back to a timer, and do not
+    reintroduce `m.x`/`m.yaw` into the hit test.
+12. **Nothing steers while it is committed to a swing.** `stepNpc` only updates
+    `n.yaw` when `!n.act`, and `onNpcSnap` only adopts a snapshot's yaw AFTER
+    the guard that protects a swing in flight. A monster that tracks you
+    through its own wind-up cannot be dodged, which defeats the whole
+    telegraph. This is engine-wide on purpose: every melee attacker, including
+    every boss, funnels through `ctx.attack` -> `scheduleAttack`, so a NEW
+    monster or boss inherits both rules with no per-NPC work. Keep it that way.
+    If you ever find yourself writing attack timing or hit geometry inside a
+    specific monster's code, that is the bug.
+13. Server time converts back to local time by SUBTRACTING `_clkOff`
+    (`srvNow()` adds it, so the inverse subtracts). All three schedulers had
+    this backwards once and it doubled clock drift instead of cancelling it.

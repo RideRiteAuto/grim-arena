@@ -1,5 +1,94 @@
 # Grim World — patch notes
 
+## August 5, 2026 (combat) — melee is judged against the monster you can see
+
+This is the other half of the fix below. That one put the swing ANIMATION on
+the same clock as the damage, which was right and needed. But nobody had
+checked WHERE the damage was being measured from, and that turned out to be the
+bigger half.
+
+### The blade swept one arc, the damage tested another
+
+When a monster swings, the server announces it once with the position and
+facing the monster had at that instant. Your machine then waited out the
+wind-up and asked "was I inside that?". The trouble is that the monster you are
+looking at is not drawn from the attack message at all. It is drawn from the
+position feed, live, every frame, and it keeps walking and keeps turning while
+the swing plays.
+
+Measured against the live server, one ordinary 0.66 second swing:
+
+  monster moves during the swing     0.82 m
+  monster turns during the swing     20 degrees
+  error at the moment the blow lands  ~0.5 m and ~14 degrees
+
+On a three metre reach that is a sixth of the range and a quarter of the half
+arc, and it is not a constant offset you could learn. Monsters pick a new
+strafe direction on a random one to three second timer, so the invisible hit box
+sat to your left, then to your right, then behind you. That is why it felt
+random rather than merely late, and why no amount of retiming ever fixed it.
+
+Arrows, bolts and fireballs never had this problem, which is exactly why they
+always felt fine: a projectile freezes the same stale origin, but then it
+becomes a real object that flies from there, so the thing that hits you is the
+thing you were watching. Melee was the only attack in the game where the damage
+came from somewhere you could not see.
+
+Melee now works the way projectiles already did. The blow is resolved in the
+render loop, on the frame the blade actually passes through you, measured from
+the monster's drawn position and drawn facing. Reach, arc and damage still come
+from the server, so nobody can widen their own hit box.
+
+### Monsters no longer pirouette through their own swing
+
+A monster re-aimed at you every tick, including while committed to an attack.
+In a test where the player circles it, one goblin turned 351 degrees during a
+single swing, tracking the player the whole way. That made the telegraph
+unreadable and meant a swing could not be dodged by moving, which is the entire
+point of having a wind-up. A monster now aims when it decides to swing and
+lives with that until the swing is done. Applies to every monster in the world:
+goblins, knights, bandits, wolves, the workers on their tools, and all four
+bosses, since they all funnel through the same attack call.
+
+### Also fixed while in here
+
+- **Server clock offset was applied backwards.** `srvNow()` defines the offset
+  as one you subtract to get back to local time, but all three schedulers added
+  it. That doubled any drift in your PC's clock instead of cancelling it, and
+  every telegraph in the game was delayed by twice that amount. If your Windows
+  time sync had drifted a second, every monster swung a second late while its
+  body carried on moving live underneath the animation.
+- **Move timings now come off the wire.** The client was reading wind-up and
+  recovery out of its own copy of the move table instead of the numbers the
+  server sent with that exact swing. They agree today. They would have silently
+  stopped agreeing the first time somebody retuned a move.
+- **The two damage paths can no longer overlap.** If the position feed goes
+  quiet your machine takes the fight back and runs monsters locally. Any swing
+  the server had already announced is now cancelled at that moment, instead of
+  landing on top of the local one from an unrelated clock. The handover also
+  waits 2 seconds instead of 1.2 so an ordinary frame hitch does not trigger it.
+- **A monster's health bar moves when you hit it.** Your damage number appeared
+  instantly but the bar waited for the server to answer, so at any real ping the
+  bar visibly lagged your hits. It is now predicted locally and corrected when
+  the server's number arrives. It will never predict a death, so nothing falls
+  over and stands back up.
+- Removed a `hitrep` message the client sent on every landed blow. It was not on
+  the relay's accepted list and had been silently discarded all along.
+
+### How this was verified
+
+Not by eye. A probe connected to the live production relay over a WebSocket,
+aggroed a real monster and logged every attack event against the position feed
+frame by frame; those are the numbers quoted above. The sim change is covered by
+a test that orbits a player around a monster and asserts the facing never moves
+during a committed swing (351 degrees before, 0.0 after). The client change is
+covered by eight assertions driven against the real shipped bundle in a browser:
+a monster standing still still hits, one that strafes out of reach does not, one
+that ends up behind you does not, one that turns away does not, a swing damages
+exactly once no matter how many frames poll it, nothing lands before the wind-up
+finishes, a corpse deals nothing, and the wire's timings are the ones used.
+
+
 ## August 5, 2026 (combat) — the splat now lands on the swing, and corpses stop swinging
 
 ### Hits landed before the swing did, by exactly your ping
