@@ -1,5 +1,15 @@
 # Grim World — patch notes
 
+## August 5, 2026 (clean cuts) — stumps only exist once the tree is cut
+
+The stump used to be a separate shape hiding inside the trunk, and its
+edges peeked through the bark on standing trees. Stumps are now cut from
+the trunk's own base profile and stay completely INVISIBLE while the
+tree stands - the bark is seamless - then appear at the exact moment the
+tree breaks off and falls, and vanish again when it regrows. The break
+reads clean: falling trunk, pale sawn face, stump left behind.
+
+
 ## August 5, 2026 (combat feel) — swings that land when they look like they land
 
 ### No more whiffed openers
@@ -195,13 +205,3 @@ with a long tapering snout, chisel teeth, glowing toxic eyes and nose,
 thin dish ears, actual whiskers, clawed feet, and a naked segmented tail
 that tapers away in a falling curve. The toxic boils still glow along its
 spine. Same fight, same toxin pools, same loot.
-
-
-## August 5, 2026 (model rewrite 4) — sheep worth shearing
-
-The pasture sheep are rebuilt: a slim lofted under-body beneath a lumpy,
-vertex-sculpted wool shell (the shell is what shrinks when you shear
-them), a proper dark face with side ears, a little wool cap between the
-ears, a stub wool tail, and jointed legs with hooves that actually trot
-while they wander and stop when they graze. Shearing, wool regrowth and
-the F prompt all work exactly as before.
