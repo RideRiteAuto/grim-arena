@@ -17,7 +17,7 @@ const GRIM_RULES = {
   // relay REPLACES its stored manifest even with players online, so a new
   // world ships without the old one squatting the server. Bump it whenever
   // the terrain bake or manifest layout changes.
-  WORLD_GEN: 5,
+  WORLD_GEN: 6,
 
   // ---- world bounds -------------------------------------------------------
   WORLD_R: 4800,         // Asterra chart radius: covers the whole baked map;
@@ -68,7 +68,14 @@ const GRIM_RULES = {
     // the original authored numbers, moved somewhere both sides can read them.
     // land is the fraction of the move's duration at which the boss touches
     // down, so a longer hop lands later without needing its own table.
-    leap:   { land: .78, dmg: [14, 20], range: 2.6, arc: 2.8, heavy: true }
+    leap:   { land: .78, dmg: [14, 20], range: 2.6, arc: 2.8, heavy: true },
+    // The Argent Warden. A thing three times a man's height cannot fight with a
+    // man's reach: gheavy tops out at 3.9m, which on a model this size lands
+    // somewhere inside its own chest. These are the same wind/act/rec grammar
+    // as every other move, just scaled to the arm that swings them.
+    maul:   { wind: .42, act: .16, rec: .36, dmg: [24, 32], range: 5.2, arc: 2.6, stam: 0 },
+    hammer: { wind: .74, act: .20, rec: .56, dmg: [44, 58], range: 5.6, arc: 2.9, stam: 0, heavy: true },
+    sunder: { wind: .88, act: .22, rec: .62, dmg: [34, 48], range: 8.0, arc: 6.3, stam: 0, heavy: true }
   },
 
   // ---- safe ground --------------------------------------------------------
@@ -81,16 +88,22 @@ const GRIM_RULES = {
   DEAGGRO_R: 32,         // lose interest past this
   RESPAWN_MS: 120000,
   RESPAWN_BOSS_MS: 150000,
+  // An Argent Anchor re-forges itself far faster than anything else in the
+  // world dies and returns. That number IS the two-player requirement: alone
+  // you cannot break the second one before the first is standing again.
+  RESPAWN_ANCHOR_MS: 26000,
 
   // ---- loot ---------------------------------------------------------------
   // Pure data so the game and the server roll the same table. qty may be a
   // number or a [min,max] inclusive range.
   LOOT: {
-    gold: { king: 900, captain: 280, wraith: 75, bandit: 48, wolf: 24, deer: 9, rat: 130, goblin: 6, other: 32 },
+    gold: { warden: 1400, king: 900, captain: 280, wraith: 75, bandit: 48, wolf: 24, deer: 9, rat: 130, goblin: 6, other: 32 },
     // first matching rule wins, mirroring the original if/else chain exactly
     extra: [
       { tag: 'wolf',  items: [{ item: 'WOLF PELT', qty: 1 }] },
       { tag: 'deer',  items: [{ item: 'DEER HIDE', qty: 1 }, { item: 'VENISON', qty: [1, 2] }] },
+      { tag: 'warden', items: [{ item: "WARDEN'S BULWARK", qty: 1 }] },
+      { tag: 'anchor', items: [] },
       { tag: 'king',  items: [{ item: 'HOLLOW PLATE', qty: 1 }, { item: 'HOLLOW AMULET', qty: 1 }] },
       { tag: 'rat',   items: [{ item: 'RAT TAIL', qty: 1 }] },
       { notTags: ['goblin', 'bandit', 'wraith', 'captain'], items: [{ item: 'TESLA PAYCHECK', qty: 1 }] }
@@ -162,6 +175,39 @@ const GRIM_RULES = {
         leap:     { cd: [5, 8],    band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11, hit: 'leap' },
         bash:     { cd: [5, 8],    band: [0, 2.6],   move: 'bash' },
         melee:    { cd: [0.5, 1],  band: [0, 3.0],   move: 'light' }
+      }
+    },
+    // THE ARGENT WARDEN. A siege golem the capital built and then lost control
+    // of, standing derelict in the northern Heartlands.
+    //
+    // The fight is a two-player fight by construction rather than by having a
+    // big health bar. While either of its Argent Anchors still stands the
+    // Warden pulls the field back into itself and regenerates, and an anchor
+    // re-forges 26 seconds after it falls. One player can comfortably break an
+    // anchor; what one player cannot do is break the SECOND one before the
+    // first is back up, so the regen never stops and the health bar never
+    // really moves. Two players split the field, both anchors go down inside
+    // the same window, the drain stops, and the Warden is mortal.
+    //
+    // Nothing about this is a locked door: a player fast enough to break both
+    // alone inside 26 seconds has earned it.
+    argentWarden: {
+      anchors: 'ARGENT ANCHOR',
+      regen: 70,                    // hp per second while ANY anchor stands
+      phases: [
+        { untilHpPct: 55, moves: ['maul', 'maul', 'hammer', 'sunder', 'lance'] },
+        { untilHpPct: 0,  moves: ['maul', 'hammer', 'sunder', 'sunder', 'lance', 'vault'],
+          spdMul: 1.22, dmgMul: 1.18,
+          onEnter: { shout: 'THE BANDS ARE BROKEN' } }
+      ],
+      moves: {
+        maul:   { cd: [0.7, 1.2], band: [0, 5.4],  move: 'maul' },
+        hammer: { cd: [3.5, 5.5], band: [0, 5.6],  move: 'hammer' },
+        sunder: { cd: [4.5, 7],   band: [0, 7.8],  move: 'sunder' },
+        // the ranged answer: standing at fifteen metres plinking is not a plan
+        lance:  { cd: [3.5, 6],   band: [6, 32],   move: 'volley',
+                  proj: { kind: 'frost', n: 5, spread: 0.26, speed: 17, dmg: 16 } },
+        vault:  { cd: [5, 8],     band: [7, 22],   state: 'leap', dur: 0.95, lunge: 16, hit: 'leap' }
       }
     },
     // The Plague Rat. A beast, so it fights with the same claw and bite as a

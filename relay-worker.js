@@ -54,7 +54,7 @@ const GRIM_RULES = {
   // relay REPLACES its stored manifest even with players online, so a new
   // world ships without the old one squatting the server. Bump it whenever
   // the terrain bake or manifest layout changes.
-  WORLD_GEN: 5,
+  WORLD_GEN: 6,
 
   // ---- world bounds -------------------------------------------------------
   WORLD_R: 4800,         // Asterra chart radius: covers the whole baked map;
@@ -105,7 +105,14 @@ const GRIM_RULES = {
     // the original authored numbers, moved somewhere both sides can read them.
     // land is the fraction of the move's duration at which the boss touches
     // down, so a longer hop lands later without needing its own table.
-    leap:   { land: .78, dmg: [14, 20], range: 2.6, arc: 2.8, heavy: true }
+    leap:   { land: .78, dmg: [14, 20], range: 2.6, arc: 2.8, heavy: true },
+    // The Argent Warden. A thing three times a man's height cannot fight with a
+    // man's reach: gheavy tops out at 3.9m, which on a model this size lands
+    // somewhere inside its own chest. These are the same wind/act/rec grammar
+    // as every other move, just scaled to the arm that swings them.
+    maul:   { wind: .42, act: .16, rec: .36, dmg: [24, 32], range: 5.2, arc: 2.6, stam: 0 },
+    hammer: { wind: .74, act: .20, rec: .56, dmg: [44, 58], range: 5.6, arc: 2.9, stam: 0, heavy: true },
+    sunder: { wind: .88, act: .22, rec: .62, dmg: [34, 48], range: 8.0, arc: 6.3, stam: 0, heavy: true }
   },
 
   // ---- safe ground --------------------------------------------------------
@@ -118,16 +125,22 @@ const GRIM_RULES = {
   DEAGGRO_R: 32,         // lose interest past this
   RESPAWN_MS: 120000,
   RESPAWN_BOSS_MS: 150000,
+  // An Argent Anchor re-forges itself far faster than anything else in the
+  // world dies and returns. That number IS the two-player requirement: alone
+  // you cannot break the second one before the first is standing again.
+  RESPAWN_ANCHOR_MS: 26000,
 
   // ---- loot ---------------------------------------------------------------
   // Pure data so the game and the server roll the same table. qty may be a
   // number or a [min,max] inclusive range.
   LOOT: {
-    gold: { king: 900, captain: 280, wraith: 75, bandit: 48, wolf: 24, deer: 9, rat: 130, goblin: 6, other: 32 },
+    gold: { warden: 1400, king: 900, captain: 280, wraith: 75, bandit: 48, wolf: 24, deer: 9, rat: 130, goblin: 6, other: 32 },
     // first matching rule wins, mirroring the original if/else chain exactly
     extra: [
       { tag: 'wolf',  items: [{ item: 'WOLF PELT', qty: 1 }] },
       { tag: 'deer',  items: [{ item: 'DEER HIDE', qty: 1 }, { item: 'VENISON', qty: [1, 2] }] },
+      { tag: 'warden', items: [{ item: "WARDEN'S BULWARK", qty: 1 }] },
+      { tag: 'anchor', items: [] },
       { tag: 'king',  items: [{ item: 'HOLLOW PLATE', qty: 1 }, { item: 'HOLLOW AMULET', qty: 1 }] },
       { tag: 'rat',   items: [{ item: 'RAT TAIL', qty: 1 }] },
       { notTags: ['goblin', 'bandit', 'wraith', 'captain'], items: [{ item: 'TESLA PAYCHECK', qty: 1 }] }
@@ -199,6 +212,39 @@ const GRIM_RULES = {
         leap:     { cd: [5, 8],    band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11, hit: 'leap' },
         bash:     { cd: [5, 8],    band: [0, 2.6],   move: 'bash' },
         melee:    { cd: [0.5, 1],  band: [0, 3.0],   move: 'light' }
+      }
+    },
+    // THE ARGENT WARDEN. A siege golem the capital built and then lost control
+    // of, standing derelict in the northern Heartlands.
+    //
+    // The fight is a two-player fight by construction rather than by having a
+    // big health bar. While either of its Argent Anchors still stands the
+    // Warden pulls the field back into itself and regenerates, and an anchor
+    // re-forges 26 seconds after it falls. One player can comfortably break an
+    // anchor; what one player cannot do is break the SECOND one before the
+    // first is back up, so the regen never stops and the health bar never
+    // really moves. Two players split the field, both anchors go down inside
+    // the same window, the drain stops, and the Warden is mortal.
+    //
+    // Nothing about this is a locked door: a player fast enough to break both
+    // alone inside 26 seconds has earned it.
+    argentWarden: {
+      anchors: 'ARGENT ANCHOR',
+      regen: 70,                    // hp per second while ANY anchor stands
+      phases: [
+        { untilHpPct: 55, moves: ['maul', 'maul', 'hammer', 'sunder', 'lance'] },
+        { untilHpPct: 0,  moves: ['maul', 'hammer', 'sunder', 'sunder', 'lance', 'vault'],
+          spdMul: 1.22, dmgMul: 1.18,
+          onEnter: { shout: 'THE BANDS ARE BROKEN' } }
+      ],
+      moves: {
+        maul:   { cd: [0.7, 1.2], band: [0, 5.4],  move: 'maul' },
+        hammer: { cd: [3.5, 5.5], band: [0, 5.6],  move: 'hammer' },
+        sunder: { cd: [4.5, 7],   band: [0, 7.8],  move: 'sunder' },
+        // the ranged answer: standing at fifteen metres plinking is not a plan
+        lance:  { cd: [3.5, 6],   band: [6, 32],   move: 'volley',
+                  proj: { kind: 'frost', n: 5, spread: 0.26, speed: 17, dmg: 16 } },
+        vault:  { cd: [5, 8],     band: [7, 22],   state: 'leap', dur: 0.95, lunge: 16, hit: 'leap' }
       }
     },
     // The Plague Rat. A beast, so it fights with the same claw and bite as a
@@ -582,9 +628,22 @@ export class World {
       if (s.king || nm.indexOf('HOLLOW KING') >= 0) n.scriptId = 'hollowKing';
       else if (nm.indexOf('SAILERS') >= 0 || s.spell === 'snare') n.scriptId = 'sailers';
       else if ((s.tag && s.tag.rat) || nm.indexOf('PLAGUE RAT') >= 0) n.scriptId = 'plagueRat';
+      else if ((s.tag && s.tag.warden) || nm.indexOf('ARGENT WARDEN') >= 0) n.scriptId = 'argentWarden';
       else if (s.brawler && s.boss) n.scriptId = 'brawler';
       return n;
     });
+    // Bind every script that drains from anchors to the actual spawn indices of
+    // its anchors, once, by name. Indices are a protocol invariant so this is
+    // stable, and doing it here means the fight costs nothing per tick beyond
+    // reading two health values.
+    for (const n of this.sim) {
+      const S = GRIM_RULES.SCRIPTS[n.scriptId];
+      if (!S || !S.anchors) continue;
+      n.anchorIdx = [];
+      w.manifest.spawns.forEach((s, i) => {
+        if (String(s.n || '').toUpperCase() === S.anchors) n.anchorIdx.push(i);
+      });
+    }
     this.colliders = w.manifest.colliders || [];
     // keep the whole shape: copying only {x,z,r} silently dropped the separate
     // player and monster radii, so safe ground stopped working
@@ -656,6 +715,26 @@ export class World {
         n.max = rec.max || n.max;
         if (rec.by && !n.aggroPeer) n.aggroPeer = rec.by;
         stepNpc(n, dt, ctx);
+        // The drain. While any of this monster's anchors still stands it pulls
+        // itself back together, and the stored world is what has to be written:
+        // n.hp is overwritten from rec at the top of every step, so healing the
+        // simulation copy alone would do nothing at all.
+        if (n.anchorIdx && n.anchorIdx.length && !n.dead && rec.hp > 0 && rec.hp < (rec.max || 1)) {
+          let up = 0;
+          for (const ai of n.anchorIdx) { const ar = w.npcs[ai]; if (ar && !ar.dead && ar.hp > 0) up++; }
+          n.anchorsUp = up;
+          if (up > 0) {
+            const S2 = GRIM_RULES.SCRIPTS[n.scriptId];
+            n.regenAcc = (n.regenAcc || 0) + (S2.regen || 0) * dt;
+            if (n.regenAcc >= 1) {
+              const add = Math.floor(n.regenAcc);
+              n.regenAcc -= add;
+              rec.hp = Math.min(rec.max, rec.hp + add);
+              n.hp = rec.hp;
+              events.push({ t: 'nhp', i: n.i, hp: rec.hp, d: 0, k: 'regen', by: null, regen: 1 });
+            }
+          }
+        } else if (n.anchorIdx) n.anchorsUp = 0;
         // an attack in flight runs its own clock: wind, damage frame, recovery
         if (n.act) {
           const m = GRIM_RULES.MOVES[n.act];
@@ -1063,8 +1142,15 @@ export class World {
       this.broadcast(socks, { t: 'nhp', i: i, hp: n.hp, d: dmg, k: m.k || 'hit', by: meta.id, p: m.p || null, o: m.o || null });
       if (n.hp <= 0) {
         n.dead = 1;
-        n.at = now + (n.boss ? GRIM_RULES.RESPAWN_BOSS_MS : GRIM_RULES.RESPAWN_MS);
-        const entries = grimRollLoot(n.tag).filter(e => e && e.qty > 0);
+        // An anchor re-forges on its own short clock. That number is the
+        // whole two-player requirement, so it lives in the shared rules and
+        // not in a magic number here.
+        n.at = now + ((n.tag && n.tag.anchor) ? (GRIM_RULES.RESPAWN_ANCHOR_MS || 26000)
+                     : n.boss ? GRIM_RULES.RESPAWN_BOSS_MS : GRIM_RULES.RESPAWN_MS);
+        // An anchor drops nothing and grants nothing. It comes back every 26
+        // seconds, so anything it gave would be an infinite tap, and the loot
+        // roll always adds gold no matter what the table says.
+        const entries = (n.tag && n.tag.anchor) ? [] : grimRollLoot(n.tag).filter(e => e && e.qty > 0);
         let sack = null;
         if (entries.length) {
           w.seq = (w.seq || 0) + 1;

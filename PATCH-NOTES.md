@@ -1,5 +1,67 @@
 # Grim World — patch notes
 
+## August 5, 2026 (content) — THE ARGENT WARDEN
+
+There is something standing in the northern Heartlands now, about 215 metres
+north of spawn. The capital built it to hold the northern road and then lost the
+means to put it back to sleep. Three times a man's height, pale Ironspire stone
+bound in argent bands, with the drained light of the lake burning in a cavity in
+its chest.
+
+**It takes two people. That is not a suggestion and it is not a message on a
+door.** While either of its two Argent Anchors still stands the Warden pulls the
+field back into itself and heals 70 health a second, and an anchor re-forges 26
+seconds after you break it. One player can comfortably break an anchor. What one
+player cannot do is break the SECOND one before the first is back up, so the
+drain never stops and the health bar never really moves. Two players split the
+field, both anchors go down inside the same window, the drain stops, and the
+Warden is mortal.
+
+Simulated against the real server code, with a knight landing 30 to 45 damage a
+second:
+
+  one player,  ordinary gear    walls at 87% and gets pushed back to full
+  one player,  good gear        walls at 73%
+  one player,  exceptional gear kills it, in six and a half brutal minutes
+  two players, ordinary gear    kills it in about two and a half minutes
+  two players, good gear        kills it in about a minute
+
+So it is not a locked door. If you are geared enough to grind it alone you have
+earned it. You will not enjoy it.
+
+### Two phases
+
+**PLATED** is a siege engine: slow, enormous reach, and three ways to hit you.
+The maul is its jab, the hammer is the one that ends you, and the sunder is an
+eight metre ground shock you have to be outside of, not blocking.
+
+**UNBOUND** starts at 55%. The argent bands snap off the model, it shouts, and
+it gets faster and hits harder. It also starts vaulting the field to land on
+whoever thought distance was safety.
+
+### Three mechanics
+
+- **The Argent Siphon**, above. The fight.
+- **Sunder**, an eight metre omnidirectional shock. Your shield does not help.
+- **The Argent Lance**, a five bolt spread it throws from up to thirty metres,
+  so standing at range plinking is not a plan either.
+
+### The drop
+
+**WARDEN'S BULWARK**: 34 defence and 6 strength, against the Iron Kite Shield's
+20 and nothing. It is the only shield upgrade in the game and the Iron Kite has
+been the only shield at all, so this fills a real hole.
+
+Anchors drop nothing and give no experience, on purpose. They come back every 26
+seconds; anything they gave would be an infinite tap.
+
+### Under the hood
+
+The world generation number went to 6, which is what makes the relay throw away
+its stored world and take the new one even with people online. Spawn order is a
+protocol invariant so the Warden and its anchors are appended at the end of the
+list: every creature already in the world keeps the index it had.
+
 ## August 4, 2026 (zones-2a) - Zone art: every tree its own shape, every zone its own ground
 
 Phase 2 begins with the look. The engine already placed props correctly, it just placed the same four props everywhere in different colours. Now a zone looks like itself.
