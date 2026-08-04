@@ -198,7 +198,7 @@ function stepNpc(n, dt, ctx) {
     // stands in reach without swinging the more certain the next swing
     // becomes (first attack near-guaranteed inside ~0.6s); and the dice are
     // clamped so a slow tick can never burst-fire attacks.
-    const rdt = Math.min(dt, 0.05);
+    const rdt = Math.min(dt, 0.1);   // server ticks a fixed 10Hz; clamp only guards the catch-up loop
     const meleeGate = n.weapon === 0 ? M.light.range * 0.85
       : n.weapon === 5 ? M.glight.range * 0.85
       : (n.weapon === 3 || n.weapon === 4 || n.weapon === 9) ? M[n.beast ? 'claw' : 'chop'].range * 0.85
