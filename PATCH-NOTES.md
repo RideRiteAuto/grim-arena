@@ -1,5 +1,20 @@
 # Grim World — patch notes
 
+## August 5, 2026 (hotfix) — un-piling the great monster huddle
+
+The "keep creatures out of the water" pass had a bad wet test: it treated
+anything below 0.35m elevation as underwater. The town plateau sits at
+exactly 0m, so every monster, boss, tree and ore rock around town was
+flagged "wet", found no slope to climb on the flat ground, and took the
+emergency "walk to the capital" fallback — all of them, into one pile at
+the center of the old arena ring.
+
+Wet now means what it should: below sea level. Everything on land is left
+exactly where its builder put it, so monsters, bosses, trees and rocks are
+back in their original spots automatically. Things that really were in the
+water still walk themselves ashore. World gen bumped so the relay accepts
+the corrected world without waiting for an empty room.
+
 ## August 5, 2026 (later) — one-piece oars, rowing that actually rows
 
 ### Oars a carpenter would sell you
