@@ -1,5 +1,32 @@
 # Grim World — patch notes
 
+## August 5, 2026 (harvest feel) — falling trees, empty veins, deeper mana
+
+### Trees fall again - and properly this time
+Felled trees stopped falling entirely (a side effect of the server sim
+taking over: the visual feed that used to carry it went quiet). Resource
+visuals now run locally on every player's screen, so they can never go
+missing again. And the fall is real now: the tree hinges over at its
+base, accelerates, THUDS onto the ground with a screen shake, rests a
+beat still joined to the stump, then sinks away - leaving a cut STUMP
+standing where it grew until the tree regrows.
+
+### Ore veins go empty instead of vanishing
+Mined-out rocks no longer blink out of existence. The boulders stay, and
+the colored ore nuggets disappear - one look tells you the vein is empty.
+When the refill clock runs out, the nuggets return.
+
+### Honest feedback, tiered refill clocks
+Swinging at a stump says ONLY A STUMP REMAINS - THE TREE IS REGROWING;
+picking at an empty vein says THE VEIN IS EMPTY - THE ORE WILL REFILL
+SOON. Refill times now scale by tier: field trees and pines 45s, iron
+veins 60s, the great oaks 90s.
+
+### Deeper mana pool
+Player mana is up 50 percent (100 to 150). Costs are unchanged, so every
+caster gets half again as many spells before running dry. The mana bar
+scales to the new pool.
+
 ## August 5, 2026 (clean menu) — the menu is just the menu
 
 HUD pieces were leaking onto the menu screen: the action bar, the
