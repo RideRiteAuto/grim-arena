@@ -1,5 +1,21 @@
 # Grim World — patch notes
 
+## August 5, 2026 (player polish) — a hero worth following
+
+The chase camera stares at your back all day, and your back was a flat
+blue rectangle. The cape is now a draped, curved loft: it falls from a
+shoulder mantle with a gold clasp, curves away from the armor, widens
+toward a split-tail hem, and still sways as you move. The body got the
+matching pass: forearm bracers with elbow cops, knee plates and shin
+greaves over the boots, and a flared neck guard on the back of the helm.
+Applies to you, other players, and every knight-built NPC.
+
+Also shipped: Zone Dressing Plan v3 in the repo - the complete bestiary
+(30+ monsters, each with a rig, stats, loot, and its own SIGNATURE
+attack), the wildlife roster with town-pet protection, all gathering
+numbers (XP curve, node stats, tool recipes), and the zone-by-zone
+rollout order.
+
 ## August 5, 2026 (boat camera fix) — no more staring into the deep
 
 The camera aims at a point anchored to the ground height under the
