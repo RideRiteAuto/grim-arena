@@ -1,5 +1,21 @@
 # Grim World — patch notes
 
+## August 5, 2026 (new wolves + bigger map) — the model rewrite begins
+
+### Dire wolves, rebuilt
+The seven dire wolves around town now wear the first model from the new
+build style: a lofted, sculpted body (deep chest, shoulder hump, tucked
+belly), a real head carried high on an angled neck, two-segment legs with
+knees, a jaw that snaps, ears that flick and pin back, and a three-part
+tail that hangs at rest and streams out at a run. They breathe and look
+around while idle, trot with a diagonal gait, gallop when charging, and
+lunge with the whole body on the attack. Every creature and prop in the
+game gets rebuilt to this standard next, one by one.
+
+### World map bigger and deeper
+The map window now uses more of the screen and zooms to 9x (was 6x),
+still rendered as native vectors at every step.
+
 ## August 5, 2026 (map sharpness) — crisp at every zoom
 
 Zooming the world map used to magnify a cached bitmap of the chart, so it
