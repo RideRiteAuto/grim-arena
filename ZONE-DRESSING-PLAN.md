@@ -222,19 +222,177 @@ The terrain bake gets a matching fix so the river genuinely flows under
 each bridge (Argent's site is currently a flattened ford from an early
 bake) and the road lines up with both ends.
 
-## Build order (once Kevin approves)
+## THE BESTIARY (v3, complete)
 
-1. Tree scale pass (+25 percent) and the shared prop/dressing engine:
-   deterministic per-chunk placement with per-zone catalogs, merged
-   clutter, harvestable registration.
-1b. Gathering skill core: XP curve in shared-rules, skill save fields,
-   XP popups and a skills readout, level + tool gating on every
-   harvestable, crude starter tools granted on login.
-2. Valewold zone catalogs (Heartlands, Greenwood, Frostwild, Ironspire,
-   Sun Coast) - trees, clutter, nodes.
-3. Ashmar zone catalogs (Windscar, Ember, Mistfen, Sunscorch).
-4. Wildlife + monster spawn tables per zone (zone-keyed, water-walled,
-   level-banded as above).
-5. The two wooden bridges + river/road alignment fix.
-6. Balance pass: node counts per zone tuned so trade actually has to
-   happen (no zone can feed, arm, and build from its own ground).
+Kevin's calls, locked: every species gets a SIGNATURE move (plus a basic
+hit), far zones are genuinely deadly to under-leveled players, wildlife
+is killable except town pets inside safe zones, and the update ships
+zone by zone.
+
+Rig types: QUAD (done - wolf/deer), BIPED (done - goblin/knight),
+SERPENT (new: segment chain), WISP (new: floating glow, easy), FLYER
+(new: wing flap, swoop, perch), CRAB (quad variant, side-strafe),
+INSECT (six-leg quad variant). Every monster below names its rig, its
+signature move, stats band, and loot.
+
+### Heartlands (lv 1-5)
+- YOUNG GOBLIN - biped (shipped) - sig GOBLIN SHRIEK: calls all goblins
+  within 25m to aggro. hp 30, loot: goblin ears, copper coins.
+- GIANT RAT - quad, low+long - sig TAIL WHIP: 180-degree knockback
+  sweep. hp 26, loot: rat tail.
+- WILD BOAR - quad, heavy head - sig TUSK CHARGE: telegraphed line
+  charge, knockdown. hp 45, loot: hide, meat. (Also huntable game.)
+
+### Greenwood Marches (lv 4-9)
+- TIMBER WOLF - quad (wolf recolor, brown) - sig PACK HOWL: +30 percent
+  speed to wolves within 20m for 6s. hp 55, loot: wolf pelt.
+- BANDIT WOODCUTTER - biped + hood + axe - sig AXE THROW: ranged
+  spinning axe, 12m. hp 70, loot: coins, logs.
+- OLD SHELLBACK (rare) - giant tortoise quad - sig SHELL SLAM: AoE
+  ground pound. hp 200, loot: shell fragment (future shield mat).
+
+### Frostwild North (lv 8-14)
+- WHITE WOLF - quad (wolf, white) - sig FROST HOWL: 4s slow in 12m
+  cone. hp 80, loot: white pelt.
+- ICE SPRITE - wisp - sig SHATTER: on death, bursts into a 6m chill
+  nova - back off before the kill lands. hp 40, loot: ice shard.
+- FROST GOBLIN - biped (goblin, blue skin, fur scraps) - sig ICICLE
+  TOSS: ranged pierce, brief slow. hp 65, loot: icewood splinters, ears.
+
+### Ironspire Mountains (lv 10-16)
+- ROCK CRAWLER - insect - sig BURROW AMBUSH: submerges, erupts under
+  the player after 2s (dust telegraph). hp 90, loot: chitin, stone.
+- KOBOLD MINER - biped, small, candle hat - sig PICK TOSS: ranged.
+  hp 70, loot: coal chunk, copper.
+- CAVE BAT - flyer - sig SCREECH: 1.5s blur/disorient, then swoop.
+  hp 35, loot: bat wing.
+
+### Sun Coast (lv 6-12)
+- GIANT CRAB - crab - sig PINCER GRAB: holds the player 1.5s with
+  squeeze damage, break free by mashing move keys. hp 85, loot: crab
+  meat, shell.
+- SMUGGLER THUG - biped + bandana - sig NET THROW: ranged 3s snare.
+  hp 75, loot: coins, rope.
+
+### Windscar Steppe (lv 12-18)
+- JACKAL - quad, lean - sig HAMSTRING: bleed DoT + 20 percent player
+  slow 5s. hp 85, loot: jackal hide.
+- STEPPE RAIDER - biped + horse-clan garb - sig LASSO: pulls the player
+  to the raider from 10m. hp 110, loot: coins, wool, saltpeter pinch.
+- DUST DEVIL - wisp, large spinning - sig WHIRLWIND: pulls players
+  within 8m inward, fling on contact. hp 95, loot: nothing (dissipates).
+
+### Ember Highlands (lv 16-22)
+- MAGMA CRAWLER - insect, glowing seams - sig MOLTEN SPIT: ranged glob
+  leaves a 4s fire pool. hp 130, loot: magma core, obsidian chip.
+- ASH IMP - biped, small, ember eyes - sig CINDER DASH: blink-dash
+  through the player leaving a fire trail. hp 90, loot: ash, gold dust.
+- KOBOLD GOLD-DIGGER - biped - sig ROCK BARRAGE: three quick ranged
+  stones. hp 120, loot: gold nugget (rare), coal.
+
+### Mistfen Wetlands (lv 14-20)
+- BOG SERPENT - SERPENT rig - sig CONSTRICT: roots the player 2s with
+  DoT, breaks on damage threshold. hp 140, loot: serpent scale, venom sac.
+- MUD CRAB - crab, mossy - sig MUD SLING: ranged glob, screen-edge mud
+  vignette + slow. hp 100, loot: crab meat, bog iron trace.
+- WILL-O-WISP - wisp - sig LURE: drifts away glowing brighter, shocks
+  8m nova if followed for 4s. hp 50, loot: wisp mote (reagent).
+- FEN LURKER - biped, swamp-thing reeds and moss - sig SWAMP GRAB: an
+  arm erupts under the player, rooting 2s (bubble telegraph). hp 160,
+  loot: fenroot, rare herbs.
+
+### Sunscorch Barrens (lv 18-24)
+- SCORPION - insect - sig VENOM STING: stacking poison DoT (3 stacks
+  kills an unprepared low-level). hp 110, loot: stinger, chitin.
+- GIANT SCORPION (rare) - insect, x2.2 - sig same, plus BURROW. hp 320,
+  loot: grand stinger, glass sand.
+- SAND GOBLIN - biped (goblin, dusty wraps) - sig SAND BLIND: 3s heavy
+  screen-edge vignette. hp 130, loot: dye pinch, ears.
+- BONE JACKAL - quad, skeletal - sig DEATH HOWL: fear - nearby wildlife
+  and donkeys flee, players take a burst of shadow damage. hp 150,
+  loot: bone, bone meal.
+- VULTURE - flyer - circles corpses, swoop attack only when the player
+  is below half health (opportunist). hp 60, loot: feathers.
+
+### Shattered Isles (light pass)
+- PIRATE SCOUT - biped + tricorn - sig HOOK TOSS: pull-snare. hp 120,
+  loot: coins, coral.
+- GIANT CRAB - reused from Sun Coast, storm palette.
+
+## WILDLIFE ROSTER
+
+Huntable (HP, flee when hit, drop mats): boar, hare, elk (Frostwild,
+antler + hide), snow fox (fur), mountain goat, marmot, steppe sheep
+(wool), prairie dog, camel (Sunscorch, hide + meat), ash goat, marsh
+deer, gecko. WILD HORSES are killable per the rule but drop only
+horsehair, flee at 1.6x player sprint, and never aggro - killing them
+is possible, pointless, and hard.
+
+Ambient killable (tiny hp, no loot, scenery with consequences):
+squirrels, frogs, herons, dragonflies (fx), gulls, pelicans, small
+crabs, owls, hawks, eagles, salamanders, ember moths (fx), vultures
+circling high.
+
+PROTECTED (town pets, inside safe zones only): cats, dogs, chickens,
+cows, and every civilian NPC's animals. Untargetable inside the zone.
+
+## THE NUMBERS
+
+### Gathering XP + curve
+- XP to advance level n -> n+1: floor(75 * 1.085^n). Level 40 ~ half a
+  session per level, 90s are a grind, 99 is prestige. Total ~2.8M XP.
+- Gather XP = node tier level x 5 (a lv-60 icewood chop = 300 XP).
+- Node HP (swings to harvest): tier 1-20 nodes 3, 25-50 nodes 5,
+  55-75 nodes 7, 90 nodes 10. Respawns: trees 45s, ore 60s, plants 35s,
+  rare (ancient elder, black lotus, ember crystal) 8 min.
+- Each harvest yields 1-2 of the material + small chance (5 percent) of
+  a bonus rare (bird nest, gem shard, seed - future hooks).
+
+### Tool recipes (crafted at the town forge; zone forges later)
+- Copper: 8 copper ore + 2 logs. Iron: 10 iron + 4 logs.
+- Steel: 8 iron + 6 coal + 2 oak logs. Obsidian: 6 obsidian + 1 steel
+  head + 2 acacia logs. Masterwork: obsidian head + 2 icewood + 1 gold.
+- Each tier gathers 15 percent faster and unlocks its tier band.
+
+### Monster stats + level gates
+- Damage scales so a zone's monsters two-shot a player 8+ levels under
+  band, and feel fair at band. HP as listed per species. XP = hp x 1.1.
+- Spawn patterns: CAMPS (3-6 around a landmark, 90s respawn) for
+  humanoids; ROAMERS (wander home radius 30m) for beasts; RARES on an
+  8-minute timer at fixed lairs. All obey the water wall and stay 60m
+  clear of towns and roads.
+
+### Density budgets (per 64m chunk, deterministic by seed)
+- Ground clutter (merged, no shadow): 14-22 per chunk, zone-tinted.
+- Harvestable nodes: 2-4 per chunk in that zone's spread.
+- Monsters: zone total capped (Heartlands ~30, far zones ~45) with
+  distance-based activation like the current NPC LOD.
+
+### Skills UI
+- Gather popup: +XP splat at the node in skill color (wood green, ore
+  orange, forage teal) with a level-up banner + sfx at each level.
+- Skills readout: a SKILLS block in the Tab pack panel: three bars with
+  level, progress, and next unlock name ("Woodcutting 47 - next: Acacia
+  ironbark at 50").
+
+## ROLLOUT (zone by zone, each its own tested push)
+
+1. ENGINE + SKILLS CORE: per-chunk deterministic prop placement,
+   harvest gating, XP curve in shared-rules, skills UI, crude tools
+   granted, tool crafting at the forge. New rigs built: serpent, wisp,
+   flyer, crab, insect (in the model lab first).
+2. HEARTLANDS: full dressing + boar, giant rat, goblin shriek.
+3. GREENWOOD: old-growth + timber wolves, woodcutters, Old Shellback.
+4. FROSTWILD: snow set + icewood + white wolves, sprites, frost goblins.
+5. IRONSPIRE: ore country + crawlers, kobolds, bats.
+6. SUN COAST: palms, salt, pearls + crabs, smugglers.
+7. WINDSCAR: steppe + horses, jackals, raiders, dust devils.
+8. EMBER: volcanic set + magma crawlers, imps, gold-diggers.
+9. MISTFEN: marsh set + serpents, wisps, lurkers, mud crabs.
+10. SUNSCORCH: desert set + scorpions, sand goblins, bone jackals.
+11. BRIDGES + ISLES: the two wooden bridges with river/road alignment,
+    Shattered Isles light pass, Driftwatch tidy-up.
+12. BALANCE PASS: node counts vs trade routes, monster tuning, XP pace.
+
+Each push ships with patch notes and gets tested in a live boot with
+screenshots before it goes out, same as the model rewrite.
