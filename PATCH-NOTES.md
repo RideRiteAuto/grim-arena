@@ -1,5 +1,27 @@
 # Grim World — patch notes
 
+## August 5, 2026 (combat feel) — swings that land when they look like they land
+
+### No more whiffed openers
+Monsters used to start their first swing at the very edge of their reach,
+so the opening attacks you SAW often missed - swings with no damage and
+no hit splat, which read as animation and damage being out of sync.
+Melee attacks now start from 85 percent of max reach, so the swing you
+see is a swing that connects.
+
+### No more doorstep hesitation
+Attack decisions were a per-frame coin flip that could leave a monster
+standing in your face for over a second. The longer an NPC stands in
+reach without swinging, the more certain the next swing now becomes - a
+first attack is near-guaranteed within about half a second of arrival.
+
+### Bites synced to damage
+The four-legged attack lunge (wolves and their coming kin) peaked early,
+before the damage moment. It now reaches full extension exactly on the
+frame the damage lands, then recovers - the bite you see is the bite
+that hits.
+
+
 ## August 5, 2026 (fixes) — clean tree bases, solid Plague Rat, gentle cloak
 
 ### Tree roots removed
@@ -183,13 +205,3 @@ them), a proper dark face with side ears, a little wool cap between the
 ears, a stub wool tail, and jointed legs with hooves that actually trot
 while they wander and stop when they graze. Shearing, wool regrowth and
 the F prompt all work exactly as before.
-
-
-## August 5, 2026 (model rewrite 3) — red deer rebuilt
-
-The red deer now use the new build style: slender lofted body with a pale
-belly, a properly upright neck with an alert, small head, big swiveling
-ears, long thin legs with real knees and dark hooves, a stub tail, and
-three-tined antlers on the stags. They graze with their head high, flick
-their ears, and stretch flat-out when they bolt. Same skittish behavior,
-same loot.
