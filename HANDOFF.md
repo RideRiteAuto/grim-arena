@@ -28,9 +28,18 @@ so the payload cannot terminate the outer script tag.
   identical everywhere, same as always.
 - Movement is bounded by GRIM_WORLD.walkable (deep water + chart edge), not
   a radius. WORLD_R in shared rules is 4800 and only validates saves.
+- Water (Aug 4 evening): swimming is live (depth > 1.05m -> swim state, pose
+  override in the fighter animate; mounted = donkey paddles). ROWBOAT is an
+  inventory item granted on spawn if absent (pack+bank checked); use = launch/
+  stow toggle (useRowboat/stepBoat/leaveBoat); deployed boat is CLIENT-LOCAL
+  for now. Z toggles rideTurbo (5x mounted sprint, testing helper). Movement
+  bound is chart-edge only (+hull draft when boating). WORLD_GEN in shared
+  rules versions the manifest: the relay replaces its stored world when gen
+  rises — bump it with any terrain/manifest change or players get the
+  mismatch banner forever.
 - Phases remaining (see WORLD-GEN-PLAN.md in the Drive design folder and
-  the project): B water/swimming/bridges, C props/towns/map screen,
-  D boats, E housing districts + mailbox claims.
+  the project): B bridges + river polish, C props/towns/map screen,
+  D shared multiplayer boats, E housing districts + mailbox claims.
 
 ## Inventory 2.0 (Aug 3)
 

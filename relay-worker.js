@@ -50,6 +50,11 @@ const TO_OWNER = new Set(['rhit']);
 /* SHARED-RULES-BEGIN */
 const GRIM_RULES = {
   V: 1,
+  // World generation number. Part of the world manifest: when it goes up, the
+  // relay REPLACES its stored manifest even with players online, so a new
+  // world ships without the old one squatting the server. Bump it whenever
+  // the terrain bake or manifest layout changes.
+  WORLD_GEN: 2,
 
   // ---- world bounds -------------------------------------------------------
   WORLD_R: 4800,         // Asterra chart radius: covers the whole baked map;
@@ -708,7 +713,10 @@ export class World {
       const mf = m.w;
       const alone = socks.length <= 1;
       if (!mf || typeof mf.hash !== 'string') return;
-      if (!w.manifest || (w.manifest.hash !== mf.hash && alone)) {
+      // A higher WORLD_GEN replaces the stored world even with players online:
+      // a new terrain bake must never be blocked by someone on the old build.
+      if (!w.manifest || ((mf.gen | 0) > (w.manifest.gen | 0)) ||
+          (w.manifest.hash !== mf.hash && alone)) {
         w.manifest = mf;
         w.npcs = null;                        // a new world means new monsters
         w.sacks = {};

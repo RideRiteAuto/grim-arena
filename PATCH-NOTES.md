@@ -1,5 +1,52 @@
 # Grim World — patch notes
 
+## August 4, 2026 (evening) — you can SWIM, and everyone owns a rowboat
+
+### Swimming is in
+Walk into any water deeper than your waist and you swim: slower than running,
+no attacking or blocking while you're in the drink, with a proper stroke
+animation. Your donkey swims too — stay mounted and it paddles you across
+with its head up. Rivers are now crossable anywhere, not just at the fords.
+
+### The rowboat is an item, and it is yours
+Everyone gets a ROWBOAT in their pack on login (already had one? It won't
+duplicate — pack, worn and bank are all checked). Drag it onto your action
+bar. Stand at the waterline facing open water and use it: the boat drops in
+and you're aboard. WASD rows at your sprint pace; HOLD SHIFT to row flat out
+at five times walking speed. X hops out without packing it up — swim back
+and touch the hull to climb back in. Use the item again (aboard or beside
+the boat) to stow it back in your pack. Log out with it deployed and you'll
+find a fresh one in your pack next login, guaranteed.
+
+For now the deployed boat is only drawn on YOUR screen — friends see you
+gliding across the water without it. Properly shared boats come with the
+trade update.
+
+### Donkey turbo (testing helper)
+The world got three hundred times bigger and your legs did not. While
+mounted, press Z to toggle TURBO: sprinting on the donkey moves at five
+times sprint speed so you can actually explore Asterra. Sprinting while
+mounted no longer drains your stamina either — the donkey does the work.
+
+### The coastline got fixed
+Shores were jagged stair-steps that dropped into the sea like cliffs. The
+whole coast is rebuilt around a smooth shoreline profile: gentle wadeable
+beaches, a soft slope into the deep, no more triangle-toothed coasts.
+
+### The ground got a face
+Terrain now has an actual surface texture — mottled turf on grass, grit on
+sand — instead of flat untextured color, and the too-bright washed-out look
+at altitude is gone. Beach sand now only hugs the actual waterline (a few
+meters) instead of painting whole regions; the capital plateau is properly
+green. Deserts are still sand everywhere, as deserts should be.
+
+### World version mismatch — fixed
+If you saw "WORLD VERSION MISMATCH - RELOAD" at the top of your screen: the
+multiplayer server was still holding the old world's fingerprint. New world
+builds now replace the server's copy automatically. Everyone should
+hard-refresh (Ctrl+Shift+R) once after this update.
+
+
 ## August 4, 2026 (later) — ASTERRA: the whole new world is under your feet
 
 ### The world map is real now

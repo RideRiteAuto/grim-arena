@@ -251,9 +251,19 @@ def main():
     elev = 95.0 * np.tanh(elev / 95.0)   # soft cap: stacked peaks stay ~90 m
     elev *= np.where(land, 1.0, 0.0)
 
-    # ocean floor: slope down away from shore to -26 m
-    sea_depth = -np.clip(coast_in * (G * M_PER_PX) / 90.0, 0, 1) * 26.0 - 1.2
-    elev = np.where(land, np.maximum(elev * inland ** 0.5, 0.6), sea_depth)
+    # Shore profile from a smooth SIGNED distance to the coastline. Gentle
+    # 10cm/m beach slope inland, 16cm/m into the sea, blending to the interior
+    # elevation and the deep floor over ~80m. This is what makes coastlines
+    # smooth curves with wadeable beaches instead of stair-stepped cliffs.
+    wpx = G * M_PER_PX
+    sd = blur((coast - coast_in) * wpx, 2)          # meters, + inland, - at sea
+    shore = np.where(sd >= 0, np.minimum(sd * 0.10, 6.0), np.maximum(sd * 0.16, -26.0))
+    w_in = np.clip((sd - 8.0) / 80.0, 0, 1); w_in = w_in * w_in * (3 - 2 * w_in)
+    w_out = np.clip((-sd - 8.0) / 80.0, 0, 1); w_out = w_out * w_out * (3 - 2 * w_out)
+    interior = np.maximum(elev * inland ** 0.5, shore)
+    deep = -np.clip(coast_in * wpx / 110.0, 0, 1) * 26.0 - 1.2
+    elev = np.where(sd >= 0, shore * (1 - w_in) + interior * w_in,
+                             shore * (1 - w_out) + np.minimum(deep, shore) * w_out)
 
     # rivers and the lake carve below sea level; banks ease down within ~24 m
     wm = (G * M_PER_PX)
