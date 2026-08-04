@@ -128,17 +128,24 @@ const GRIM_RULES = {
   // cooldown, the distance band it wants, and what it does. A bigger, meaner
   // boss is a longer table here, not new engine code.
   SCRIPTS: {
+    // Mr. Sailers, the caster. Three spells and two bits of theatre, and the
+    // rule is that he should almost always be casting SOMETHING. The old table
+    // opened on a taunt that stood him still for 2.1s and put every real spell
+    // on a 6-11 second cooldown, so a fight began with him doing nothing for
+    // several seconds and then a lone bolt. Bolt is now the backbone at under
+    // two seconds; the taunt is short and rare.
     sailers: {
       phases: [
-        { untilHpPct: 45, moves: ['charge', 'taunt', 'volley', 'snare'] },
-        { untilHpPct: 0,  moves: ['volley', 'volley', 'charge', 'snare'], spdMul: 1.12, dmgMul: 1.15,
+        { untilHpPct: 50, moves: ['bolt', 'bolt', 'snare', 'volley', 'charge'] },
+        { untilHpPct: 0,  moves: ['bolt', 'volley', 'volley', 'snare', 'charge', 'taunt'], spdMul: 1.12, dmgMul: 1.15,
           onEnter: { shout: "YOU'LL PAY FOR THAT RIVET!" } }
       ],
       moves: {
-        charge: { cd: [6, 10], band: [7, 26], state: 'charge', dur: 1.1 },
-        taunt:  { cd: [7, 11], band: [0, 30], state: 'taunt',  dur: 2.1, shout: "WHERE'S THE RIVET?!" },
-        volley: { cd: [6, 10], band: [4, 24], move: 'volley', proj: { kind: 'snare', n: 3, spread: 0.24, speed: 15, dmg: 8 } },
-        snare:  { cd: [2, 4],  band: [0, 16], move: 'snare',  proj: { kind: 'snare', n: 1, spread: 0, speed: 15, dmg: 8 } }
+        bolt:   { cd: [1.4, 2.2],  band: [2, 22], move: 'frost',  proj: { kind: 'frost', n: 1, spread: 0,    speed: 19, dmg: 12 } },
+        volley: { cd: [4.5, 7],    band: [5, 24], move: 'volley', proj: { kind: 'snare', n: 3, spread: 0.22, speed: 16, dmg: 9 } },
+        snare:  { cd: [5, 8],      band: [0, 18], move: 'snare',  proj: { kind: 'snare', n: 1, spread: 0,    speed: 17, dmg: 8 } },
+        charge: { cd: [7, 11],     band: [9, 26], state: 'charge', dur: 1.0 },
+        taunt:  { cd: [11, 16],    band: [0, 30], state: 'taunt',  dur: 1.2, shout: "WHERE'S THE RIVET?!" }
       }
     },
     hollowKing: {
@@ -169,16 +176,23 @@ const GRIM_RULES = {
         melee:    { cd: [0.5, 1],  band: [0, 3.0],   move: 'light' }
       }
     },
+    // The Plague Rat. A beast, so it fights with the same claw and bite as a
+    // dire wolf rather than swinging a sword it does not have. Its toxin is the
+    // whole point of the fight, so the spit is available from the first phase
+    // instead of only appearing below half health.
     plagueRat: {
       phases: [
-        { untilHpPct: 50, moves: ['pounce', 'melee'] },
-        { untilHpPct: 0,  moves: ['pounce', 'spit', 'melee'], spdMul: 1.2,
+        { untilHpPct: 50, moves: ['slash', 'slash', 'maul', 'pounce', 'spit'] },
+        { untilHpPct: 0,  moves: ['slash', 'spit', 'maul', 'pounce', 'spit'], spdMul: 1.2,
           onEnter: { shout: 'THE MERE SEETHES' } }
       ],
       moves: {
-        pounce: { cd: [4, 7], band: [4, 14],  state: 'leap', dur: 0.85, lunge: 13 },
-        spit:   { cd: [5, 8], band: [3, 20],  move: 'frost', proj: { kind: 'toxin', n: 2, spread: 0.3, speed: 13, dmg: 10 } },
-        melee:  { cd: [1, 2], band: [0, 3.4], move: 'heavy' }
+        slash:  { cd: [0.6, 1.1], band: [0, 2.8], move: 'claw' },
+        maul:   { cd: [3, 5],     band: [0, 3.0], move: 'bite' },
+        pounce: { cd: [5, 8],     band: [4, 14],  state: 'leap', dur: 0.85, lunge: 13 },
+        // band starts at zero on purpose: the rat fights with its face in
+        // yours, so a spit gated at three metres out simply never happened
+        spit:   { cd: [4, 7],     band: [0, 20],  move: 'frost', proj: { kind: 'toxin', n: 2, spread: 0.3, speed: 14, dmg: 11 } }
       }
     }
   },
@@ -363,7 +377,11 @@ export class World {
   // the swing when it landed, judged against where they actually were. That is
   // what makes a dodge honest instead of being decided on somebody else's
   // stale copy of your position.
-  scheduleAttack(n, move, tgt, events) {
+  // ownProj: the caller (a boss script) is firing its own projectiles, so the
+  // generic fallback below must stay out of the way. Without this a scripted
+  // spell threw two sets at once - the script's, plus a default set of the
+  // wrong kind - which is why the Plague Rat's toxin spit also spat frost.
+  scheduleAttack(n, move, tgt, events, ownProj) {
     const m = GRIM_RULES.MOVES[move];
     if (!m) return;
     n.state = (move === 'frost' || move === 'snare' || move === 'volley' || move === 'storm' || move === 'heal') ? 'cast' : 'attack';
@@ -374,7 +392,7 @@ export class World {
     // A move with no reach is a ranged one: staves and bows throw something.
     // Without this an archer or a mage played its whole wind-up and then
     // nothing left its hands, so it looked like it was ignoring you.
-    if (!m.range && tgt) {
+    if (!m.range && tgt && !ownProj) {
       const SPEC = {
         frost: { kind: 'frost', n: 1, spread: 0, speed: 16, dmg: 14 },
         snare: { kind: 'snare', n: 1, spread: 0, speed: 15, dmg: 8 },
@@ -445,7 +463,14 @@ export class World {
       else { n.wx = 0; n.wz = 0; }
       return true;
     }
-    if (n.act) return true;                  // an announced attack is running
+    // An announced attack is running. Hand the turn BACK rather than taking
+    // it: the ordinary movement step already slows a monster to a crawl while
+    // it swings or casts, keeps it facing its target and holds it at its
+    // weapon's range. Taking the turn here instead left the boss frozen on
+    // whatever velocity it happened to have, which is most of what read as
+    // broken pathing. It cannot start a second attack from here because that
+    // needs an idle state.
+    if (n.act) return false;
 
     // phase by health
     const pct = n.max ? (n.hp / n.max) * 100 : 100;
@@ -478,7 +503,7 @@ export class World {
     n.cds[key] = Date.now() + (mv.cd[0] + ctx.rnd() * (mv.cd[1] - mv.cd[0])) * 1000;
 
     if (mv.proj) {
-      this.scheduleAttack(n, mv.move, tgt, events);
+      this.scheduleAttack(n, mv.move, tgt, events, true);
       this.fireProjectiles(n, tgt, mv, dmgMul, events);
       return true;
     }

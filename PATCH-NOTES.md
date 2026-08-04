@@ -1,5 +1,60 @@
 # Grim World — patch notes
 
+## August 4, 2026 (later) — the two bosses, and where numbers appear
+
+### Mr. Sailers casts again, and starts casting straight away
+He was casting, but his opening move was a taunt that stood him still for two
+seconds with no animation and no shout, and every real spell sat on a six to
+eleven second cooldown behind it. A fight began with him doing nothing.
+
+He now has three spells and almost always has one in the air: a fast bolt as
+his backbone, a three-bolt volley, and a snare. The charge stays. The taunt is
+shorter, rarer, and now actually shouts at you. Measured over the same 22
+seconds: he spent 59% of the fight motionless and now spends 21%, and he throws
+three different spells instead of one.
+
+### The Plague Rat is a rat again
+It had no pinned weapon, so the simulation periodically decided it should be
+using a staff, backed it off to twenty feet and had it lob frost bolts at you.
+It now keeps its paws and fights with the dire wolf's claw and bite, in your
+face where it belongs. Swings went from 12 to 23 over the same stretch, and it
+no longer drifts away mid-fight.
+
+Its toxin spit was doing two things wrong. It only unlocked below half health,
+and it was throwing a stray frost bolt alongside the toxin because a scripted
+spell was firing its own projectiles *and* a generic fallback set. The spit is
+now available from the start of the fight, works at any range (it fights with
+its face in yours, and a spit gated at three metres simply never happened), and
+throws toxin and nothing else.
+
+### Bosses stopped freezing mid-move
+While a boss was swinging or casting, the script took the turn and left it
+frozen on whatever speed it happened to be carrying. It now hands the turn back
+to the ordinary movement step, which already slows a monster to a crawl mid-
+swing, keeps it facing you, and holds it at its weapon's range. That is most of
+what read as broken pathing on both bosses.
+
+### Charges, leaps and taunts were invisible
+The game was ignoring boss announcements entirely. A charge, a pounce, a leap
+or a phase change arrived as nothing but a boss standing still. They now play
+their animation, make their noise, and shout their line.
+
+### Damage numbers sit on the thing being hit
+They were anchored to the point of impact, which is wherever the blade happened
+to be or wherever a bolt struck, then given a random jitter, then allowed to
+walk up to nine steps upward to avoid overlapping. Between the three of them a
+number could end up most of a screen away from what it belonged to.
+
+Every damage number now sits at the centre of the body it belongs to, on you
+and on enemies alike. Measured: dead centre, zero pixels off. Two numbers
+landing at the same instant still stack upward so both stay readable, but only
+two steps, and the random jitter is gone.
+
+### XP floats above your head and reads like a sentence
+It now says **+15 Woodcutting XP** rather than "+15 WOODCUTTING", appears above
+your head rather than in the hitsplat pile, and drifts slowly upward as it
+fades instead of popping. Several skills at once stack neatly.
+
 ## August 4, 2026 — everything fights like a goblin now
 
 The goblins were the only thing in the world whose combat felt right. This is
