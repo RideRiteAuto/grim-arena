@@ -197,6 +197,10 @@ function stepNpc(n, dt, ctx) {
       ctx.attack(n, rnd() < 0.26 ? 'heavy' : 'light', tgt);
     } else if (n.weapon === 1 && dp < 16 && n.mana > 25 && rnd() < (n.spell === 'snare' ? 1.3 : 0.9) * n.aiD * dt) {
       ctx.attack(n, n.spell === 'snare' ? 'snare' : 'frost', tgt);
+    } else if (n.weapon === 5) {
+      // two-handers: a wide cleave, and the overhead when it commits
+      const mv = rnd() < 0.26 ? 'gheavy' : 'glight';
+      if (dp < M[mv].range && rnd() < MELEE_RATE * n.aiD * dt) ctx.attack(n, mv, tgt);
     } else if (n.weapon === 3 || n.weapon === 4 || n.weapon === 9) {
       // A beast rakes with a paw and occasionally commits to a bite, the same
       // 26% mix a sword-and-shield fighter uses for its heavy. Everyone else

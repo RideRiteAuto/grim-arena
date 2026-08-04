@@ -111,18 +111,26 @@ const GRIM_RULES = {
         taunt:  { cd: [11, 16],    band: [0, 30], state: 'taunt',  dur: 1.2, shout: "WHERE'S THE RIVET?!" }
       }
     },
+    // The Hollow King. A greatsword, so the pairing is a fast cleave and a
+    // committed overhead, the same quick/heavy split every other fight in the
+    // world now uses. His single melee move used to sit on a one to two second
+    // cooldown behind a 1.3s animation, which left him swinging roughly once
+    // every three seconds and falling back on ordinary filler swings between.
+    // The ground slam is the thing you must actually read and dodge, so it
+    // stays his signature and comes more often the angrier he gets.
     hollowKing: {
       phases: [
-        { untilHpPct: 60, moves: ['slam', 'leap', 'melee'] },
-        { untilHpPct: 25, moves: ['slam', 'leap', 'leap', 'melee'], spdMul: 1.15,
+        { untilHpPct: 60, moves: ['cleave', 'cleave', 'crush', 'slam', 'leap'] },
+        { untilHpPct: 25, moves: ['cleave', 'crush', 'slam', 'leap', 'leap'], spdMul: 1.15,
           onEnter: { shout: 'THE HOLLOW STIRS' } },
-        { untilHpPct: 0,  moves: ['slam', 'slam', 'leap', 'melee'], spdMul: 1.25, dmgMul: 1.2,
+        { untilHpPct: 0,  moves: ['cleave', 'crush', 'slam', 'slam', 'leap'], spdMul: 1.25, dmgMul: 1.2,
           onEnter: { shout: 'THE CROWN BURNS' } }
       ],
       moves: {
-        slam:  { cd: [5, 8],  band: [0, 6.2],  move: 'slam' },
-        leap:  { cd: [4, 7],  band: [5, 15],   state: 'leap', dur: 0.9, lunge: 14 },
-        melee: { cd: [1, 2],  band: [0, 3.9],  move: 'gheavy' }
+        cleave: { cd: [0.6, 1.1], band: [0, 3.6],  move: 'glight' },
+        crush:  { cd: [3, 5],     band: [0, 3.9],  move: 'gheavy' },
+        slam:   { cd: [4.5, 7],   band: [0, 5.2],  move: 'slam' },
+        leap:   { cd: [4, 7],     band: [5, 15],   state: 'leap', dur: 0.9, lunge: 14 }
       }
     },
     // The Bandit Captain. Leaps and shield bashes are what make him read as a

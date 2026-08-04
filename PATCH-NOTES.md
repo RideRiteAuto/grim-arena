@@ -1,5 +1,48 @@
 # Grim World — patch notes
 
+## August 4, 2026 (later still) — the Hollow King, and spells on hillsides
+
+### Spells were being destroyed the instant they were cast on high ground
+This is the big one, and it affected every caster and archer in the world, not
+just Mr. Sailers.
+
+The simulation is deliberately flat: it works in X and Z and leaves height to
+your machine to draw. So when it fires a bolt it can only say "chest height",
+meaning 1.7 metres above sea level. Stand on the hill north-west of the mere,
+where the ground is 5.4 metres up, and that bolt spawns four metres
+underground. The game's own rule is that a projectile below the ground is gone,
+so it was deleted on its first frame. On the occasions one survived, it flew
+along at sea level, far below anyone standing on the hill, and the hit check
+requires the bolt to be within 1.6 metres of your chest vertically. It never
+was.
+
+Bolts now ride the landscape at the height they were cast. Measured on a 5.4
+metre rise: the bolt holds 2.66 metres above the ground for its entire flight
+and lands on a player standing up there. Before, it did not survive one frame.
+
+### Mr. Sailers casts from his staff, not from his donkey
+The simulation has no models, so it reported spells leaving a generic point a
+metre in front of the caster at chest height. On a man sitting on a donkey,
+that point is the middle of the animal. Spells now leave the actual end of his
+staff, which on the same hilltop is 2.66 metres up rather than 1.7. Bows fire
+from the bow and the Plague Rat spits from its snout, on the same rule.
+
+### The Hollow King
+He has always swung two-handed cleaves while visibly holding a sword and
+shield. He carries the greatsword now, which is what his moves were describing
+all along.
+
+His fighting matches the rest of the roster: a fast cleave and a committed
+overhead, the same quick-and-heavy pairing every other fight uses, instead of a
+single heavy swing on a one to two second cooldown behind a 1.3 second
+animation. He was landing roughly one real swing every three seconds and
+filling the gaps with ordinary sword swings that were not his. Now every blow
+he throws is his own: 15 attacks became 18 over the same stretch, all of them
+greatsword work, and he never stands still.
+
+The ground slam is still the thing you have to read and dodge, and he throws it
+more often the angrier he gets.
+
 ## August 4, 2026 (later) — the two bosses, and where numbers appear
 
 ### Mr. Sailers casts again, and starts casting straight away
