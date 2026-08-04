@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Grim World model lab</title>
+<style>
+  body { margin:0; background:#1A1A1A; color:#ededed; font:15px/1.55 system-ui, -apple-system, Segoe UI, Arial, sans-serif; padding:36px 28px 60px; }
+  h1 { color:#F3DC00; font-size:22px; letter-spacing:.06em; margin:0 0 6px; }
+  p.sub { color:#8f8f8f; margin:0 0 26px; max-width:60ch; }
+  ul { list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px; max-width:1000px; }
+  a.card { display:block; text-decoration:none; color:inherit; background:#232323; border:1px solid #383838; border-radius:12px; padding:14px 16px; }
+  a.card:hover { border-color:#F3DC00; }
+  a.card .n { color:#F3DC00; font-weight:700; letter-spacing:.05em; }
+  a.card .d { color:#8f8f8f; font-size:13px; margin-top:4px; }
+  .note { color:#8f8f8f; font-size:13px; margin-top:28px; max-width:70ch; }
+</style>
+</head>
+<body>
+<h1>GRIM WORLD MODEL LAB</h1>
+<p class="sub">Each page is a standalone turntable for one rig. It cycles that rig's states on a five second timer and exposes a __shot hook so the harness can freeze any state at any point in its cycle. A rig gets proven here before it is wired into the game, because a rig that ships broken means every monster using it ships broken.</p>
+<ul>
+  <li><a class="card" href="wolf.html"><span class="n">QUAD</span><div class="d">wolf. Shipped. The reference for four legged beasts.</div></a></li>
+  <li><a class="card" href="serpent.html"><span class="n">SERPENT</span><div class="d">Ten link parented chain driven by one wave equation. Bog serpent, and CONSTRICT.</div></a></li>
+  <li><a class="card" href="wisp.html"><span class="n">WISP</span><div class="d">Core, halo, orbiting motes and a light. Ice sprites, will-o-wisps, dust devils.</div></a></li>
+  <li><a class="card" href="flyer.html"><span class="n">FLYER</span><div class="d">Three joint wings that fold on the upstroke and perch. Cave bats, vultures.</div></a></li>
+  <li><a class="card" href="crab.html"><span class="n">CRAB</span><div class="d">Eight legs on a travelling side strafe, two jointed claws. PINCER GRAB.</div></a></li>
+  <li><a class="card" href="insect.html"><span class="n">INSECT</span><div class="d">Six legs on the alternating tripod gait, optional tail. Rock crawlers, scorpions, BURROW AMBUSH.</div></a></li>
+</ul>
+<p class="note">Shared scene, loft, textures and turntable live in lab.js. wolf.html predates it and keeps its own copy, deliberately: it is the shipped reference and nothing should be able to change it by accident.</p>
+</body>
+</html>

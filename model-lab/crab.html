@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Model lab: crab</title>
+<style>body{margin:0;background:#1a2030}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.1/build/three.module.js"}}</script>
+</head>
+<body>
+<script type="module">
+// CRAB rig. Giant crabs, mud crabs and Old Shellback's cousins ride this.
+//
+// The reason this is not just the quad rig with more legs is the STRAFE. A crab
+// walks sideways, which means the gait wave has to run along the body from front
+// to back while every leg reaches ACROSS rather than forward. Written as a quad
+// with extra legs you get a spider walking sideways, which reads wrong
+// immediately.
+//
+// PINCER GRAB is the signature, so the claws are the loudest part of the rig:
+// two joints each, and they hold position while the body pulls back.
+import { T, makeScene, loft, plateTexture, jitterGeo, runLab } from './lab.js';
+
+const ctx = makeScene({ sky: 0x1e2a30, ground: 0x6a6350 });
+
+function buildCrab() {
+  const shellTex = plateTexture('#a4482e', '60,20,12');
+  // Two shell materials on purpose. The lofted parts carry their own vertex
+  // colours; the carapace and the rim are primitives with no colour attribute,
+  // and a vertexColors material on a geometry with no colours renders black.
+  const matShell = new T.MeshStandardMaterial({ vertexColors: true, map: shellTex, roughness: 0.55, metalness: 0.08, flatShading: true });
+  const matCarapace = new T.MeshStandardMaterial({ color: 0xa4482e, map: shellTex, roughness: 0.5, metalness: 0.10, flatShading: true });
+  const matLeg = new T.MeshStandardMaterial({ color: 0x8e3f28, roughness: 0.6, flatShading: true });
+  const matDark = new T.MeshStandardMaterial({ color: 0x50241a, roughness: 0.7, flatShading: true });
+  const matPale = new T.MeshStandardMaterial({ color: 0xe4d3b4, roughness: 0.5, flatShading: true });
+
+  const TOP = 0x8f3d26, BELLY = 0xd8a184;
+  const root = new T.Group();
+  const body = new T.Group(); body.position.y = 0.46; root.add(body);
+
+  // carapace: wide, low, and wider than it is long. A crab read from the front
+  // is mostly shell, so this is the silhouette.
+  const shellGeo = jitterGeo(new T.SphereGeometry(0.5, 12, 8), 0.12, 31, 0.52);
+  const shell = new T.Mesh(shellGeo, matCarapace);
+  shell.scale.set(1.35, 1, 0.85);
+  body.add(shell);
+  // rim ridge so the shell has a hard edge rather than fading into the legs
+  const rim = new T.Mesh(new T.TorusGeometry(0.5, 0.045, 6, 16), matDark);
+  rim.rotation.x = Math.PI / 2; rim.scale.set(1.35, 0.85, 1); rim.position.y = -0.04;
+  body.add(rim);
+  // spines along the front edge
+  for (let i = -2; i <= 2; i++) {
+    const sp = new T.Mesh(new T.ConeGeometry(0.045, 0.14, 4), matDark);
+    sp.position.set(i * 0.16, 0.02, 0.40 - Math.abs(i) * 0.035);
+    sp.rotation.x = Math.PI / 2 - 0.5; body.add(sp);
+  }
+
+  // eyes on stalks: the other half of the crab read
+  const eyes = [];
+  for (const sd of [-1, 1]) {
+    const st = new T.Group(); st.position.set(sd * 0.16, 0.16, 0.34); body.add(st);
+    const stalk = new T.Mesh(new T.CylinderGeometry(0.024, 0.028, 0.20, 5), matLeg);
+    stalk.position.y = 0.10; st.add(stalk);
+    const ball = new T.Mesh(new T.SphereGeometry(0.045, 8, 6),
+      new T.MeshStandardMaterial({ color: 0x1a1410, emissive: 0x2a1008, roughness: 0.25 }));
+    ball.position.y = 0.21; st.add(ball);
+    st.rotation.z = sd * -0.16; eyes.push(st);
+  }
+  // mouth parts, small but they stop the front reading as blank
+  const mouth = new T.Group(); mouth.position.set(0, -0.10, 0.36); body.add(mouth);
+  for (const sd of [-1, 1]) {
+    const mp = new T.Mesh(new T.BoxGeometry(0.07, 0.09, 0.05), matDark);
+    mp.position.set(sd * 0.05, 0, 0); mouth.add(mp);
+  }
+
+  // ---- claws: two joints, and they are big on purpose ----
+  function claw(side) {
+    const shoulder = new T.Group(); shoulder.position.set(side * 0.44, -0.04, 0.24); body.add(shoulder);
+    const arm = loft([{ z: 0, w: 0.075, h: 0.075, y: 0 }, { z: 0.34, w: 0.06, h: 0.06, y: 0 }], 6, TOP, BELLY, matShell);
+    arm.rotation.y = side * Math.PI / 2; shoulder.add(arm);
+    const elbow = new T.Group(); elbow.position.set(side * 0.34, 0, 0); shoulder.add(elbow);
+    const fore = loft([{ z: 0, w: 0.085, h: 0.085, y: 0 }, { z: 0.26, w: 0.10, h: 0.11, y: 0 }], 6, TOP, BELLY, matShell);
+    fore.rotation.y = side * Math.PI / 2; elbow.add(fore);
+    // the pincer itself: fixed lower jaw, hinged upper
+    const hand = new T.Group(); hand.position.set(side * 0.26, 0, 0); elbow.add(hand);
+    const palm = loft([{ z: 0, w: 0.11, h: 0.12, y: 0 }, { z: 0.22, w: 0.075, h: 0.085, y: -0.01 }], 6, TOP, BELLY, matShell);
+    palm.rotation.y = side * Math.PI / 2; hand.add(palm);
+    const lower = new T.Mesh(new T.ConeGeometry(0.05, 0.26, 4), matPale);
+    lower.rotation.z = side * -Math.PI / 2; lower.position.set(side * 0.34, -0.045, 0); hand.add(lower);
+    const upperG = new T.Group(); upperG.position.set(side * 0.20, 0.02, 0); hand.add(upperG);
+    const upper = new T.Mesh(new T.ConeGeometry(0.055, 0.24, 4), matPale);
+    upper.rotation.z = side * -Math.PI / 2; upper.position.set(side * 0.13, 0.02, 0); upperG.add(upper);
+    return { shoulder, elbow, hand, upperG, side };
+  }
+  const claws = [claw(-1), claw(1)];
+
+  // ---- walking legs: four a side, three joints each ----
+  function leg(side, i) {
+    const z = 0.16 - i * 0.19;
+    const hip = new T.Group(); hip.position.set(side * 0.42, -0.10, z); body.add(hip);
+    const coxa = loft([{ z: 0, w: 0.045, h: 0.045, y: 0 }, { z: 0.26, w: 0.034, h: 0.034, y: 0 }], 5, 0x7e3822, 0xba6a4e, matShell);
+    coxa.rotation.y = side * Math.PI / 2; hip.add(coxa);
+    const knee = new T.Group(); knee.position.set(side * 0.26, 0, 0); hip.add(knee);
+    const femur = loft([{ z: 0, w: 0.032, h: 0.032, y: 0 }, { z: 0.30, w: 0.022, h: 0.022, y: 0 }], 5, 0x7e3822, 0xba6a4e, matShell);
+    femur.rotation.y = side * Math.PI / 2; knee.add(femur);
+    const ankle = new T.Group(); ankle.position.set(side * 0.30, 0, 0); knee.add(ankle);
+    const tip = new T.Mesh(new T.ConeGeometry(0.028, 0.30, 4), matDark);
+    tip.rotation.z = side * -Math.PI / 2; tip.position.set(side * 0.15, 0, 0); ankle.add(tip);
+    return { hip, knee, ankle, side, i };
+  }
+  const legs = [];
+  for (const sd of [-1, 1]) for (let i = 0; i < 4; i++) legs.push(leg(sd, i));
+
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g: root, body, shell, eyes, claws, legs, mouth };
+}
+
+// The gait wave runs front to back along the body, and the legs on the leading
+// side pull while the legs on the trailing side push. That is the strafe.
+function poseCrab(c, state, t) {
+  const setLeg = (l, lift, reach, curl) => {
+    l.hip.rotation.z = l.side * (-0.30 + reach);
+    l.hip.rotation.x = lift;
+    l.knee.rotation.z = l.side * (0.95 + curl);
+    l.ankle.rotation.z = l.side * (0.55 - curl * 0.4);
+  };
+  const setClaw = (cl, sh, el, open, yaw) => {
+    cl.shoulder.rotation.z = cl.side * sh;
+    cl.shoulder.rotation.y = yaw || 0;
+    cl.elbow.rotation.z = cl.side * el;
+    cl.upperG.rotation.z = cl.side * -open;
+  };
+
+  if (state === 'idle') {
+    c.body.position.y = 0.46 + Math.sin(t * 1.5) * 0.012;
+    c.body.rotation.z = Math.sin(t * 0.9) * 0.02;
+    c.legs.forEach(l => setLeg(l, Math.sin(t * 1.5 + l.i * 0.6) * 0.03, 0, 0));
+    // the idle tell: one claw clacks now and then
+    const clack = Math.max(0, Math.sin(t * 2.2)) > 0.97 ? 1 : 0;
+    setClaw(c.claws[0], -0.15, 0.35, 0.10 + clack * 0.5, 0);
+    setClaw(c.claws[1], -0.18, 0.40, 0.10, 0);
+    c.eyes.forEach((e, i) => { e.rotation.x = Math.sin(t * 0.8 + i) * 0.18; });
+  } else if (state === 'move') {
+    // sideways scuttle. Phase runs along the body index so the wave travels,
+    // and the two sides are half a cycle apart so it is always supported.
+    const ph = t * 7.5;
+    c.body.position.y = 0.46 + Math.abs(Math.sin(ph)) * 0.02;
+    c.body.rotation.z = Math.sin(ph) * 0.05;
+    c.legs.forEach(l => {
+      const p = ph - l.i * 0.7 + (l.side > 0 ? Math.PI : 0);
+      const swing = Math.sin(p);
+      const lift = Math.max(0, Math.cos(p)) * 0.42;
+      setLeg(l, lift, swing * 0.34, -swing * 0.18);
+    });
+    setClaw(c.claws[0], -0.35 + Math.sin(ph) * 0.06, 0.45, 0.12, 0.10);
+    setClaw(c.claws[1], -0.35 - Math.sin(ph) * 0.06, 0.45, 0.12, -0.10);
+    c.eyes.forEach(e => { e.rotation.x = 0.1; });
+  } else if (state === 'attack') {
+    // PINCER GRAB: both claws open wide, snap shut, then HOLD while the body
+    // hauls backward. The hold is the move, not the snap.
+    const p = (t % 2.0) / 2.0;
+    let open, reachZ, pull, bodyDrop;
+    if (p < 0.28) { const k = p / 0.28; open = 0.15 + 1.05 * k; reachZ = 0.35 * k; pull = 0; bodyDrop = -0.03 * k; }
+    else if (p < 0.36) { const k = (p - 0.28) / 0.08; open = 1.2 - 1.15 * k; reachZ = 0.35; pull = 0; bodyDrop = -0.03; }
+    else if (p < 0.80) { const k = (p - 0.36) / 0.44; open = 0.05; reachZ = 0.35 - 0.5 * k; pull = k; bodyDrop = -0.03 - 0.05 * Math.sin(k * Math.PI); }
+    else { const k = (p - 0.80) / 0.20; open = 0.05 + 0.10 * k; reachZ = -0.15 + 0.15 * k; pull = 1 - k; bodyDrop = -0.08 * (1 - k); }
+
+    c.body.position.y = 0.46 + bodyDrop;
+    c.body.position.z = -pull * 0.22;
+    c.body.rotation.x = pull * 0.10;
+    // legs brace and dig in while it pulls
+    c.legs.forEach(l => setLeg(l, 0, -pull * 0.25 + Math.sin(t * 18 + l.i) * pull * 0.03, pull * 0.3));
+    for (const cl of c.claws) {
+      setClaw(cl, -0.05 - reachZ * 0.5, 0.30 - reachZ * 0.35, open, cl.side * -reachZ * 0.5);
+    }
+    c.eyes.forEach(e => { e.rotation.x = -0.25; });
+  }
+}
+
+runLab(ctx, buildCrab(), poseCrab, {
+  name: 'CRAB',
+  views: {
+    three4: { pos: [2.9, 1.7, 3.2], look: [0, 0.4, 0] },
+    side:   { pos: [3.8, 0.9, 0.1], look: [0, 0.4, 0] },
+    front:  { pos: [0.2, 1.0, 3.4], look: [0, 0.45, 0] },
+    low:    { pos: [2.2, 0.35, 2.4], look: [0, 0.4, 0] }
+  }
+});
+</script>
+</body>
+</html>

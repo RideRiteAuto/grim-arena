@@ -1,5 +1,20 @@
 # Grim World — patch notes
 
+## August 4, 2026 (zones-1b) - Five new creature rigs in the model lab
+
+Groundwork for the monsters, not the monsters themselves. Nothing in the game changes with this one.
+
+Five rig types the bestiary needs did not exist yet, so each one is now built and animated on its own turntable page before any creature is wired to it. Open model-lab/index.html to see them turn.
+
+- SERPENT. Ten links, each parented to the one in front, driven by a single wave equation. Coils, travels, rears up and strikes. This is the bog serpent, and CONSTRICT hangs off it.
+- WISP. No skeleton at all, so it is a core, a halo, six orbiting motes and a light. It winds down small and dark before it bursts, which is the only telegraph a shapeless thing can give you. Ice sprites, will-o-wisps and dust devils.
+- FLYER. Three joints per wing, so the wing folds on the upstroke instead of flapping like a plank, and so the same rig can genuinely perch. Cave bats and vultures.
+- CRAB. Eight legs on a sideways gait that travels along the body, and two jointed claws. The PINCER GRAB is in: claws snap shut and then HOLD while the body hauls backward, because the hold is the move, not the snap.
+- INSECT. Six legs on the alternating tripod gait, three feet planted at all times, with mandibles and an optional tail. BURROW AMBUSH is a real state: it sinks, waits, and erupts.
+
+Each rig was checked at four points in every state, from four camera angles, with no console errors. Two problems were found and fixed that way: the crab's shell was rendering black because a vertex colour material was on a shape with no vertex colours, and the serpent was rendering as a straight pipe because its wave packed half a cycle between neighbouring links, so they cancelled each other out.
+
+
 ## August 4, 2026 (zones-1) - Gathering skills and the zone dressing engine
 
 The world stops being bald. Ground outside the towns and roads now grows its own trees, bushes, stones and sticks, and the harvestable nodes in it are the ones that zone is supposed to have.
@@ -356,22 +371,3 @@ flutter when running - both clamped so a sprint never kites the cloak.
 ### Patch notes now self-prune
 This file automatically keeps only the newest twelve entries so it never
 grows forever.
-
-
-## August 5, 2026 (skills page + pack cleanup) — press K
-
-### The skills page
-K opens (and closes) your character's skill sheet: all seven skills -
-MELEE, RANGED, MAGIC, HITPOINTS, WOODCUTTING, MINING, SMITHING - each
-with its level out of 99, a colored progress bar to the next level, your
-exact XP and the XP remaining. A TOTAL LEVEL sits in the header, levels
-are now capped at 99, and hovering any skill shows a detailed tooltip:
-what it does, how to train it, and where the next tier unlocks. The page
-updates live as XP lands, Esc also closes it, and K is in the menu
-binding list.
-
-### Pack panel cleaned up
-The pack grid is now 7 wide instead of a tall 4-wide column, the panel
-is tighter with the dead space gone, and GEAR STATS is a compact
-two-column readout that skips zero stats, with a damage-reduction bar
-and a pointer to the K page.

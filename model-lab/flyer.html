@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Model lab: flyer</title>
+<style>body{margin:0;background:#1a2030}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.1/build/three.module.js"}}</script>
+</head>
+<body>
+<script type="module">
+// FLYER rig. Cave bats and vultures ride this.
+//
+// A wing is three joints, not one: shoulder, elbow, wrist. One joint gives you
+// a flapping plank. Three gives you the fold on the upstroke that reads as a
+// real wing, and it is also what lets the same rig PERCH, which a plank cannot
+// do. Perch matters here because a vulture circling a corpse and a bat hanging
+// at a mine mouth are both perch poses, not flight poses.
+import { T, makeScene, loft, furTexture, runLab } from './lab.js';
+
+const ctx = makeScene({ sky: 0x1b2130, ground: 0x40443a });
+
+function buildFlyer() {
+  const fur = furTexture('#6a5f56', '30,26,22');
+  const matBody = new T.MeshStandardMaterial({ vertexColors: true, map: fur, roughness: 0.95, flatShading: true });
+  const matDark = new T.MeshStandardMaterial({ color: 0x3a332c, roughness: 0.95, flatShading: true });
+  const matPale = new T.MeshStandardMaterial({ color: 0xcfc7b6, roughness: 0.6, flatShading: true });
+  // the membrane is double sided on purpose: you see the underside of the far
+  // wing on every downstroke, and a single sided wing vanishes there
+  const matWing = new T.MeshStandardMaterial({
+    color: 0x5b4a44, roughness: 0.85, side: T.DoubleSide, transparent: true, opacity: 0.94, flatShading: true
+  });
+
+  const TOP = 0x5a5048, BELLY = 0xa89c8c;
+  const root = new T.Group();
+  const body = new T.Group(); body.position.y = 1.15; root.add(body);
+
+  const torso = loft([
+    { z: -0.30, w: 0.09, h: 0.10, y: 0 },
+    { z: -0.10, w: 0.135, h: 0.155, y: 0 },
+    { z: 0.12, w: 0.15, h: 0.175, y: 0 },
+    { z: 0.30, w: 0.10, h: 0.12, y: 0.01 }
+  ], 8, TOP, BELLY, matBody);
+  body.add(torso);
+
+  // head
+  const headG = new T.Group(); headG.position.set(0, 0.06, 0.32); body.add(headG);
+  const skull = loft([
+    { z: -0.05, w: 0.095, h: 0.09, y: 0 },
+    { z: 0.07, w: 0.075, h: 0.07, y: -0.01 },
+    { z: 0.17, w: 0.035, h: 0.03, y: -0.03 }
+  ], 7, TOP, BELLY, matBody);
+  headG.add(skull);
+  const jaw = new T.Group(); jaw.position.set(0, -0.045, 0.02); headG.add(jaw);
+  jaw.add(loft([{ z: 0, w: 0.06, h: 0.025, y: 0 }, { z: 0.16, w: 0.028, h: 0.016, y: -0.012 }], 6, 0x4a423a, 0x9a8f80, matBody));
+  const teeth = new T.Mesh(new T.BoxGeometry(0.06, 0.016, 0.07), matPale);
+  teeth.position.set(0, -0.03, 0.11); headG.add(teeth);
+  for (const sd of [-1, 1]) {
+    const eye = new T.Mesh(new T.SphereGeometry(0.019, 8, 6),
+      new T.MeshStandardMaterial({ color: 0xc4452e, emissive: 0x5a1408, roughness: 0.35 }));
+    eye.position.set(sd * 0.055, 0.03, 0.08); headG.add(eye);
+  }
+  // big ears, the thing that makes it read as a bat at a glance
+  const ears = [];
+  for (const sd of [-1, 1]) {
+    const e = new T.Group(); e.position.set(sd * 0.06, 0.09, -0.02);
+    const cone = new T.Mesh(new T.ConeGeometry(0.05, 0.19, 4), matDark);
+    cone.rotation.y = Math.PI / 4; cone.position.y = 0.09; e.add(cone);
+    e.rotation.z = sd * -0.22; headG.add(e); ears.push(e);
+  }
+
+  // ---- wings ----
+  // Membrane panels are built as flat triangle fans between the arm joints, so
+  // the skin follows the bones rather than being a separate flapping sheet.
+  function wing(side) {
+    const shoulder = new T.Group(); shoulder.position.set(side * 0.13, 0.08, 0.06); body.add(shoulder);
+    const upper = loft([{ z: 0, w: 0.045, h: 0.04, y: 0 }, { z: 0.46, w: 0.03, h: 0.026, y: 0 }], 5, 0x4e453d, 0x8a8074, matBody);
+    upper.rotation.y = side * Math.PI / 2; shoulder.add(upper);
+
+    const elbow = new T.Group(); elbow.position.set(side * 0.46, 0, 0); shoulder.add(elbow);
+    const fore = loft([{ z: 0, w: 0.03, h: 0.026, y: 0 }, { z: 0.44, w: 0.02, h: 0.018, y: 0 }], 5, 0x4e453d, 0x8a8074, matBody);
+    fore.rotation.y = side * Math.PI / 2; elbow.add(fore);
+
+    const wrist = new T.Group(); wrist.position.set(side * 0.44, 0, 0); elbow.add(wrist);
+    // four finger struts spreading back from the wrist
+    const fingers = [];
+    for (let i = 0; i < 4; i++) {
+      const f = new T.Mesh(new T.BoxGeometry(0.5 - i * 0.06, 0.016, 0.016), matDark);
+      f.position.set(side * (0.25 - i * 0.03), 0, -i * 0.11);
+      f.rotation.y = side * (-0.18 - i * 0.16);
+      wrist.add(f); fingers.push(f);
+    }
+    // membrane: shoulder -> elbow -> wrist -> fingertips -> back to the body
+    const mk = (pts) => {
+      const g = new T.BufferGeometry();
+      const v = [];
+      for (let i = 1; i < pts.length - 1; i++) {
+        v.push(...pts[0], ...pts[i], ...pts[i + 1]);
+      }
+      g.setAttribute('position', new T.Float32BufferAttribute(v, 3));
+      g.computeVertexNormals();
+      return new T.Mesh(g, matWing);
+    };
+    const inner = mk([[0, 0, 0], [side * 0.46, 0, 0], [side * 0.42, 0, -0.30], [0, -0.02, -0.34]]);
+    shoulder.add(inner);
+    const outer = mk([[0, 0, 0], [side * 0.44, 0, 0], [side * 0.40, 0, -0.34], [side * 0.02, 0, -0.30]]);
+    elbow.add(outer);
+    const hand = mk([[0, 0, 0], [side * 0.30, 0, -0.02], [side * 0.20, 0, -0.36], [side * 0.02, 0, -0.34]]);
+    wrist.add(hand);
+
+    return { shoulder, elbow, wrist, fingers, side };
+  }
+  const wings = [wing(-1), wing(1)];
+
+  // feet: only visible on a perch, but a flyer with no feet reads as a puppet
+  const feet = [];
+  for (const sd of [-1, 1]) {
+    const f = new T.Group(); f.position.set(sd * 0.07, -0.10, -0.18); body.add(f);
+    const shin = new T.Mesh(new T.BoxGeometry(0.028, 0.20, 0.028), matDark);
+    shin.position.y = -0.10; f.add(shin);
+    const claw = new T.Mesh(new T.ConeGeometry(0.03, 0.09, 4), matPale);
+    claw.position.set(0, -0.22, 0.02); claw.rotation.x = 0.5; f.add(claw);
+    feet.push(f);
+  }
+  // tail rudder
+  const tail = new T.Group(); tail.position.set(0, -0.02, -0.30); body.add(tail);
+  const tailM = new T.Mesh(new T.ConeGeometry(0.1, 0.3, 4), matDark);
+  tailM.rotation.x = Math.PI / 2 + 0.2; tailM.position.z = -0.12; tail.add(tailM);
+
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g: root, body, headG, jaw, ears, wings, feet, tail };
+}
+
+// States: idle is a PERCH (folded, hanging weight), move is the flap cycle,
+// attack is the swoop. Perch is its own pose rather than a slowed flap,
+// because a bat at rest is folded, not hovering gently.
+function poseFlyer(f, state, t) {
+  const set = (w, sh, el, wr, dih) => {
+    w.shoulder.rotation.z = w.side * sh;
+    w.shoulder.rotation.x = dih || 0;
+    w.elbow.rotation.z = w.side * el;
+    w.wrist.rotation.z = w.side * wr;
+  };
+  f.jaw.rotation.x = 0;
+  f.tail.rotation.x = 0;
+
+  if (state === 'idle') {
+    // perched: wings folded tight against the body, slow breathing
+    const br = Math.sin(t * 1.4) * 0.03;
+    f.body.position.y = 0.62 + br * 0.4;
+    f.body.rotation.x = 0.18;
+    set(f.wings[0], -1.15 + br, 2.35, 1.5, 0.1);
+    set(f.wings[1], -1.15 + br, 2.35, 1.5, 0.1);
+    f.headG.rotation.x = -0.15;
+    f.headG.rotation.y = Math.sin(t * 0.6) * 0.4;
+    f.ears.forEach((e, i) => { e.rotation.x = Math.sin(t * 2.7 + i * 2.1) > 0.94 ? -0.3 : 0; });
+    f.feet.forEach(ft => { ft.rotation.x = 0; });
+  } else if (state === 'move') {
+    // flap: downstroke fast and extended, upstroke slower and folded, which is
+    // the asymmetry that stops it looking like a metronome
+    const ph = t * 6.2;
+    const s = Math.sin(ph);
+    const down = s > 0;
+    const drive = down ? Math.pow(s, 0.6) : -Math.pow(-s, 1.6);
+    f.body.position.y = 1.15 + Math.sin(ph - 0.6) * 0.10;
+    f.body.rotation.x = -0.12 + Math.sin(ph) * 0.06;
+    const fold = down ? 0.15 : 0.85;              // upstroke folds the elbow
+    for (const w of f.wings) {
+      set(w, -0.15 + drive * 0.95, 0.25 + fold * 0.7, 0.1 + fold * 0.5, -0.12 - drive * 0.15);
+      w.fingers.forEach((fg, i) => { fg.rotation.z = w.side * (down ? 0 : 0.25 + i * 0.05); });
+    }
+    f.headG.rotation.x = 0.1;
+    f.ears.forEach(e => { e.rotation.x = -0.35; });
+    f.feet.forEach(ft => { ft.rotation.x = 1.1; });   // tucked
+    f.tail.rotation.x = -0.15;
+  } else if (state === 'attack') {
+    // swoop: pull back, tip forward, wings swept, jaws open on the pass
+    const p = (t % 1.3) / 1.3;
+    let pitch, sweep, jaw, y;
+    if (p < 0.30) { const k = p / 0.30; pitch = -0.5 * k; sweep = -0.9 - 0.5 * k; jaw = 0; y = 1.15 + 0.35 * k; }
+    else if (p < 0.62) { const k = (p - 0.30) / 0.32; pitch = -0.5 + 1.3 * k; sweep = -1.4 + 1.0 * k; jaw = k; y = 1.5 - 0.75 * k; }
+    else { const k = (p - 0.62) / 0.38; pitch = 0.8 - 0.8 * k; sweep = -0.4 - 0.5 * k; jaw = 1 - k; y = 0.75 + 0.4 * k; }
+    f.body.position.y = y;
+    f.body.rotation.x = pitch;
+    for (const w of f.wings) {
+      set(w, sweep, 0.5, 0.35, -0.45);
+      w.fingers.forEach((fg, i) => { fg.rotation.z = w.side * (0.3 + i * 0.06); });
+    }
+    f.headG.rotation.x = -pitch * 0.7;
+    f.jaw.rotation.x = jaw * 0.65;
+    f.ears.forEach(e => { e.rotation.x = -0.55; });
+    f.feet.forEach(ft => { ft.rotation.x = 0.8 - jaw * 0.9; });
+    f.tail.rotation.x = -pitch * 0.5;
+  }
+}
+
+runLab(ctx, buildFlyer(), poseFlyer, {
+  name: 'FLYER',
+  views: {
+    three4: { pos: [2.8, 1.8, 3.2], look: [0, 1.0, 0] },
+    side:   { pos: [3.8, 1.2, 0.1], look: [0, 1.0, 0] },
+    front:  { pos: [0.3, 1.3, 3.6], look: [0, 1.05, 0] },
+    low:    { pos: [2.2, 0.4, 2.4], look: [0, 1.0, 0] }
+  }
+});
+</script>
+</body>
+</html>

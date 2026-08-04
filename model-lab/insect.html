@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Model lab: insect</title>
+<style>body{margin:0;background:#1a2030}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.1/build/three.module.js"}}</script>
+</head>
+<body>
+<script type="module">
+// INSECT rig. Rock crawlers, magma crawlers and scorpions ride this.
+//
+// Six legs on the ALTERNATING TRIPOD gait: front and back on one side move with
+// the middle leg of the other side, so three feet are always planted. That is
+// what makes a six legged thing look like an insect instead of a centipede,
+// and it is the one detail worth getting exactly right here.
+//
+// The tail is built but parked, because a rock crawler has none and a scorpion
+// is the same rig with the tail switched on and a sting on the end. BURROW
+// AMBUSH is the crawler signature, so submerge and erupt are real states here
+// rather than something faked with a visibility toggle later.
+import { T, makeScene, loft, plateTexture, jitterGeo, runLab } from './lab.js';
+
+const ctx = makeScene({ sky: 0x241f1a, ground: 0x5a5040 });
+
+function buildInsect(opts) {
+  opts = opts || {};
+  const withTail = opts.tail !== false;
+  const chitin = plateTexture('#4a4038', '18,14,10');
+  const matBody = new T.MeshStandardMaterial({ vertexColors: true, map: chitin, roughness: 0.5, metalness: 0.12, flatShading: true });
+  const matLeg = new T.MeshStandardMaterial({ color: 0x3c342c, roughness: 0.6, flatShading: true });
+  const matDark = new T.MeshStandardMaterial({ color: 0x241e18, roughness: 0.7, flatShading: true });
+
+  const TOP = 0x39312a, BELLY = 0x8a7a66;
+  const root = new T.Group();
+  const body = new T.Group(); body.position.y = 0.42; root.add(body);
+
+  // three tagmata: head, thorax, abdomen. Insects read by their waists.
+  const thorax = loft([
+    { z: -0.12, w: 0.20, h: 0.15, y: 0 },
+    { z: 0.10, w: 0.235, h: 0.175, y: 0.01 },
+    { z: 0.30, w: 0.165, h: 0.13, y: 0 }
+  ], 8, TOP, BELLY, matBody);
+  body.add(thorax);
+
+  const abdoG = new T.Group(); abdoG.position.set(0, 0.01, -0.16); body.add(abdoG);
+  const abdo = loft([
+    { z: 0.04, w: 0.17, h: 0.135, y: 0 },
+    { z: -0.22, w: 0.235, h: 0.19, y: -0.01 },
+    { z: -0.48, w: 0.17, h: 0.145, y: -0.02 },
+    { z: -0.62, w: 0.08, h: 0.07, y: -0.02 }
+  ], 8, TOP, BELLY, matBody);
+  abdoG.add(abdo);
+  // plate ridges down the back: cheap, and they catch the light on every step
+  for (let i = 0; i < 4; i++) {
+    const pl = new T.Mesh(new T.BoxGeometry(0.30 - i * 0.05, 0.03, 0.10), matDark);
+    pl.position.set(0, 0.12 - i * 0.012, -0.10 - i * 0.14); pl.rotation.x = -0.25;
+    abdoG.add(pl);
+  }
+
+  const headG = new T.Group(); headG.position.set(0, 0.02, 0.32); body.add(headG);
+  const skull = loft([
+    { z: -0.04, w: 0.145, h: 0.115, y: 0 },
+    { z: 0.10, w: 0.115, h: 0.09, y: -0.01 },
+    { z: 0.18, w: 0.07, h: 0.055, y: -0.03 }
+  ], 7, TOP, BELLY, matBody);
+  headG.add(skull);
+  // compound eyes
+  for (const sd of [-1, 1]) {
+    const eye = new T.Mesh(jitterGeo(new T.IcosahedronGeometry(0.05, 0), 0.25, 17, 1),
+      new T.MeshStandardMaterial({ color: 0x1a1208, emissive: 0x3a1a04, roughness: 0.2, metalness: 0.4 }));
+    eye.position.set(sd * 0.10, 0.055, 0.05); headG.add(eye);
+  }
+  // mandibles: two hinged plates, the whole reason a bite reads
+  const mandibles = [];
+  for (const sd of [-1, 1]) {
+    const m = new T.Group(); m.position.set(sd * 0.055, -0.045, 0.14); headG.add(m);
+    const blade = new T.Mesh(new T.ConeGeometry(0.035, 0.17, 4), matDark);
+    blade.rotation.x = Math.PI / 2 + 0.35; blade.position.z = 0.07; m.add(blade);
+    mandibles.push({ g: m, side: sd });
+  }
+  // antennae
+  const antennae = [];
+  for (const sd of [-1, 1]) {
+    const a = new T.Group(); a.position.set(sd * 0.075, 0.085, 0.10); headG.add(a);
+    const seg = new T.Mesh(new T.CylinderGeometry(0.012, 0.016, 0.24, 4), matLeg);
+    seg.position.y = 0.12; seg.rotation.z = sd * 0.5; seg.rotation.x = -0.4; a.add(seg);
+    antennae.push({ g: a, side: sd });
+  }
+
+  // ---- six legs, three joints each, three a side ----
+  function leg(side, i) {
+    const z = 0.22 - i * 0.22;
+    const hip = new T.Group(); hip.position.set(side * 0.19, -0.05, z); body.add(hip);
+    const coxa = loft([{ z: 0, w: 0.038, h: 0.038, y: 0 }, { z: 0.24, w: 0.028, h: 0.028, y: 0 }], 5, 0x3c342c, 0x7a6c58, matBody);
+    coxa.rotation.y = side * Math.PI / 2; hip.add(coxa);
+    const knee = new T.Group(); knee.position.set(side * 0.24, 0, 0); hip.add(knee);
+    const femur = loft([{ z: 0, w: 0.028, h: 0.028, y: 0 }, { z: 0.26, w: 0.019, h: 0.019, y: 0 }], 5, 0x3c342c, 0x7a6c58, matBody);
+    femur.rotation.y = side * Math.PI / 2; knee.add(femur);
+    const ankle = new T.Group(); ankle.position.set(side * 0.26, 0, 0); knee.add(ankle);
+    const tarsus = new T.Mesh(new T.ConeGeometry(0.022, 0.28, 4), matDark);
+    tarsus.rotation.z = side * -Math.PI / 2; tarsus.position.set(side * 0.14, 0, 0); ankle.add(tarsus);
+    // tripod group: 0 = front-left, middle-right, back-left; 1 = the other three
+    const tri = ((i % 2) + (side > 0 ? 1 : 0)) % 2;
+    return { hip, knee, ankle, side, i, tri };
+  }
+  const legs = [];
+  for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) legs.push(leg(sd, i));
+
+  // ---- tail, parked unless the species wants it ----
+  const tailSegs = [];
+  let sting = null;
+  if (withTail) {
+    let parent = abdoG;
+    const anchor = new T.Group(); anchor.position.set(0, 0.02, -0.60); abdoG.add(anchor);
+    parent = anchor; tailSegs.push(anchor);
+    for (let i = 0; i < 4; i++) {
+      const seg = loft([
+        { z: 0, w: 0.07 - i * 0.009, h: 0.07 - i * 0.009, y: 0 },
+        { z: -0.16, w: 0.062 - i * 0.009, h: 0.062 - i * 0.009, y: 0 }
+      ], 6, TOP, BELLY, matBody);
+      parent.add(seg);
+      const nxt = new T.Group(); nxt.position.z = -0.16; parent.add(nxt);
+      parent = nxt; tailSegs.push(nxt);
+    }
+    sting = new T.Mesh(new T.ConeGeometry(0.05, 0.22, 5), matDark);
+    sting.rotation.x = -Math.PI / 2 - 0.4; sting.position.z = -0.08; parent.add(sting);
+  }
+
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g: root, body, headG, abdoG, legs, mandibles, antennae, tailSegs, sting };
+}
+
+function poseInsect(b, state, t) {
+  const setLeg = (l, lift, swing, curl) => {
+    l.hip.rotation.x = swing;              // fore and aft
+    l.hip.rotation.z = l.side * (-0.55 - lift);
+    l.knee.rotation.z = l.side * (1.25 + curl);
+    l.ankle.rotation.z = l.side * (0.55 - curl * 0.5);
+  };
+  const tail = (curl, sweep) => {
+    b.tailSegs.forEach((s, i) => {
+      s.rotation.x = i === 0 ? -0.5 - curl * 0.4 : -0.30 - curl * 0.35;
+      s.rotation.y = Math.sin(t * 1.2 + i * 0.5) * sweep;
+    });
+  };
+  b.g.position.y = 0;
+  b.g.visible = true;
+
+  if (state === 'idle') {
+    b.body.position.y = 0.42 + Math.sin(t * 1.7) * 0.008;
+    b.legs.forEach(l => setLeg(l, Math.sin(t * 1.7 + l.i) * 0.02, 0, 0));
+    b.mandibles.forEach(m => { m.g.rotation.y = m.side * (0.10 + Math.max(0, Math.sin(t * 1.9)) * 0.28); });
+    b.antennae.forEach((a, i) => { a.g.rotation.x = Math.sin(t * 2.3 + i * 1.7) * 0.35; a.g.rotation.z = Math.sin(t * 1.6 + i) * 0.2; });
+    b.headG.rotation.y = Math.sin(t * 0.7) * 0.16;
+    tail(0.1, 0.10);
+  } else if (state === 'move') {
+    // alternating tripod: the two groups are exactly half a cycle apart
+    const ph = t * 8.0;
+    b.body.position.y = 0.42 + Math.sin(ph * 2) * 0.014;
+    b.body.rotation.z = Math.sin(ph) * 0.045;
+    b.legs.forEach(l => {
+      const p = ph + (l.tri ? Math.PI : 0);
+      const swing = Math.sin(p) * 0.42;
+      const lift = Math.max(0, Math.cos(p)) * 0.45;
+      setLeg(l, lift, swing, -Math.max(0, Math.cos(p)) * 0.25);
+    });
+    b.mandibles.forEach(m => { m.g.rotation.y = m.side * 0.12; });
+    b.antennae.forEach((a, i) => { a.g.rotation.x = -0.25 + Math.sin(ph + i) * 0.18; });
+    b.headG.rotation.y = 0;
+    tail(0.35, 0.06);
+  } else if (state === 'attack') {
+    // rear up on the back legs, mandibles wide, then drive forward and snap
+    const p = (t % 1.4) / 1.4;
+    let rear, snap, lunge;
+    if (p < 0.38) { const k = p / 0.38; rear = k; snap = 0; lunge = 0; }
+    else if (p < 0.50) { rear = 1; snap = 0; lunge = 0; }
+    else if (p < 0.66) { const k = (p - 0.50) / 0.16; rear = 1 - k; snap = k; lunge = Math.sin(k * Math.PI) * 0.3; }
+    else { const k = (p - 0.66) / 0.34; rear = 0; snap = 1 - k; lunge = 0; }
+    b.body.rotation.x = -rear * 0.5;
+    b.body.position.y = 0.42 + rear * 0.16;
+    b.body.position.z = lunge;
+    b.legs.forEach(l => {
+      const front = l.i === 0;
+      setLeg(l, front ? rear * 0.9 : -rear * 0.2, front ? rear * 0.7 : -rear * 0.25, front ? rear * 0.5 : 0);
+    });
+    b.mandibles.forEach(m => { m.g.rotation.y = m.side * (0.12 + rear * 0.85 - snap * 0.9); });
+    b.antennae.forEach(a => { a.g.rotation.x = -0.5; });
+    b.headG.rotation.x = rear * 0.3 - snap * 0.2;
+    tail(0.2 + rear * 0.9, 0.03);
+  } else if (state === 'burrow') {
+    // BURROW AMBUSH, the rock crawler signature. Sink, wait, erupt. The dust
+    // telegraph is a game effect, but the rig has to actually go under and come
+    // back up or the erupt has nothing to come out of.
+    const p = (t % 3.0) / 3.0;
+    let y, rear = 0;
+    if (p < 0.25) { const k = p / 0.25; y = -1.0 * k; }
+    else if (p < 0.62) { y = -1.0; }
+    else if (p < 0.76) { const k = (p - 0.62) / 0.14; y = -1.0 + 1.45 * k; rear = k; }
+    else { const k = (p - 0.76) / 0.24; y = 0.45 - 0.45 * k; rear = 1 - k; }
+    b.g.position.y = y;
+    b.body.rotation.x = -rear * 0.7;
+    b.legs.forEach(l => setLeg(l, rear * 0.7, (l.i === 0 ? 1 : -1) * rear * 0.5, rear * 0.4));
+    b.mandibles.forEach(m => { m.g.rotation.y = m.side * (0.12 + rear * 0.8); });
+    b.antennae.forEach(a => { a.g.rotation.x = -0.4; });
+    tail(0.2 + rear, 0.02);
+  }
+}
+
+runLab(ctx, buildInsect(), poseInsect, {
+  name: 'INSECT',
+  states: ['idle', 'move', 'attack', 'burrow'],
+  views: {
+    three4: { pos: [2.7, 1.6, 3.1], look: [0, 0.35, 0] },
+    side:   { pos: [3.6, 0.8, 0.1], look: [0, 0.35, 0] },
+    front:  { pos: [0.2, 0.9, 3.3], look: [0, 0.4, 0] },
+    low:    { pos: [2.1, 0.3, 2.3], look: [0, 0.35, 0] }
+  }
+});
+</script>
+</body>
+</html>

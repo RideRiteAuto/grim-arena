@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Model lab: serpent</title>
+<style>body{margin:0;background:#1a2030}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.1/build/three.module.js"}}</script>
+</head>
+<body>
+<script type="module">
+// SERPENT rig. The bog serpent uses this, and CONSTRICT is its signature.
+//
+// The chain is the whole rig: ten segments, each parented to the one in front,
+// so every pose is written as a wave along an index rather than as ten
+// hand-placed joints. Bending a chain by parenting means the body can never
+// pull apart at a seam the way an array of loose meshes does.
+import { T, makeScene, loft, plateTexture, runLab } from './lab.js';
+
+const ctx = makeScene({ sky: 0x1f2a24, ground: 0x3d4a38 });
+
+const SEGS = 10;
+
+function buildSerpent() {
+  const scales = plateTexture('#5f7a4e', '26,38,24');
+  const matBody = new T.MeshStandardMaterial({ vertexColors: true, map: scales, roughness: 0.7, flatShading: true });
+  const matDark = new T.MeshStandardMaterial({ color: 0x2c3a26, roughness: 0.8, flatShading: true });
+  const matPale = new T.MeshStandardMaterial({ color: 0xd8d2b8, roughness: 0.5, flatShading: true });
+
+  const TOP = 0x46603a, BELLY = 0xc9c489;
+  const root = new T.Group();
+  const body = new T.Group(); body.position.y = 0.3; root.add(body);
+
+  // The chain. Each link is a group holding one lofted section plus the group
+  // for the next link, so rotating link n carries every link behind it.
+  const links = [];
+  let parent = body;
+  for (let i = 0; i < SEGS; i++) {
+    const k = i / (SEGS - 1);
+    // thickest a third of the way back, tapering hard to the tail
+    const girth = 0.20 * (0.45 + 0.85 * Math.sin(Math.PI * Math.min(1, 0.25 + k * 0.85)));
+    const nextG = 0.20 * (0.45 + 0.85 * Math.sin(Math.PI * Math.min(1, 0.25 + ((i + 1) / (SEGS - 1)) * 0.85)));
+    const link = new T.Group();
+    if (i > 0) link.position.z = -0.34;
+    parent.add(link);
+    const seg = loft([
+      { z: 0, w: girth, h: girth * 0.82, y: 0 },
+      { z: -0.34, w: nextG, h: nextG * 0.82, y: 0 }
+    ], 8, TOP, BELLY, matBody);
+    link.add(seg);
+    links.push(link);
+    parent = link;
+  }
+  // tail tip
+  const tip = new T.Mesh(new T.ConeGeometry(0.045, 0.24, 6), matDark);
+  tip.rotation.x = -Math.PI / 2; tip.position.z = -0.44; parent.add(tip);
+
+  // head rides the FRONT of the chain, so it inherits every bend behind it
+  const headG = new T.Group(); headG.position.z = 0.02; body.add(headG);
+  const skull = loft([
+    { z: -0.10, w: 0.155, h: 0.13, y: 0 },
+    { z: 0.10, w: 0.175, h: 0.145, y: 0.005 },   // cheeks, widest
+    { z: 0.26, w: 0.10, h: 0.085, y: -0.015 },
+    { z: 0.40, w: 0.055, h: 0.05, y: -0.03 }     // snout
+  ], 8, TOP, BELLY, matBody);
+  headG.add(skull);
+
+  // hinged lower jaw: a snake's mouth opening is the whole read on a strike
+  const jaw = new T.Group(); jaw.position.set(0, -0.055, 0.04); headG.add(jaw);
+  const jawM = loft([
+    { z: -0.04, w: 0.12, h: 0.045, y: 0 },
+    { z: 0.34, w: 0.05, h: 0.03, y: -0.01 }
+  ], 6, 0x3e5233, 0x9aa06a, matBody);
+  jaw.add(jawM);
+  const fangs = [];
+  for (const sd of [-1, 1]) {
+    const f = new T.Mesh(new T.ConeGeometry(0.022, 0.11, 5), matPale);
+    f.position.set(sd * 0.075, -0.055, 0.24); f.rotation.x = Math.PI; headG.add(f); fangs.push(f);
+  }
+  for (const sd of [-1, 1]) {
+    const eye = new T.Mesh(new T.SphereGeometry(0.028, 8, 6),
+      new T.MeshStandardMaterial({ color: 0xe0c23a, emissive: 0x6b5210, roughness: 0.3 }));
+    eye.position.set(sd * 0.10, 0.055, 0.13); headG.add(eye);
+  }
+  // brow ridges: without them the head reads as a sock
+  for (const sd of [-1, 1]) {
+    const br = new T.Mesh(new T.BoxGeometry(0.07, 0.03, 0.12), matDark);
+    br.position.set(sd * 0.10, 0.085, 0.10); br.rotation.z = sd * 0.2; headG.add(br);
+  }
+
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g: root, body, links, headG, jaw, fangs };
+}
+
+// Every state is one wave equation along the chain. amp is how far it bends,
+// freq how many bends fit on the body, and speed how fast the wave travels.
+function poseSerpent(s, state, t) {
+  const N = s.links.length;
+  // freq is WAVELENGTHS ALONG THE BODY, and it has to stay under one. At 2.1
+  // the phase step between neighbouring links was most of a half cycle, so
+  // adjacent links bent opposite ways, cancelled, and the snake rendered as a
+  // straight pipe. Under one wavelength gives the long S a snake actually makes.
+  let amp = 0.30, freq = 0.75, speed = 1.2, rise = 0, headPitch = 0, jawOpen = 0, lift = 0;
+
+  if (state === 'idle') {
+    amp = 0.22; freq = 0.7; speed = 0.55;
+    s.body.position.y = 0.3 + Math.sin(t * 1.1) * 0.015;
+    headPitch = -0.12 + Math.sin(t * 0.8) * 0.06;
+    rise = 0.25;                                   // head carried a little up
+  } else if (state === 'move') {
+    // travelling serpentine: the wave runs from head to tail, which is what
+    // makes it read as pushing itself along instead of wriggling on the spot
+    amp = 0.40; freq = 0.85; speed = 2.2;
+    s.body.position.y = 0.3;
+    headPitch = -0.05;
+    rise = 0.12;
+  } else if (state === 'attack') {
+    // 1.6s: coil back and rear up, hold, then straighten in one frame and bite
+    const p = (t % 1.6) / 1.6;
+    if (p < 0.42) {
+      const k = p / 0.42;
+      amp = 0.22 + 0.34 * k; freq = 0.95; speed = 0.5;
+      rise = 0.25 + 1.05 * k; headPitch = -0.15 - 0.45 * k; jawOpen = 0.25 * k;
+      lift = 0.24 * k;
+    } else if (p < 0.55) {
+      amp = 0.56; freq = 0.95; speed = 0.25; rise = 1.3; headPitch = -0.6; jawOpen = 0.35; lift = 0.24;
+    } else if (p < 0.70) {
+      const k = (p - 0.55) / 0.15;                 // the strike itself
+      amp = 0.56 - 0.50 * k; freq = 0.95 - 0.3 * k; speed = 0.25;
+      rise = 1.3 - 1.5 * k; headPitch = -0.6 + 1.0 * k; jawOpen = 0.35 + 0.65 * k;
+      lift = 0.24 * (1 - k);
+    } else {
+      const k = (p - 0.70) / 0.30;                 // recover
+      amp = 0.08 + 0.14 * k; freq = 0.7; speed = 0.55;
+      rise = -0.2 + 0.45 * k; headPitch = 0.4 - 0.55 * k; jawOpen = 1 - k;
+      lift = 0;
+    }
+    s.body.position.y = 0.3 + lift;
+  }
+
+  for (let i = 0; i < N; i++) {
+    const k = i / (N - 1);
+    // taper the wave toward the tail so the tip whips rather than swings
+    const a = amp * (0.35 + 0.65 * Math.sin(Math.PI * (0.15 + k * 0.85)));
+    s.links[i].rotation.y = Math.sin(t * speed * 2 - k * freq * Math.PI * 2) * a;
+    s.links[i].rotation.x = i === 0 ? -rise * 0.55 : (rise > 0.5 ? -rise * 0.12 : 0);
+  }
+  s.headG.rotation.x = headPitch;
+  s.headG.rotation.y = state === 'idle' ? Math.sin(t * 0.6) * 0.22 : 0;
+  s.jaw.rotation.x = jawOpen * 0.7;
+}
+
+runLab(ctx, buildSerpent(), poseSerpent, {
+  name: 'SERPENT',
+  views: {
+    three4: { pos: [3.0, 1.7, 3.4], look: [0, 0.35, -0.6] },
+    side:   { pos: [4.2, 0.8, 0.0], look: [0, 0.35, -0.6] },
+    front:  { pos: [0.3, 1.1, 4.0], look: [0, 0.45, -0.4] },
+    low:    { pos: [2.4, 0.35, 2.6], look: [0, 0.4, -0.4] }
+  }
+});
+</script>
+</body>
+</html>
