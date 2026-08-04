@@ -1,5 +1,12 @@
 # Grim World — patch notes
 
+## August 5, 2026 (swim camera) — swimming POV raised
+
+The camera was skimming the water surface while swimming, leaving the
+whole screen full of sea. It now rides higher and further back (the same
+treatment the rowboat camera got), with its floor above the waterline, so
+swimming reads like the normal on-land chase view.
+
 ## August 5, 2026 (donkey) — the donkey swims now
 
 Your donkey no longer sinks to the lakebed when it follows you into water.
