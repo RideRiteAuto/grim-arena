@@ -1,5 +1,15 @@
 # Grim World — patch notes
 
+## August 5, 2026 (map fix) — closing the map goes back to the GAME
+
+Opening the map releases the mouse, and the pause watcher treated that
+lost cursor as "player pressed pause" - so it quietly raised the PAUSED
+screen underneath the map, and closing the map dropped you onto it
+instead of back into the game. The map now counts as a cursor-owning
+window (like the pack and shops), so the pause screen never appears
+behind it, and closing the map grabs the mouse straight back so you keep
+playing without an extra click.
+
 ## August 5, 2026 (map pan and zoom) — get a closer look
 
 The world map now pans and zooms. Drag with the mouse to move around,
