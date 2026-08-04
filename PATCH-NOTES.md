@@ -1,5 +1,28 @@
 # Grim World — patch notes
 
+## August 4, 2026 (late night) — animations play again, townsfolk fight back
+
+### You can see swings and deaths again
+Animations are driven by how far through a move a monster is, and the game
+stopped running that clock when the server took over — it only jumped forward
+whenever an update arrived. Ten times a second is enough to move something
+around convincingly, and nowhere near enough to show a sword swing or a body
+falling, so both effectively vanished.
+
+The animation clock now runs on your machine at full frame rate, and the
+server's updates only correct it when something genuinely changes. Swings,
+casts and deaths all play properly again.
+
+That is also why a goblin looked like it was just circling you: it was
+attacking the whole time, you simply could not see it wind up or swing.
+
+### Townsfolk defend themselves
+Only the timid and the genuinely passive are supposed to refuse a fight. I had
+lumped townspeople in with them, which made Alexis Ayala and the rest permanent
+punching bags — you could hit them all day and they would keep wandering. Hit
+one now and it fights back, the way it always did. Deer and other skittish
+wildlife still just run.
+
 ## August 4, 2026 (night) — corpses, fighting back, and safe ground
 
 Three more from live play.

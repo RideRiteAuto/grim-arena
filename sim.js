@@ -113,7 +113,11 @@ function stepNpc(n, dt, ctx) {
   const leashed = Math.hypot(n.x - n.hx, n.z - n.hz) > R.LEASH_R;
   const safe = meSafe || npcSafe;
 
-  if (n.skittish || (n.passive && !n.aggro) || n.civ) { wander(n, dt, ctx); integrate(n, dt, ctx); return; }
+  // Only the timid and the genuinely passive refuse a fight outright. A
+  // townsperson will absolutely defend themselves once you swing at them,
+  // which is how it has always worked - adding civilians to this list made
+  // them permanent punching bags.
+  if (n.skittish || (n.passive && !n.aggro)) { wander(n, dt, ctx); integrate(n, dt, ctx); return; }
 
   if (n.aggro && (safe || leashed)) {
     n.aggro = false; n.aggroPeer = null; n.hasWay = false; n.wayT = 0;
