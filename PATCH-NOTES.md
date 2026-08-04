@@ -1,5 +1,50 @@
 # Grim World — patch notes
 
+## August 4, 2026 — server simulation, phase 1 (foundations)
+
+Groundwork for moving monsters fully onto the server. Nothing about how the
+game plays changes yet; this is the scaffolding the next phases stand on.
+
+### One rulebook instead of two
+Attack timings, reach, arcs, damage, movement speed and the loot tables now
+live in a single file that gets built into both the game and the server. Until
+now the server had its own hand-copied loot table, which is exactly the kind of
+thing that quietly drifts and then two players see different drops. That can no
+longer happen: there is one copy, and the build refuses to run if it cannot
+find where to put it.
+
+### The world is now something the server knows
+The game now hands the server a full description of the world when you join:
+every collision shape, the safe ground around town and camp, and all 53 monster
+spawns with their stats. It carries a fingerprint, and the server keeps the
+first one it is given.
+
+If somebody joins running an older build, the server says so and its copy wins,
+and that player is told to reload rather than quietly playing in a world that
+does not line up with everyone else's. A genuinely new build replaces the world
+only when nobody else is in it.
+
+### A shared clock
+Every message from the server now carries the server's time, and each player
+works out their own offset from it. This is what will let a boss's wind-up
+start at the same real moment on every screen no matter whose connection is
+worse.
+
+Getting this right needed one real fix: a browser throttles tabs that are not
+in focus, and a throttled tab can sit on a reply for seconds, which would have
+poisoned that player's clock. Samples that took too long are now thrown away
+and the estimate uses the fastest round trip rather than the average. Measured
+on a deliberately starved machine, the estimate went from being eight and a
+half seconds wrong to half a millisecond.
+
+### Verified
+Thirteen new server checks covering manifest upload, fingerprint agreement,
+refusing a mismatched world while players are connected, keeping monster health
+across a rejoin, accepting a new build into an empty world, and loot rolling
+from the shared table for both ordinary monsters and bosses. The existing
+combat, ownership and loot suites all still pass, plus the game-side check that
+every shared number arrives identical to what it replaced.
+
 ## August 3, 2026 (late night) — monsters stay in sync for boss fights
 
 Follow-up to the server move. Every player was animating monsters on their own

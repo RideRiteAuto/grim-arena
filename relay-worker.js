@@ -21,7 +21,7 @@
  *     for tabs that froze without managing to say anything
  */
 
-const PROTO = 5;
+const PROTO = 6;
 const RATE_LIMIT = 60;              // msgs/sec per player; the game sends ~20
 const OWNER_STALE_MS = 8000;
 
@@ -45,26 +45,116 @@ const TO_OWNER = new Set(['rhit']);
 // open and anything held only in memory would silently vanish mid-fight.
 // ---------------------------------------------------------------------------
 
-const SACK_OWN_MS = 60000;          // killer's exclusive window
-const SACK_LIFE_MS = 240000;        // then public, then gone
-const SACK_CAP = 40;
-const RESPAWN_MS = 120000;
-const RESPAWN_BOSS_MS = 150000;
+/* SHARED-RULES-BEGIN */
+const GRIM_RULES = {
+  V: 1,
 
-// Ported from the game's own loot table so the server can roll without asking
-// any client. Keep in step with lootEntriesFor() in the game.
-function rollLoot(tag) {
+  // ---- world bounds -------------------------------------------------------
+  WORLD_R: 168,          // open-world edge, clamped identically on both sides
+  ARENA_R: 23,           // legacy duel arena
+
+  // ---- movement -----------------------------------------------------------
+  SPEED: 5.6,
+  SPRINT: 8.4,
+  DIFF: { squire: 0.62, veteran: 1.0, champion: 1.42 },
+
+  // ---- attacks ------------------------------------------------------------
+  // wind = telegraph, act = damage frame, rec = recovery. range/arc define the
+  // hit shape; a client judges only ITSELF against this shape, so these numbers
+  // are what makes a dodge fair.
+  MOVES: {
+    light:  { wind: .32, act: .12, rec: .22, dmg: [8, 12],  range: 3.0, arc: 1.9, stam: 6 },
+    heavy:  { wind: .48, act: .15, rec: .40, dmg: [22, 30], range: 3.4, arc: 2.5, stam: 18, heavy: true },
+    glight: { wind: .30, act: .16, rec: .34, dmg: [18, 26], range: 3.6, arc: 2.7, stam: 12 },
+    gheavy: { wind: .60, act: .18, rec: .52, dmg: [34, 46], range: 3.9, arc: 3.0, stam: 26, heavy: true },
+    frost:  { wind: .62, act: .06, rec: .34, mana: 22 },
+    snare:  { wind: .48, act: .05, rec: .42, mana: 14 },
+    volley: { wind: .7,  act: .05, rec: .5,  mana: 20 },
+    heal:   { wind: 1.2, act: .06, rec: .3,  mana: 30 },
+    storm:  { wind: .5,  act: .06, rec: .36, mana: 26 },
+    bash:   { wind: .3,  act: .1,  rec: .3,  dmg: [4, 7],   range: 2.3, arc: 1.7, stam: 8, bash: true },
+    slam:   { wind: .72, act: .18, rec: .52, dmg: [24, 36], range: 5.4, arc: 6.3, stam: 0, heavy: true },
+    chop:   { wind: .24, act: .12, rec: .3,  stam: 4 },
+    shot:   { wind: .06, act: .04, rec: .30 },
+    rapid:  { wind: .12, act: .62, rec: .26, stam: 14 }
+  },
+
+  // ---- safe ground --------------------------------------------------------
+  // Nothing picks a fight inside these, and anything dragged in breaks off.
+  SAFE: [
+    { x: 0, z: 0, r: 26, follows: 'town' },   // Hollowrest / Northreach, centre filled in from the live town position
+    { x: 41, z: 31, r: 15 }                   // starting camp
+  ],
+  LEASH_R: 46,           // dragged this far from home, a monster gives up
+  DEAGGRO_R: 32,         // lose interest past this
+  RESPAWN_MS: 120000,
+  RESPAWN_BOSS_MS: 150000,
+
+  // ---- loot ---------------------------------------------------------------
+  // Pure data so the game and the server roll the same table. qty may be a
+  // number or a [min,max] inclusive range.
+  LOOT: {
+    gold: { king: 900, captain: 280, wraith: 75, bandit: 48, wolf: 24, deer: 9, rat: 130, goblin: 6, other: 32 },
+    // first matching rule wins, mirroring the original if/else chain exactly
+    extra: [
+      { tag: 'wolf',  items: [{ item: 'WOLF PELT', qty: 1 }] },
+      { tag: 'deer',  items: [{ item: 'DEER HIDE', qty: 1 }, { item: 'VENISON', qty: [1, 2] }] },
+      { tag: 'king',  items: [{ item: 'HOLLOW PLATE', qty: 1 }, { item: 'HOLLOW AMULET', qty: 1 }] },
+      { tag: 'rat',   items: [{ item: 'RAT TAIL', qty: 1 }] },
+      { notTags: ['goblin', 'bandit', 'wraith', 'captain'], items: [{ item: 'TESLA PAYCHECK', qty: 1 }] }
+    ]
+  },
+
+  // ---- sacks --------------------------------------------------------------
+  SACK_OWN_MS: 60000,    // killer's exclusive claim
+  SACK_LIFE_MS: 240000,  // then public, then gone
+  SACK_CAP: 40,
+
+  // ---- networking ---------------------------------------------------------
+  SIM_HZ: 8,             // server simulation timestep
+  SNAP_HZ: 8,            // snapshot rate for monsters in a fight
+  SNAP_IDLE_HZ: 1,       // snapshot rate for monsters doing nothing
+  INTEREST_R: 60,        // a player is only told about monsters this close
+  CLOCK_SAMPLES: 8       // rolling median window for server-time offset
+};
+
+// Roll a loot table entry set. Both sides call this with the same tag object.
+// `rnd` is injected so the server can use a seeded generator and the client can
+// use Math.random without either importing the other's plumbing.
+function grimRollLoot(tag, rnd) {
   tag = tag || {};
-  const gold = tag.king ? 900 : tag.captain ? 280 : tag.wraith ? 75 : tag.bandit ? 48
-             : tag.wolf ? 24 : tag.deer ? 9 : tag.rat ? 130 : tag.goblin ? 6 : 32;
+  rnd = rnd || Math.random;
+  const G = GRIM_RULES.LOOT.gold;
+  const gold = tag.king ? G.king : tag.captain ? G.captain : tag.wraith ? G.wraith
+             : tag.bandit ? G.bandit : tag.wolf ? G.wolf : tag.deer ? G.deer
+             : tag.rat ? G.rat : tag.goblin ? G.goblin : G.other;
   const out = [{ item: 'GOLD CROWNS', qty: gold }];
-  if (tag.wolf) out.push({ item: 'WOLF PELT', qty: 1 });
-  else if (tag.deer) { out.push({ item: 'DEER HIDE', qty: 1 }); out.push({ item: 'VENISON', qty: 1 + Math.floor(Math.random() * 2) }); }
-  else if (tag.king) { out.push({ item: 'HOLLOW PLATE', qty: 1 }); out.push({ item: 'HOLLOW AMULET', qty: 1 }); }
-  else if (tag.rat) out.push({ item: 'RAT TAIL', qty: 1 });
-  else if (!tag.goblin && !tag.bandit && !tag.wraith && !tag.captain) out.push({ item: 'TESLA PAYCHECK', qty: 1 });
+  for (const rule of GRIM_RULES.LOOT.extra) {
+    let match;
+    if (rule.tag) match = !!tag[rule.tag];
+    else match = !rule.notTags.some(t => tag[t]);
+    if (!match) continue;
+    for (const it of rule.items) {
+      const q = Array.isArray(it.qty) ? it.qty[0] + Math.floor(rnd() * (it.qty[1] - it.qty[0] + 1)) : it.qty;
+      out.push({ item: it.item, qty: q });
+    }
+    break;                                   // first match only, like the original
+  }
   return out;
 }
+
+// Stable order-independent-ish fingerprint of the world manifest. Both sides
+// compute it the same way, so a mismatch is detected on join instead of
+// showing up later as a monster standing inside a wall.
+function grimHash(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h.toString(36);
+}
+/* SHARED-RULES-END */
 
 export class World {
   constructor(state, env) {
@@ -110,7 +200,7 @@ export class World {
     const id = 'p' + Math.random().toString(36).slice(2, 8) + now.toString(36).slice(-3);
     server.serializeAttachment({ id, name: 'PLAYER', color: 0, joined: now, seen: now, bg: 0, sec: 0, count: 0 });
 
-    this.send(server, { t: 'welcome', proto: PROTO, id });
+    this.send(server, { t: 'welcome', proto: PROTO, id, sv: now });
     const socks = this.sockets();
     const owner = this.resolveOwner(socks);
     this.broadcast(socks, { t: 'sim', i: owner ? owner.meta.id : null });
@@ -153,7 +243,7 @@ export class World {
       return;
     }
 
-    if (m.t === 'ping') { this.send(ws, { t: 'pong', ts: m.ts }); return; }
+    if (m.t === 'ping') { this.send(ws, { t: 'pong', ts: m.ts, sv: now }); return; }
     if (m.t === 'bye') { try { ws.close(1000, 'bye'); } catch (e) {} return; }
 
     if (m.t === 'yield') {                          // hidden owner hands the world off
@@ -173,7 +263,7 @@ export class World {
     }
 
     // ---- server-authoritative combat ------------------------------------
-    if (m.t === 'nreg' || m.t === 'nhit' || m.t === 'lreq' || m.t === 'lall') {
+    if (m.t === 'manifest' || m.t === 'nreg' || m.t === 'nhit' || m.t === 'lreq' || m.t === 'lall') {
       await this.combat(ws, meta, m, socks);
       return;
     }
@@ -209,6 +299,37 @@ export class World {
     // A client hands over the monster roster once. The server owns health from
     // that moment on; later registrations are ignored so nobody can reset a
     // fight by reloading.
+    // The world manifest: colliders, safe ground and monster spawns, uploaded
+    // once with a fingerprint. The server keeps the first one it is given. A
+    // client arriving with a different fingerprint is told so and defers to the
+    // stored copy, which is what stops one player's stale build from putting
+    // monsters where nobody else can see them. A genuinely new build replaces
+    // it only when the world is empty of other players.
+    if (m.t === 'manifest') {
+      const mf = m.w;
+      const alone = socks.length <= 1;
+      if (!mf || typeof mf.hash !== 'string') return;
+      if (!w.manifest || (w.manifest.hash !== mf.hash && alone)) {
+        w.manifest = mf;
+        w.npcs = null;                        // a new world means new monsters
+        w.sacks = {};
+        await this.saveWorld();
+      }
+      const agreed = w.manifest.hash === mf.hash;
+      if (!w.npcs && Array.isArray(w.manifest.spawns)) {
+        w.npcs = w.manifest.spawns.map(s => ({
+          hp: Math.max(1, s.max | 0), max: Math.max(1, s.max | 0), tag: s.tag || {},
+          xp: s.xp | 0, boss: !!s.boss, dead: 0, at: 0, by: null
+        }));
+        await this.saveWorld();
+      }
+      this.send(ws, {
+        t: 'msync', hash: w.manifest.hash, agreed, sv: Date.now(),
+        n: (w.npcs || []).map(n => [n.hp, n.dead ? 1 : 0])
+      });
+      return;
+    }
+
     if (m.t === 'nreg') {
       if (!w.npcs && Array.isArray(m.n) && m.n.length && m.n.length < 400) {
         w.npcs = m.n.map(x => ({ hp: Math.max(1, x.m | 0), max: Math.max(1, x.m | 0), tag: x.tag || {}, xp: x.xp | 0, boss: !!x.boss, dead: 0, at: 0, by: null }));
@@ -232,18 +353,18 @@ export class World {
       this.broadcast(socks, { t: 'nhp', i: i, hp: n.hp, d: dmg, k: m.k || 'hit', by: meta.id, p: m.p || null, o: m.o || null });
       if (n.hp <= 0) {
         n.dead = 1;
-        n.at = now + (n.boss ? RESPAWN_BOSS_MS : RESPAWN_MS);
-        const entries = rollLoot(n.tag).filter(e => e && e.qty > 0);
+        n.at = now + (n.boss ? GRIM_RULES.RESPAWN_BOSS_MS : GRIM_RULES.RESPAWN_MS);
+        const entries = grimRollLoot(n.tag).filter(e => e && e.qty > 0);
         let sack = null;
         if (entries.length) {
           w.seq = (w.seq || 0) + 1;
           const id = 'k' + w.seq.toString(36) + now.toString(36).slice(-4);
           sack = { id, x: (m.p && +(+m.p[0]).toFixed(2)) || 0, z: (m.p && +(+m.p[2]).toFixed(2)) || 0,
                    entries: entries.map((e, k) => ({ e: k, item: e.item, qty: Math.floor(e.qty) })),
-                   owner: meta.id, pub: now + SACK_OWN_MS, die: now + SACK_LIFE_MS };
+                   owner: meta.id, pub: now + GRIM_RULES.SACK_OWN_MS, die: now + GRIM_RULES.SACK_LIFE_MS };
           w.sacks[id] = sack;
           const ids = Object.keys(w.sacks);
-          if (ids.length > SACK_CAP) {
+          if (ids.length > GRIM_RULES.SACK_CAP) {
             let oldest = ids[0];
             for (const k2 of ids) if (w.sacks[k2].die < w.sacks[oldest].die) oldest = k2;
             delete w.sacks[oldest];
