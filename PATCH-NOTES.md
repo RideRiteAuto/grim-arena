@@ -1,5 +1,26 @@
 # Grim World — patch notes
 
+## August 4, 2026 (later that night) — the keys work, the seams are gone
+
+### Z and H actually do something now
+Honest bug: the donkey turbo (Z) and the town teleport (H) shipped wired to
+a key filter that silently ate both keys — they never reached the game at
+all. Fixed. And while fixing it, turbo got simpler: when it's ON, you move
+at five times speed while mounted, walking or sprinting, no Shift required.
+
+### You can SEE your bindings
+While mounted, the prompt now reads "X — DISMOUNT · Z — TURBO ON/OFF" and
+updates live. The menu's key list gained X (mount / hop out of boat),
+Z (donkey turbo), and H (teleport to town).
+
+### Region borders blend now
+Where two regions met — Heartlands grass against Ironspire rock, steppe
+against ash — the ground changed color in hard stair-steps along the data
+grid. Region colors now blend across a soft dithered band about fifteen
+meters wide, so each biome fades into the next the way the coastline
+already fades into the beach.
+
+
 ## August 4, 2026 (night) — swimming feels like swimming, and H takes you home
 
 ### The swimmer got coaching
