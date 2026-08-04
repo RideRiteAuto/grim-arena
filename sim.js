@@ -54,6 +54,7 @@ function makeSimNpc(s, i) {
     spell: s.spell || null,
     brawler: !!s.brawler,
     civ: !!s.civ, passive: !!s.passive, skittish: !!s.skittish,
+    beast: !!s.beast,                      // four legs: claws, never a shield
     king: !!s.king, boss: !!s.boss,
     name: s.n || '',
     scriptId: s.script || null,
@@ -184,14 +185,24 @@ function stepNpc(n, dt, ctx) {
   if (n.stam < 12) { n.blocking = false; n.guardT = 1.2; }
 
   // ---- attack decision (emits a scheduled event; see attack()) -----------
+  //
+  // MELEE_RATE is the goblin's cadence, and the goblin is the one that feels
+  // right, so everything that fights up close uses it. Each branch gates on the
+  // move's OWN declared reach rather than a number written here, which is what
+  // let a monster sit inside its range swinging a move that could not reach.
   if (ctx.canAct(n) && !n.blocking) {
     const M = R.MOVES;
-    if (n.weapon === 0 && dp < M.light.range && rnd() < 2.6 * n.aiD * dt) {
+    const MELEE_RATE = 2.6;
+    if (n.weapon === 0 && dp < M.light.range && rnd() < MELEE_RATE * n.aiD * dt) {
       ctx.attack(n, rnd() < 0.26 ? 'heavy' : 'light', tgt);
     } else if (n.weapon === 1 && dp < 16 && n.mana > 25 && rnd() < (n.spell === 'snare' ? 1.3 : 0.9) * n.aiD * dt) {
       ctx.attack(n, n.spell === 'snare' ? 'snare' : 'frost', tgt);
-    } else if ((n.weapon === 3 || n.weapon === 4 || n.weapon === 9) && dp < 2.7 && rnd() < 2.2 * n.aiD * dt) {
-      ctx.attack(n, 'chop', tgt);
+    } else if (n.weapon === 3 || n.weapon === 4 || n.weapon === 9) {
+      // A beast rakes with a paw and occasionally commits to a bite, the same
+      // 26% mix a sword-and-shield fighter uses for its heavy. Everyone else
+      // swings the tool in their hands, or their fists.
+      const mv = n.beast ? (rnd() < 0.26 ? 'bite' : 'claw') : 'chop';
+      if (dp < M[mv].range && rnd() < MELEE_RATE * n.aiD * dt) ctx.attack(n, mv, tgt);
     } else if (n.weapon === 2 && dp < 20 && rnd() < 1.1 * n.aiD * dt) {
       ctx.attack(n, rnd() < 0.5 ? 'rapid' : 'shot', tgt);
     }

@@ -1,5 +1,96 @@
 # Grim World — patch notes
 
+## August 4, 2026 — everything fights like a goblin now
+
+The goblins were the only thing in the world whose combat felt right. This is
+the rest of the roster brought up to them.
+
+### Wolves, Jim and Pete could not hit you at all
+Not "hit you weakly" — could not land a blow, ever. A tool swing or a paw swipe
+used to have its damage and reach written inline in the game code, and when the
+fight moved onto the server that inline shape was left behind. The server read
+the shared rulebook, found a swing with no reach and no damage, and dutifully
+sent it out. So a dire wolf would wind up, swing, connect visually and do
+nothing. No damage, no hit splat, no reaction. Same for Jim the Lumberjack and
+Pete the Prospector.
+
+Both now carry a real shape in the rulebook where the server can see it.
+
+### Dire wolves have a paw slash and a bite
+Rather than a sword and shield they never had, wolves get the goblin's exact
+setup rebuilt around a beast: a quick one-handed paw slash, an occasional
+committed bite, and no shield, so a wolf never stops to block. Both are
+dodgeable on reach and arc like every other swing in the game.
+
+### Nobody reacts slower than a goblin
+Reaction speed was authored per NPC, and most of the roster came in under the
+goblin. Austin Little was at 0.42 against the goblin's 0.62, Alexis Ayala at
+0.3. In practice Austin was swinging barely half as often as the rabble, which
+reads as him not fighting back. Anything that can fight now runs at the goblin's
+baseline or its own value, whichever is higher, so the Bandit Captain still
+reacts like a captain. Skittish wildlife is left alone, since raising it would
+only make deer sprint away faster.
+
+Damage is untouched. Alexis still hits like Alexis.
+
+### The Bandit Captain
+His flourish is gone. It was a psych-up the game played while closing distance,
+and once the server owned the fight it turned into 1.2 seconds of standing
+still at range. His melee now swings on a goblin's cadence rather than once or
+twice a second. The leap and the shield bash stay, because those are what make
+him read as a captain.
+
+Mr. Sailers, the Hollow King and the Plague Rat are untouched, as agreed.
+
+### Measured, sixteen seconds each, one on one
+
+| | swings/min before | after | landed a blow before |
+|---|---|---|---|
+| Goblin (the reference) | 33.8 | 33.8 | yes |
+| Austin Little | 18.8 | 33.8 | yes |
+| Alexis Ayala | 22.5 | 37.5 | yes |
+| Steven Carrasco | 30.0 | 33.8 | yes |
+| Bandit | 33.8 | 33.8 | yes |
+| Bandit Captain | 41.3 | 52.5 | yes |
+| Jim the Lumberjack | 26.3 | 52.5 | **never** |
+| Pete the Prospector | 26.3 | 52.5 | **never** |
+| Dire Wolf | 41.3 | 41.3 | **never** |
+
+Jim and Pete swing quickly and hit for about 3. They are still townsfolk who
+will not start anything with you.
+
+## August 4, 2026 (very late) — bandits fight like goblins, hit splats are back
+
+### Every monster now fights the way the goblins do
+Goblins were the only ones authored with their weapon pinned to melee. Everyone
+else was left open, so the simulation would periodically decide a bandit should
+be using a bow, back it off to bow range, and orbit you out there. That is the
+"weird pathing" — it was never a pathing bug, it was the monster changing its
+mind about what fight it wanted.
+
+Every ordinary monster now keeps the weapon it spawned with. Bosses and casters
+are untouched, since switching is part of what they do.
+
+Measured, same spawn 18m away, before and after:
+
+| | closest it gets | what it throws |
+|---|---|---|
+| before | 9.1m | ranged shots only |
+| after | 1.8m | real melee swings, 3.0–3.4m reach |
+
+### Monsters are no longer twitchier than they should be
+The reaction-speed setting sent to the server fell back to 1.0 for any monster
+that did not name its own, instead of falling back to your difficulty. On squire
+that is 0.62, so every unnamed monster has been reacting about 60% faster than
+intended since the server took over. They now match the difficulty you picked.
+
+### Hit splats show up again
+The damage number that appears when something hits YOU was being placed at sea
+level rather than at your feet. On flat ground you could not tell. On any rise
+it spawned below the map and the number flew up from off the bottom of the
+screen, so it read as simply missing. Measured on a 5.4m rise: it was landing at
+718 pixels down a 720 pixel window, and now lands on you.
+
 ## August 4, 2026 (late night) — animations play again, townsfolk fight back
 
 ### You can see swings and deaths again

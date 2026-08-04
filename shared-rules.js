@@ -39,7 +39,17 @@ const GRIM_RULES = {
     storm:  { wind: .5,  act: .06, rec: .36, mana: 26 },
     bash:   { wind: .3,  act: .1,  rec: .3,  dmg: [4, 7],   range: 2.3, arc: 1.7, stam: 8, bash: true },
     slam:   { wind: .72, act: .18, rec: .52, dmg: [24, 36], range: 5.4, arc: 6.3, stam: 0, heavy: true },
-    chop:   { wind: .24, act: .12, rec: .3,  stam: 4 },
+    // Tools and bare hands. The shape used to be written inline in the client
+    // ("if the move is a chop, hit for 6-10 over 2.8m"), so when the fight moved
+    // to the server it was left behind: the server read this table, found no
+    // reach and no damage, and sent out swings that could never land and never
+    // showed a hit splat. Jim, Pete and anyone else on a tool were harmless.
+    chop:   { wind: .24, act: .12, rec: .3,  dmg: [6, 10],  range: 2.8, arc: 2.0, stam: 4 },
+    // Beasts. A paw slash is the one-handed quick swing and a bite is the
+    // committed one, the same light/heavy pairing that makes a goblin fun to
+    // fight, with no shield in the other hand so nothing on a claw ever blocks.
+    claw:   { wind: .26, act: .12, rec: .26, dmg: [12, 18], range: 2.8, arc: 2.0, stam: 5 },
+    bite:   { wind: .44, act: .14, rec: .38, dmg: [20, 28], range: 3.0, arc: 2.2, stam: 12, heavy: true },
     shot:   { wind: .06, act: .04, rec: .30 },
     rapid:  { wind: .12, act: .62, rec: .26, stam: 14 }
   },
@@ -108,13 +118,18 @@ const GRIM_RULES = {
         melee: { cd: [1, 2],  band: [0, 3.9],  move: 'gheavy' }
       }
     },
+    // The Bandit Captain. Leaps and shield bashes are what make him read as a
+    // captain rather than a big bandit, so they stay. The flourish does not:
+    // it was a psych-up the client played while closing the distance, and once
+    // the server owned the fight it became 1.2 seconds of standing still at
+    // range. His melee now swings on the same cadence as a goblin's instead of
+    // once or twice a second.
     brawler: {
-      phases: [ { untilHpPct: 0, moves: ['leap', 'bash', 'flourish', 'melee'] } ],
+      phases: [ { untilHpPct: 0, moves: ['leap', 'bash', 'melee'] } ],
       moves: {
-        leap:     { cd: [4, 7], band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11 },
-        bash:     { cd: [4, 7], band: [0, 2.6],   move: 'bash' },
-        flourish: { cd: [6, 9], band: [9, 30],    state: 'flourish', dur: 1.2 },
-        melee:    { cd: [1, 2], band: [0, 3.0],   move: 'light' }
+        leap:     { cd: [5, 8],    band: [3.4, 8.5], state: 'leap', dur: 0.8, lunge: 11 },
+        bash:     { cd: [5, 8],    band: [0, 2.6],   move: 'bash' },
+        melee:    { cd: [0.5, 1],  band: [0, 3.0],   move: 'light' }
       }
     },
     plagueRat: {
