@@ -24,6 +24,84 @@ must import. Nothing here is self-sufficient.
   aggressives, roughly matched to a zone's distance from the capital.
   All zone-keyed spawn tables, all obey the water wall.
 
+## Gathering skills: 1 to 99, tiered nodes, tiered tools
+
+Three gathering skills at launch, each leveling 1-99 on the same XP curve.
+(Fishing is reserved as a fourth skill for a later update.)
+
+- WOODCUTTING - axe - trees
+- MINING - pick - ore, stone, and mineral nodes
+- FORAGING - hands, sickle later - herbs, plants, pearls, coral
+
+### How leveling works
+- Every successful gather grants XP scaled to the node's tier. Each level
+  needs roughly 8 percent more XP than the last, so 1-40 comes fast, the
+  50s feel earned, and 99 is a long-haul prestige goal (the level 99 cape
+  moment can come later).
+- A node needs BOTH a skill level and a minimum tool tier. Too low on
+  either and you get a clear message telling you what you are missing.
+- Higher skill and better tools also gather slightly faster, so veterans
+  feel the difference on every swing.
+- Skill XP and levels persist in the cloud save with the rest of the
+  character. One shared curve formula lives in shared-rules so the client
+  and any future server sim always agree.
+
+### Tool tiers (the trade hook)
+Tools gate access, and BUILDING each tier forces cross-zone trade:
+
+| Tier | Axe / Pick / Sickle | Materials | Where the parts come from |
+| 1 | Crude | starter gift | everyone logs in with these |
+| 2 | Copper | copper bars | Ironspire foothills |
+| 3 | Iron | iron bars | Ironspire |
+| 4 | Steel | iron + coal | coal exists ONLY in Ironspire |
+| 5 | Obsidian | obsidian + steel | obsidian exists ONLY in Ember |
+| 6 | Masterwork | obsidian head + icewood haft | Ember AND Frostwild - a cross-continent flex |
+
+### Woodcutting tiers
+| Lvl | Tree | Where |
+| 1 | Poplar and scrub wood | Heartlands, roadsides everywhere |
+| 10 | Oak | Heartlands, Greenwood |
+| 20 | Palm | Sun Coast, Shattered Isles |
+| 30 | Willow and bog oak | Mistfen |
+| 40 | Old-growth elder | Greenwood |
+| 50 | Acacia ironbark | Windscar |
+| 60 | Icewood | Frostwild ONLY |
+| 75 | Emberbark blackwood | Ember ONLY |
+| 90 | Ancient elder (rare spawns) | deep Greenwood |
+
+### Mining tiers
+| Lvl | Node | Where |
+| 1 | Loose stone | rocky ground everywhere |
+| 10 | Copper | Ironspire foothills |
+| 20 | Salt flats | Sun Coast ONLY |
+| 30 | Iron | Ironspire ONLY |
+| 40 | Coal seams | Ironspire ONLY |
+| 50 | Saltpeter crust | Windscar ONLY |
+| 55 | Glass-sand pits | Sunscorch ONLY |
+| 65 | Gold veins | Ember ONLY |
+| 80 | Obsidian flows | Ember ONLY |
+| 90 | Ember crystal (rare minerals) | deep Ember |
+
+### Foraging tiers
+| Lvl | Plant or node | Where |
+| 1 | Berry bushes | Heartlands |
+| 15 | Mushroom rings | Greenwood |
+| 25 | Reeds and cattails | Mistfen |
+| 35 | Holly and lichen | Frostwild |
+| 45 | Fenroot | Mistfen ONLY |
+| 50 | Pearl beds (dive for them) | Sun Coast ONLY |
+| 55 | Dye flowers | Sunscorch ONLY |
+| 65 | Coral (dive) | Shattered Isles ONLY |
+| 70 | Spice bushes | Sunscorch ONLY |
+| 75 | Fire lilies | Ember ONLY |
+| 90 | Black lotus (rare spawns) | deep Mistfen |
+
+### Why this layout
+Reaching 99 in ANY skill forces travel through at least five zones and
+both continents, and the best tools in the game cannot be built from any
+single zone's ground. The skill ladder and the trade economy are the same
+system wearing two hats.
+
 ## Valewold (west, temperate)
 
 ### Heartlands (starter zone, gentlest)
@@ -149,6 +227,9 @@ bake) and the road lines up with both ends.
 1. Tree scale pass (+25 percent) and the shared prop/dressing engine:
    deterministic per-chunk placement with per-zone catalogs, merged
    clutter, harvestable registration.
+1b. Gathering skill core: XP curve in shared-rules, skill save fields,
+   XP popups and a skills readout, level + tool gating on every
+   harvestable, crude starter tools granted on login.
 2. Valewold zone catalogs (Heartlands, Greenwood, Frostwild, Ironspire,
    Sun Coast) - trees, clutter, nodes.
 3. Ashmar zone catalogs (Windscar, Ember, Mistfen, Sunscorch).
