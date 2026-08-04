@@ -1,5 +1,15 @@
 # Grim World — patch notes
 
+## August 5, 2026 (boat camera fix) — no more staring into the deep
+
+The camera aims at a point anchored to the ground height under the
+player. On land that is where you stand - but in a boat it is the SEABED,
+so over deep water the aim point sat meters underwater, the camera
+pitched over the top of you, and you were left staring straight down at
+the waves. The deeper the water, the worse the flip. The aim point now
+clamps to the waterline whenever you are afloat (boat or swimming), so
+the chase view stays level over any depth.
+
 ## August 5, 2026 (model rewrite 8) — villains with identity, a donkey worth riding
 
 ### Every villain now reads at a glance
