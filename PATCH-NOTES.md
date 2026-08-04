@@ -1,5 +1,31 @@
 # Grim World — patch notes
 
+## August 5, 2026 (art) — the Plague Rat is solid again, and so is everything else
+
+You could see straight through the Plague Rat into the inside of its own body.
+Its head looked fine, which is what made it read as one broken monster rather
+than what it actually was: a bug in the geometry builder that every lofted model
+in the game runs through.
+
+Bodies are built by stacking cross sections along the length of the model and
+skinning between them. The triangle order that skinning used only produced
+outward-facing surfaces when the sections happened to be listed back to front.
+List them nose first and the whole model comes out inside out, and since the
+renderer throws away back faces, it discards the surface nearest you and draws
+the inside of the far wall instead. That is the see-through look.
+
+Sixteen models were listed one way and nine the other, so nine were inverted:
+the Plague Rat's body and legs, its tail, your own cape, the wolf and deer legs,
+and the donkey's legs and tail. The rat was the obvious one because it is the
+biggest thing in the game and it is scaled up almost twice.
+
+The builder now reads which way the sections run and winds the surface to match,
+so it no longer matters which way a model is written. Every one of the 25 lofted
+meshes in the game now faces outward, and the 16 that were already correct are
+untouched, triangle for triangle. Lighting on the nine fixed models is better
+too, since their surfaces were previously being lit from the inside.
+
+
 ## August 4, 2026 (zones-1c) - Gathering XP splats read in their skill's colour
 
 Small one. When you gather, the floating XP text now comes up in the skill's own colour instead of the same gold as everything else: green for woodcutting, orange for mining, teal for foraging. Combat XP is unchanged.
