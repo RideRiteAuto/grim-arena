@@ -1,5 +1,42 @@
 # Grim World — patch notes
 
+## You can tell your items apart now
+
+Two whole families of item art were placeholders, and between them they covered
+most of what you actually carry.
+
+THE MATERIALS. All 34 things you can gather rendered as the same small circle in
+one of three colours. Oak logs, coal, gold ore, mushrooms and black lotus were
+five identical dots. Every one of them is now drawn from what produced it:
+
+- Logs are cut logs with the end grain showing, in that tree's own wood colour,
+  so bog oak, icewood and emberbark are all obviously different wood.
+- Ore you dig out of rock (copper, iron, gold) is grey stone with coloured
+  flecks. Ore that IS the rock (coal, obsidian, salt, saltpeter, glass sand,
+  ember crystal) is a solid chunk of the stuff.
+- Every herb is a sprig of the plant you picked it off, so the icon and the
+  thing you walked up to look like each other.
+- Bird nests, gem shards and wild seeds got their own drawings.
+
+THE TOOLS. Sixteen tools shared two pictures between them, recoloured by tier, so
+a masterwork axe and a crude axe were the same axe in different paint. Tier is a
+shape now: crude tools are chipped stone lashed to a crooked stick, copper is a
+small cast head, iron is properly forged, steel is broader with a bevel,
+obsidian is angular and faceted, and masterwork is double-bitted with a gold
+ferrule and a set gem.
+
+Also cleaned up the nine oldest items that were still plain coloured boxes:
+logs, oak logs, iron ore, iron bar, wool, rat tail, deer hide, wolf pelt and
+venison. Iron ore now looks like the other ores, and the first logs you cut look
+like the fancy ones.
+
+Coal, obsidian and black lotus are nearly black and were disappearing into the
+inventory background. They keep their real colours in the world, but the icons
+now carry enough light to be visible in your pack.
+
+Nothing about stats, values, recipes or what anything is worth has changed.
+
+
 ## You can tell the plants apart now
 
 Every single thing you could forage was the same model. Berries, mushrooms,
@@ -266,29 +303,3 @@ None of this changes the safety net. The game watches its own frame time and tur
 WHAT THIS DOES NOT TELL YOU
 
 Frame rate cannot be measured from the test harness, which renders in software and runs at about a fifth of real speed. Any number it produced would be made up. That is exactly why the readout is in the game: the only machine whose frame rate matters is yours.
-
-
-## August 5, 2026 (zones-2b) - The Heartlands has animals in it
-
-Boar, giant rats, young goblins and hares now live in the Heartlands, out in the fields rather than only around the camp.
-
-WHAT LANDED
-
-- WILD BOAR. Heavy through the shoulders, bristled ridge down the spine, tusks. 45 health.
-- GIANT RAT. Low, long and lean, with a naked segmented tail. 26 health.
-- YOUNG GOBLIN. 30 health.
-- HARE. Small, big eared, harmless, and it runs. Killable, but it drops nothing worth the walk.
-
-Twenty five head in total, spawned at fixed points across Heartlands ground. The points come out of the same seeded generator that places the trees and stones, so the same boar stands in the same field on your screen and on everyone else's. That is not cosmetic: monster state travels between players by position in a list, so a roster that changed per machine would desync every fight in the zone.
-
-Nothing spawns in water, on a road, or inside a town. That was checked against every spawn point, and the roster was checked for being identical across two cold boots.
-
-MEASURED
-
-Standing in a dressed Heartlands field with the whole roster loaded: 6,757 meshes and 1,292 draw calls, worst frame over a full turn on the spot. Greenwood reads 6,749 and 1,303. Both inside the 7,000 mesh and 1,400 draw call budget.
-
-The roster is 25 head rather than the 30 the design plan asks for, and that is a budget decision, not a taste one. A quad costs about 50 scene meshes and the zone already sits near 5,300 before anything spawns, so 30 head put it over 7,000. Twenty five fits with room. If the budget moves, the number is one line in the rules.
-
-WHAT IS NOT IN YET
-
-The signature moves. TUSK CHARGE, TAIL WHIP and GOBLIN SHRIEK are written down and the animals are wired to know which one is theirs, but none of them fire yet, so right now a boar fights like a boar-shaped wolf. That is the next push, and it is deliberately its own push because signature moves reach into the fight and the fight is being worked on elsewhere at the same time.
