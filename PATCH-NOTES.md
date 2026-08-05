@@ -1,5 +1,58 @@
 # Grim World — patch notes
 
+## You can tell the plants apart now
+
+Every single thing you could forage was the same model. Berries, mushrooms,
+reeds, holly, fenroot, dye flowers, spice, fire lilies and black lotus were all
+one four-blob lump with a different colour on it. A level 90 lotus in the fen
+and a level 1 berry bush outside the capital looked the same. You had to click
+a thing to find out what it was.
+
+They all have their own shape now:
+
+- BERRIES     a low leafy mound with berries sitting on it
+- MUSHROOMS   a cluster of capped stalks, tall ones and short ones
+- REEDS       tall blades with brown cattail heads
+- HOLLY       a dense spiked shrub with bright red berries
+- FENROOT     a knuckled root arching up out of the ground
+- DYE FLOWERS slim stalks under wide flat flower heads
+- SPICE       a low woody shrub hung with pods
+- FIRE LILY   flared trumpet flowers on stems
+- BLACK LOTUS flat floating pads around a layered bloom
+
+Harvesting one now leaves behind something that makes sense: pick a lotus and
+the pads stay on the water, pick mushrooms and the cut stems are still standing.
+Everything else still leaves a tuft.
+
+Same cost to draw as before, so nothing gets slower. Each plant is still one
+merged mesh, and they still take their leaf and stalk colours from whichever
+zone they grew in.
+
+
+## The Plague Rat walks like a rat now
+
+The rat had the best-built boss model in the game and was being animated by
+the code that poses people. Two of its four legs were swinging like arms, so a
+giant rat stalked around the mere on what looked like hind legs, with a stiff
+tail, a jaw that never opened and ears that never moved.
+
+It is now on the same quadruped rig the wolf, the deer, the boar and the giant
+rat already use. What that changes, to look at:
+
+- It walks on a proper diagonal gait and switches to a gallop when it runs,
+  instead of paddling its front paws.
+- Its legs have knees. They bend and the paws lift and plant.
+- The jaw opens on the bite, and it opens EXACTLY on the frame the bite lands,
+  so what you see is what you have to dodge.
+- The tail is a real chain now, so it swings and trails instead of sitting
+  there in one shape.
+- The ears flick.
+- It rears back on its hind legs to strike.
+
+Nothing about its damage, health, timing or reach changed. Standing height is
+identical to the millimetre. This is purely how it moves.
+
+
 ## August 5, 2026 (sigs-server) - Signature moves work on the server too
 
 Boar, rat and goblin now throw their signature moves whether the fight is running on your machine or on ours.
@@ -239,91 +292,3 @@ The roster is 25 head rather than the 30 the design plan asks for, and that is a
 WHAT IS NOT IN YET
 
 The signature moves. TUSK CHARGE, TAIL WHIP and GOBLIN SHRIEK are written down and the animals are wired to know which one is theirs, but none of them fire yet, so right now a boar fights like a boar-shaped wolf. That is the next push, and it is deliberately its own push because signature moves reach into the fight and the fight is being worked on elsewhere at the same time.
-
-
-## August 5, 2026 (content) — THE ARGENT WARDEN
-
-There is something standing in the northern Heartlands now, about 215 metres
-north of spawn. The capital built it to hold the northern road and then lost the
-means to put it back to sleep. Three times a man's height, pale Ironspire stone
-bound in argent bands, with the drained light of the lake burning in a cavity in
-its chest.
-
-**It takes two people. That is not a suggestion and it is not a message on a
-door.** While either of its two Argent Anchors still stands the Warden pulls the
-field back into itself and heals 70 health a second, and an anchor re-forges 26
-seconds after you break it. One player can comfortably break an anchor. What one
-player cannot do is break the SECOND one before the first is back up, so the
-drain never stops and the health bar never really moves. Two players split the
-field, both anchors go down inside the same window, the drain stops, and the
-Warden is mortal.
-
-Simulated against the real server code, with a knight landing 30 to 45 damage a
-second:
-
-  one player,  ordinary gear    walls at 87% and gets pushed back to full
-  one player,  good gear        walls at 73%
-  one player,  exceptional gear kills it, in six and a half brutal minutes
-  two players, ordinary gear    kills it in about two and a half minutes
-  two players, good gear        kills it in about a minute
-
-So it is not a locked door. If you are geared enough to grind it alone you have
-earned it. You will not enjoy it.
-
-### Two phases
-
-**PLATED** is a siege engine: slow, enormous reach, and three ways to hit you.
-The maul is its jab, the hammer is the one that ends you, and the sunder is an
-eight metre ground shock you have to be outside of, not blocking.
-
-**UNBOUND** starts at 55%. The argent bands snap off the model, it shouts, and
-it gets faster and hits harder. It also starts vaulting the field to land on
-whoever thought distance was safety.
-
-### Three mechanics
-
-- **The Argent Siphon**, above. The fight.
-- **Sunder**, an eight metre omnidirectional shock. Your shield does not help.
-- **The Argent Lance**, a five bolt spread it throws from up to thirty metres,
-  so standing at range plinking is not a plan either.
-
-### The drop
-
-**WARDEN'S BULWARK**: 34 defence and 6 strength, against the Iron Kite Shield's
-20 and nothing. It is the only shield upgrade in the game and the Iron Kite has
-been the only shield at all, so this fills a real hole.
-
-Anchors drop nothing and give no experience, on purpose. They come back every 26
-seconds; anything they gave would be an infinite tap.
-
-### Under the hood
-
-The world generation number went to 6, which is what makes the relay throw away
-its stored world and take the new one even with people online. Spawn order is a
-protocol invariant so the Warden and its anchors are appended at the end of the
-list: every creature already in the world keeps the index it had.
-
-
-## August 4, 2026 (zones-2a) - Zone art: every tree its own shape, every zone its own ground
-
-Phase 2 begins with the look. The engine already placed props correctly, it just placed the same four props everywhere in different colours. Now a zone looks like itself.
-
-WHAT CHANGED
-
-- Every tree species has its own silhouette instead of one shape recoloured. A poplar is tall and narrow with its canopy stacked up the trunk, an oak is short and wide, an elder is huge, a pine is a spire, a palm is a bare trunk with a crown on top, a bog oak and an emberbark are bare snags. Orchard apples carry fruit, which at fifty metres is the entire difference between an apple tree and a small oak.
-- Every zone has its own ground cover. The Heartlands get tall grass, wheat, wildflowers and field stones, with hay bales on the farmland ring near the capital. Greenwood gets ferns and fallen logs. Frostwild gets snow drifts. Ironspire gets scree and boulders. Windscar gets dry grass and sun bleached bones. Ember gets ash drifts and obsidian shards. Mistfen gets reeds. Sunscorch gets bone and glass glitter. The coast and isles get shells and driftwood.
-- Clutter grows in CLUMPS now. Grass grows in patches, stones collect in drifts, ferns cluster. Scattering props evenly put one every twelve metres, which reads as litter, not as ground.
-- Grass is a tuft of leaning blades rather than a single blade. A three sided cone seen side on is a flat triangle, so the first pass gave fields of little gold shards standing on end.
-- Ground cover density is up roughly four times, from the plan's 14 to 22 props per chunk to 55 to 85.
-
-ABOUT THAT DENSITY
-
-The plan's 14 to 22 was written before the clutter was merged. Merged, a chunk's entire ground cover is ONE draw call no matter how much is on it, so the low number bought nothing and left the starter fields looking bald. It was raised and then measured, not assumed.
-
-Heartlands, worst frame over a full turn on the spot: 5,427 meshes and 1,288 draw calls with dressing on, against 5,252 and 1,274 with it off. Greenwood: 5,419 meshes, 1,303 draw calls. Four times the ground cover cost about 14 draw calls. Both well inside the 7,000 mesh and 1,400 draw call budget.
-
-Determinism still holds: two fresh boots generate identical prop lists. 652 generated props were checked against the placement rules with none in water, on a road, or in a town. One bug was caught that way and fixed: the first member of each clump was skipping the water check because the site had already passed it, but a clump member sits offset from its site.
-
-STILL TO COME IN PHASE 2
-
-The Heartlands creatures: boar, giant rat and the young goblin's shriek.
