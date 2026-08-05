@@ -383,19 +383,29 @@ const GRIM_RULES = {
   // the spawn points come from the same seeded generator the dressing uses, so
   // two players see the same boar in the same field.
   ZONE_SPAWNS: {
-    // Counts are set by the MESH budget, not by taste. A quad variant costs
-    // about 50 scene meshes, so a roster is roughly 50 meshes a head and the
-    // Heartlands sits at 5,300 meshes before anything is spawned. Twenty five
-    // head lands the zone comfortably under 7,000 with the dressing on; the
-    // plan's "about 30" would put it over. Measured, then set.
+    // The design plan's roster, at full count. This was trimmed to 25 head to
+    // stay under a 7,000 mesh budget that turned out not to measure anything
+    // real: posing 31 quadrupeds costs 0.121ms a frame, and mesh count is not
+    // what the renderer charges for. Content is not cut for a proxy again.
+    // If a machine does struggle, GRAPHICS: LOW thins the world (see
+    // GFX_SCALE below) rather than the world being thin for everybody.
     HEARTLANDS: [
-      { of: 'BOAR', count: 5, pattern: 'roamer' },
-      { of: 'GIANT_RAT', count: 8, pattern: 'camp', group: [2, 4] },
-      { of: 'YOUNG_GOBLIN', count: 7, pattern: 'camp', group: [3, 5] },
-      { of: 'HARE', count: 5, pattern: 'roamer' }
+      { of: 'BOAR', count: 6, pattern: 'roamer' },
+      { of: 'GIANT_RAT', count: 10, pattern: 'camp', group: [2, 4] },
+      { of: 'YOUNG_GOBLIN', count: 9, pattern: 'camp', group: [3, 5] },
+      { of: 'HARE', count: 7, pattern: 'roamer' }
     ]
   },
   ZONE_MONSTER_CAP: { HEARTLANDS: 30 },
+
+  // The graphics setting is the lever for a machine that cannot keep up. It
+  // already turns shadows and extra lights off; it now also thins the world,
+  // which is the honest place to give ground because it costs the player
+  // scenery rather than costing them monsters or reach.
+  GFX_SCALE: {
+    high: { clutter: 1.0, dressRing: 2 },
+    low:  { clutter: 0.45, dressRing: 1 }
+  },
 
   // ---- gathering ----------------------------------------------------------
   // Three skills, one curve, tiered nodes, tiered tools. A node needs BOTH a

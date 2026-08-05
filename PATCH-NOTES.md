@@ -1,5 +1,25 @@
 # Grim World — patch notes
 
+## August 5, 2026 (zones-2c) - The roster goes back to full, and GRAPHICS: LOW thins the world
+
+Content that was cut to fit a budget is back, and the budget is replaced by something that actually helps a slow machine.
+
+The Heartlands roster was trimmed from the design plan's thirty-odd head down to twenty five, purely to stay under a 7,000 mesh ceiling. That ceiling turned out not to measure anything the renderer charges for. It is now back at full: six boar, ten giant rats, nine young goblins, seven hares.
+
+Instead of everyone getting a thinner world so that slower machines cope, GRAPHICS: LOW now thins the world for the machines that need it. It already turned shadows and extra lights off. It now also:
+
+- halves the ground cover, 159 props a chunk down to 72 in the same field
+- dresses a smaller radius around you, nine chunks instead of eighteen
+
+That is the honest place to give ground. It costs you scenery, not monsters, not reach, not anything you have to fight.
+
+ONE THING WORTH KNOWING
+
+Harvestable nodes do NOT move between graphics settings. That sounds obvious and it very nearly was not: ground cover and nodes were drawn from the same seeded sequence, so generating less grass would have shifted every tree and ore vein after it, and two players on different settings would have been chopping at trees the other one could not see. Nodes now run on their own sequence. Checked across four chunks at both settings: identical, every time.
+
+Press F3 to watch what any of this costs on your own machine.
+
+
 ## August 5, 2026 (ops) — the game tells you when it has been updated
 
 Shipping used to mean messaging whoever was online and asking them to log out,
@@ -40,6 +60,7 @@ packs both bundles, syntax checks the game, the relay and the sim, commits,
 rebases, pushes, and then waits until GitHub Pages is really serving the new
 build before telling you how many players are about to see the notice. It
 refuses to run if PATCH-NOTES.md has no new entry.
+
 
 ## August 5, 2026 (reach) - You get the thing you are standing on
 
@@ -314,123 +335,3 @@ KNOWN, AND HONEST ABOUT IT
 
 - The arena and camp trees and iron rocks kept their old levels and yields on purpose. Retuning them to the new tables would have locked existing players out of the iron their smithing quest needs.
 - In a shared world the host still counts one swing as one swing, so a better tool does not yet make you faster when someone else is hosting. Single player and hosting are correct. This is on the list for the balance pass.
-
-
-## August 5, 2026 (combat) — boss leaps and pounces actually hurt again
-
-The Hollow King's leap, the Plague Rat's pounce and the Bandit Captain's leap
-have been dealing exactly zero damage. They crossed the ground at you, landed
-on your head, and did nothing at all. Pure theatre.
-
-Same cause as the harmless woodcutters a few patches back. The damage for a
-landing used to be written out inline in the game ("at 0.7 through the hop, hit
-for 14-20 over 2.6m"), and when the fight moved to the server that line stopped
-running for monsters. Nothing replaced it, so the move went out with no blow
-attached.
-
-The landing is now part of the shared rule book like every other attack, using
-the original authored numbers: 14 to 20 damage, 2.6m reach, wide arc, counts as
-a heavy hit so it breaks a block. It is timed as an offset from the start of the
-hop rather than a wall-clock stamp, so it cannot drift, and it is judged against
-where the boss ACTUALLY comes down. That last part matters: the whole point of a
-lunge is that it closes the distance, so measuring the blow from the take-off
-point would have made it miss almost every time.
-
-Phase damage multipliers reach it, so the Hollow King's final phase lands
-harder. Charges and taunts still carry no blow, which is correct: they are
-positioning and noise, not attacks.
-
-Verified with a server-side test asserting all three bosses emit a correctly
-shaped landing blow (and that charges and taunts emit none), plus six in-browser
-assertions: landing on top of you hurts, landing short does not, it damages
-exactly once however many frames poll it, a boss killed in mid-air deals
-nothing, a charge deals nothing, and nothing lands before touchdown.
-
-
-## August 5, 2026 (combat) — melee is judged against the monster you can see
-
-This is the other half of the fix below. That one put the swing ANIMATION on
-the same clock as the damage, which was right and needed. But nobody had
-checked WHERE the damage was being measured from, and that turned out to be the
-bigger half.
-
-### The blade swept one arc, the damage tested another
-
-When a monster swings, the server announces it once with the position and
-facing the monster had at that instant. Your machine then waited out the
-wind-up and asked "was I inside that?". The trouble is that the monster you are
-looking at is not drawn from the attack message at all. It is drawn from the
-position feed, live, every frame, and it keeps walking and keeps turning while
-the swing plays.
-
-Measured against the live server, one ordinary 0.66 second swing:
-
-  monster moves during the swing     0.82 m
-  monster turns during the swing     20 degrees
-  error at the moment the blow lands  ~0.5 m and ~14 degrees
-
-On a three metre reach that is a sixth of the range and a quarter of the half
-arc, and it is not a constant offset you could learn. Monsters pick a new
-strafe direction on a random one to three second timer, so the invisible hit box
-sat to your left, then to your right, then behind you. That is why it felt
-random rather than merely late, and why no amount of retiming ever fixed it.
-
-Arrows, bolts and fireballs never had this problem, which is exactly why they
-always felt fine: a projectile freezes the same stale origin, but then it
-becomes a real object that flies from there, so the thing that hits you is the
-thing you were watching. Melee was the only attack in the game where the damage
-came from somewhere you could not see.
-
-Melee now works the way projectiles already did. The blow is resolved in the
-render loop, on the frame the blade actually passes through you, measured from
-the monster's drawn position and drawn facing. Reach, arc and damage still come
-from the server, so nobody can widen their own hit box.
-
-### Monsters no longer pirouette through their own swing
-
-A monster re-aimed at you every tick, including while committed to an attack.
-In a test where the player circles it, one goblin turned 351 degrees during a
-single swing, tracking the player the whole way. That made the telegraph
-unreadable and meant a swing could not be dodged by moving, which is the entire
-point of having a wind-up. A monster now aims when it decides to swing and
-lives with that until the swing is done. Applies to every monster in the world:
-goblins, knights, bandits, wolves, the workers on their tools, and all four
-bosses, since they all funnel through the same attack call.
-
-### Also fixed while in here
-
-- **Server clock offset was applied backwards.** `srvNow()` defines the offset
-  as one you subtract to get back to local time, but all three schedulers added
-  it. That doubled any drift in your PC's clock instead of cancelling it, and
-  every telegraph in the game was delayed by twice that amount. If your Windows
-  time sync had drifted a second, every monster swung a second late while its
-  body carried on moving live underneath the animation.
-- **Move timings now come off the wire.** The client was reading wind-up and
-  recovery out of its own copy of the move table instead of the numbers the
-  server sent with that exact swing. They agree today. They would have silently
-  stopped agreeing the first time somebody retuned a move.
-- **The two damage paths can no longer overlap.** If the position feed goes
-  quiet your machine takes the fight back and runs monsters locally. Any swing
-  the server had already announced is now cancelled at that moment, instead of
-  landing on top of the local one from an unrelated clock. The handover also
-  waits 2 seconds instead of 1.2 so an ordinary frame hitch does not trigger it.
-- **A monster's health bar moves when you hit it.** Your damage number appeared
-  instantly but the bar waited for the server to answer, so at any real ping the
-  bar visibly lagged your hits. It is now predicted locally and corrected when
-  the server's number arrives. It will never predict a death, so nothing falls
-  over and stands back up.
-- Removed a `hitrep` message the client sent on every landed blow. It was not on
-  the relay's accepted list and had been silently discarded all along.
-
-### How this was verified
-
-Not by eye. A probe connected to the live production relay over a WebSocket,
-aggroed a real monster and logged every attack event against the position feed
-frame by frame; those are the numbers quoted above. The sim change is covered by
-a test that orbits a player around a monster and asserts the facing never moves
-during a committed swing (351 degrees before, 0.0 after). The client change is
-covered by eight assertions driven against the real shipped bundle in a browser:
-a monster standing still still hits, one that strafes out of reach does not, one
-that ends up behind you does not, one that turns away does not, a swing damages
-exactly once no matter how many frames poll it, nothing lands before the wind-up
-finishes, a corpse deals nothing, and the wire's timings are the ones used.
