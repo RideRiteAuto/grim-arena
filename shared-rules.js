@@ -17,7 +17,9 @@ const GRIM_RULES = {
   // relay REPLACES its stored manifest even with players online, so a new
   // world ships without the old one squatting the server. Bump it whenever
   // the terrain bake or manifest layout changes.
-  WORLD_GEN: 6,
+  WORLD_GEN: 7,   // bumped: the world manifest layout changed (monsters now
+                  // carry species, signature and kin tags to the server), and
+                  // the relay only replaces a stored manifest when this rises
 
   // ---- world bounds -------------------------------------------------------
   WORLD_R: 4800,         // Asterra chart radius: covers the whole baked map;
@@ -75,7 +77,15 @@ const GRIM_RULES = {
     // as every other move, just scaled to the arm that swings them.
     maul:   { wind: .42, act: .16, rec: .36, dmg: [24, 32], range: 5.2, arc: 2.6, stam: 0 },
     hammer: { wind: .74, act: .20, rec: .56, dmg: [44, 58], range: 5.6, arc: 2.9, stam: 0, heavy: true },
-    sunder: { wind: .88, act: .22, rec: .62, dmg: [34, 48], range: 8.0, arc: 6.3, stam: 0, heavy: true }
+    sunder: { wind: .88, act: .22, rec: .62, dmg: [34, 48], range: 8.0, arc: 6.3, stam: 0, heavy: true },
+    // ---- signature move shapes ---------------------------------------------
+    // These live in MOVES, not only in SIGS below, because the server does not
+    // apply damage: it ANNOUNCES a swing by name and every client judges its own
+    // dodge against the shape it finds under that name. A signature that existed
+    // only as bespoke client code could never be thrown by a server-run monster.
+    // SIGS points at these by name, so there is one set of numbers for both.
+    whip:   { wind: .45, act: .10, rec: .40, dmg: [7, 11],  range: 3.2, arc: 6.283, stam: 0, knock: 7 },
+    tusk:   { wind: .90, act: .12, rec: .50, dmg: [14, 20], range: 2.4, arc: 2.2,   stam: 0, heavy: true, knock: 9 }
   },
 
   // ---- safe ground --------------------------------------------------------
@@ -336,12 +346,14 @@ const GRIM_RULES = {
   // Signature moves. wind is the telegraph the player reads, act is when it
   // lands, and the rest is the move's own shape. These sit alongside MOVES
   // rather than inside it because they are not swings: they are events.
+  // `move` names the MOVES entry that carries the contact shape, so the damage
+  // numbers exist exactly once and cannot drift between the client and the
+  // server. Everything here is about how the move is PERFORMED rather than what
+  // it does on contact: how long the run lasts, how far the shriek carries.
   SIGS: {
-    // band max pulled in from 16: a charge that opens from further than this
-    // is a long stare at a boar rather than a thing that happens to you.
-    'TUSK CHARGE':   { cd: [7, 11],  band: [5, 12], wind: 0.9,  dur: 1.1, speed: 15, dmg: [14, 20], knock: 9 },
-    'TAIL WHIP':     { cd: [5, 8],   band: [0, 3.0], wind: 0.45, dur: 0.5, arc: 6.283, range: 3.2, dmg: [7, 11], knock: 7 },
-    'GOBLIN SHRIEK': { cd: [12, 18], band: [0, 14], wind: 0.55, dur: 0.8, callR: 25 }
+    'TUSK CHARGE':   { move: 'tusk', cd: [7, 11],  band: [5, 12],  wind: 0.9,  dur: 1.1, speed: 15, kind: 'charge' },
+    'TAIL WHIP':     { move: 'whip', cd: [5, 8],   band: [0, 3.0], wind: 0.45, dur: 0.5, kind: 'sweep' },
+    'GOBLIN SHRIEK': {               cd: [12, 18], band: [0, 14],  wind: 0.55, dur: 0.8, kind: 'call', callR: 25, tag: 'goblin' }
   },
 
   // Deterministic zone rosters. count is the cap for that species in that zone;

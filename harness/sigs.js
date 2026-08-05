@@ -4,10 +4,15 @@
 // in front of it, the cooldown is cleared, and the result is read off live
 // objects. Nothing here judges anything by how a frame looked.
 //
+// Waits are in GAME seconds, not wall clock. This harness renders at about an
+// eighth of real speed, which is what made an earlier run of this very test
+// report a working charge as broken: it had not finished winding up yet.
+//
 //  TUSK CHARGE    telegraph, then a rush that damages and knocks back
 //  TAIL WHIP      telegraph, then a sweep that damages and knocks back
 //  GOBLIN SHRIEK  telegraph, no damage, every goblin in 25m wakes up
 const { chromium } = require('playwright');
+const { sleepGame, speedRatio } = require('./gametime.js');
 const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
 
 (async () => {

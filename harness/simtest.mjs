@@ -26,6 +26,7 @@ function makeCtx(players, opts = {}) {
       rnd: mulberry32(12345),
       players,
       byId: Object.fromEntries(players.map(p => [p.id, p])),
+      npcs: opts.npcs || [],
       colliders: opts.colliders || [],
       safe: opts.safe || [{ x: 0, z: 0, r: 26 }, { x: 41, z: 31, r: 15 }],
       canAct: (n) => n.state === 'idle' && n.stagger <= 0 && n.frozen <= 0,
@@ -135,6 +136,67 @@ run('an idle monster stays inside its own patch', () => {
   }
   const roam = GRIM_RULES.ROAM_R.beast;
   if (worst > roam * 1.6) throw new Error('wandered ' + worst.toFixed(1) + 'm from home, patch is ' + roam + 'm');
+});
+
+// ------------------------------------------------------ 6. signature moves
+run('a boar charges: telegraph, committed run, and it announces a tusk hit', () => {
+  const n = makeSimNpc(SPAWNS[0], 0);
+  // Inside the 5-12m charge band AND inside its 9m aggro radius. At exactly 9
+  // it never aggros, so it never gets as far as considering a charge.
+  const player = { id: 'p1', x: n.x, z: n.z + 8, hp: 100, max: 100 };
+  const { ctx, attacks } = makeCtx([player], { npcs: [n] });
+  let sawWind = false, sawRush = false;
+  for (let step = 0; step < 200; step++) {
+    stepNpc(n, 0.1, ctx);
+    if (n.sigPhase === 'wind') sawWind = true;
+    if (n.sigPhase === 'rush') sawRush = true;
+  }
+  if (!sawWind) throw new Error('never telegraphed');
+  if (!sawRush) throw new Error('telegraphed but never ran');
+  if (!attacks.some(a => a.move === 'tusk')) throw new Error('ran but never announced a tusk hit');
+});
+
+run('a rat whips: announced as a real move so clients can judge it', () => {
+  const n = makeSimNpc(SPAWNS[1], 0);
+  const player = { id: 'p1', x: n.x, z: n.z + 2.2, hp: 100, max: 100 };
+  const { ctx, attacks } = makeCtx([player], { npcs: [n] });
+  for (let step = 0; step < 200; step++) stepNpc(n, 0.1, ctx);
+  if (!attacks.some(a => a.move === 'whip')) throw new Error('never announced a whip');
+  if (!GRIM_RULES.MOVES.whip) throw new Error('whip is not in MOVES, so no client could judge it');
+});
+
+run('a goblin shrieks: nearby goblins wake, and it deals no damage', () => {
+  const lead = makeSimNpc(SPAWNS[2], 0);
+  const mate = makeSimNpc(Object.assign({}, SPAWNS[3], { x: SPAWNS[2].x + 8, z: SPAWNS[2].z }), 1);
+  mate.aggroR = -1;                       // it would never wake on its own
+  const player = { id: 'p1', x: lead.x, z: lead.z + 6, hp: 100, max: 100 };
+  const { ctx, attacks } = makeCtx([player], { npcs: [lead, mate] });
+  for (let step = 0; step < 200; step++) { stepNpc(lead, 0.1, ctx); stepNpc(mate, 0.1, ctx); }
+  if (!mate.aggro) throw new Error('the shriek did not wake the goblin beside it');
+  if (attacks.some(a => a.i === lead.i && (a.move === 'whip' || a.move === 'tusk')))
+    throw new Error('the shriek announced a damage move; it is supposed to do none');
+});
+
+run('a signature declines out of band and ordinary fighting continues', () => {
+  const n = makeSimNpc(SPAWNS[0], 0);      // boar, charge band starts at 5m
+  const player = { id: 'p1', x: n.x, z: n.z + 1.6, hp: 100, max: 100 };
+  const { ctx, attacks } = makeCtx([player], { npcs: [n] });
+  for (let step = 0; step < 200; step++) stepNpc(n, 0.1, ctx);
+  if (n.sigPhase) throw new Error('charged from inside its own minimum range');
+  if (attacks.some(a => a.move === 'tusk')) throw new Error('announced a charge it never had room for');
+  if (!attacks.length) throw new Error('declined the signature and then did nothing at all');
+});
+
+// ------------------------------------- 7. both sides read the same numbers
+run('every signature damage shape lives in MOVES', () => {
+  for (const k in GRIM_RULES.SIGS) {
+    const S = GRIM_RULES.SIGS[k];
+    if (S.kind === 'call') continue;                     // deals no damage by design
+    if (!S.move) throw new Error(k + ' has no move name, so the server cannot announce it');
+    if (!GRIM_RULES.MOVES[S.move]) throw new Error(k + ' points at MOVES.' + S.move + ', which does not exist');
+    const M = GRIM_RULES.MOVES[S.move];
+    if (!M.dmg || !M.range) throw new Error(k + ' shape is missing dmg or range');
+  }
 });
 
 note('');

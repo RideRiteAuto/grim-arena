@@ -41,6 +41,9 @@ function makeSimNpc(s, i) {
     moveAmt: 0,
     aggro: false, aggroPeer: null, returning: false,
     homeR: s.homeR == null ? null : s.homeR, zoneSpecies: s.zoneSpecies || null,
+    sig: s.sig || null, sigPhase: null, sigT: 0, sigDir: 0,
+    // kin tags, so a shriek can tell which of its neighbours are its own
+    goblin: !!s.goblin, wolf: !!s.wolf, rat: !!s.rat, boar: !!s.boar, bandit: !!s.bandit,
     wayX: 0, wayZ: 0, wayT: 0, hasWay: false,
     aiT: 0, aiSwitch: 0, aiStrafe: 1,
     guardT: 0, blocking: false, dodgeCd: 0,
@@ -174,8 +177,18 @@ function stepNpc(n, dt, ctx) {
   n.aiT -= dt; n.aiSwitch -= dt;
   if (n.aiT <= 0) { n.aiT = 1.1 + rnd() * 1.6; n.aiStrafe = rnd() < 0.5 ? -1 : 1; }
 
+  // ---- signature moves ---------------------------------------------------
+  // A signature already running owns the monster until it is done.
+  if (n.sigPhase) { runSig(n, tgt, dp, dt, ctx); integrate(n, dt, ctx); return; }
+
   // ---- boss scripts take over decision making when one is attached -------
   if (ctx.script && ctx.script(n, tgt, dp, dt, ctx)) { integrate(n, dt, ctx); return; }
+
+  // Species signatures get first refusal on the special cooldown. Out of band
+  // startSig declines and the ordinary fight below carries on unchanged.
+  if (n.sig && ctx.canAct(n) && !n.blocking && startSig(n, tgt, dp, dt, ctx)) {
+    integrate(n, dt, ctx); return;
+  }
 
   // ---- weapon choice -----------------------------------------------------
   if (n.lockW != null) n.weapon = n.lockW;
@@ -260,6 +273,96 @@ function stepNpc(n, dt, ctx) {
   }
 
   integrate(n, dt, ctx);
+}
+
+// ---- signature moves -------------------------------------------------------
+// One move per species that is not a reskinned swing. The server cannot deal
+// damage directly: it ANNOUNCES a swing by name out of MOVES and every client
+// judges its own dodge against that shape. So a signature that lands is an
+// announced move like any other, and the parts that are not damage (the run of
+// a charge, the call of a shriek) happen here.
+//
+// Kept deliberately in step with startSig / runSig / fireSig on the client. If
+// the two disagree about when a monster commits, the swing you see and the
+// swing you are judged against stop describing the same thing.
+function sigDef(n, R) { return n.sig ? R.SIGS[n.sig] : null; }
+
+// Returns true if it started one, in which case the caller must stop.
+function startSig(n, tgt, dp, dt, ctx) {
+  const R = ctx.rules;
+  const S = sigDef(n, R);
+  if (!S || n.sigPhase || n.specialCd > 0) return false;
+  if (dp < S.band[0] || dp > S.band[1]) return false;
+  n.specialCd = S.cd[0] + ctx.rnd() * (S.cd[1] - S.cd[0]);
+  n.sigPhase = 'wind';
+  n.sigT = 0;
+  n.sigHit = false;
+  // A charge commits to the direction it aimed in, exactly like a swing.
+  n.sigDirX = (tgt.x - n.x) / (dp || 1);
+  n.sigDirZ = (tgt.z - n.z) / (dp || 1);
+  n.yaw = Math.atan2(n.sigDirX, n.sigDirZ);
+  n.wx = 0; n.wz = 0;
+  return true;
+}
+
+// Drives a signature already in progress. Returns true while it owns the npc.
+function runSig(n, tgt, dp, dt, ctx) {
+  const R = ctx.rules;
+  const S = sigDef(n, R);
+  if (!S || !n.sigPhase) { n.sigPhase = null; return false; }
+  if (n.frozen > 0 || n.stagger > 0 || n.hp <= 0) { n.sigPhase = null; n.wx = 0; n.wz = 0; return false; }
+  n.sigT += dt;
+
+  if (n.sigPhase === 'wind') {
+    n.wx = 0; n.wz = 0;                    // planted: the telegraph is the move
+    n.moveAmt += (0 - n.moveAmt) * Math.min(1, dt * 8);
+    if (n.sigT >= S.wind) {
+      n.sigT = 0;
+      if (S.kind === 'charge') { n.sigPhase = 'rush'; }
+      else {
+        n.sigPhase = 'act';
+        if (S.kind === 'call') {
+          // No damage at all. The cost of ignoring it is everything of its own
+          // kind within callR arriving.
+          const r2 = (S.callR || 25) * (S.callR || 25);
+          for (const o of ctx.npcs || []) {
+            if (o === n || o.dead || o.hp <= 0 || o.aggro || o.returning) continue;
+            if (S.tag && !o[S.tag] && o.zoneSpecies !== n.zoneSpecies) continue;
+            const dx = o.x - n.x, dz = o.z - n.z;
+            if (dx * dx + dz * dz > r2) continue;
+            o.aggro = true; o.aggroPeer = n.aggroPeer || null;
+          }
+        } else if (S.move) {
+          // A sweep is an ordinary announced swing with an unusually wide arc.
+          ctx.attack(n, S.move, tgt);
+        }
+      }
+    }
+    return true;
+  }
+
+  if (n.sigPhase === 'rush') {
+    const sp = S.speed || 15;
+    n.wx = n.sigDirX * sp; n.wz = n.sigDirZ * sp;
+    n.moveAmt += (1 - n.moveAmt) * Math.min(1, dt * 10);
+    const M = S.move ? R.MOVES[S.move] : null;
+    const reach = M ? M.range : 2.4;
+    if (!n.sigHit && dp < reach) {
+      n.sigHit = true;
+      if (S.move) ctx.attack(n, S.move, tgt);
+    }
+    // The run is capped by its own duration plus the ground it had to cover, so
+    // a charge that opened at the far edge of its band still crosses it.
+    const cap = Math.max(S.dur, Math.min(3.2, S.dur + (S.band[1] || 12) / 5.5));
+    if (n.sigT >= cap || n.sigHit) { n.sigPhase = 'skid'; n.sigT = 0; }
+    return true;
+  }
+
+  // skid / act: the vulnerable recovery that makes a committed move fair
+  n.wx = 0; n.wz = 0;
+  n.moveAmt += (0 - n.moveAmt) * Math.min(1, dt * 8);
+  if (n.sigT >= (S.dur || 0.5)) { n.sigPhase = null; n.sigT = 0; }
+  return true;
 }
 
 // How much ground this creature calls its own. Species first, then the role

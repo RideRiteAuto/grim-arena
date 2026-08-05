@@ -1,5 +1,24 @@
 # Grim World — patch notes
 
+## August 5, 2026 (sigs-server) - Signature moves work on the server too
+
+Boar, rat and goblin now throw their signature moves whether the fight is running on your machine or on ours.
+
+Doing it properly meant moving the numbers rather than copying the code. The server never deals damage: it announces a swing by name, and every player's game judges its own dodge against the shape stored under that name. A move that only existed as special client code could never be thrown by a server-run monster at all. So the tusk hit and the tail whip are now real entries in the shared move table, exactly like a sword swing, and both the game and the server read the same numbers. There is one set, not two that drift.
+
+The shriek needed no wire at all, since it does no damage. It just wakes goblins.
+
+Two things had to be carried across that were not: a server-run monster had no idea what species it was or what its signature was, because the world list the game sends to the server dropped those fields. It now sends species, signature and kin tags, which is also what lets a shriek tell which of its neighbours are goblins.
+
+The world generation number goes up as a result, so the server takes the new world list. Ground cover and node positions are seeded from that number, so trees, stones and ore veins will be in different places than they were yesterday. Nothing is lost, the world is just re-dressed.
+
+TESTING, HONESTLY
+
+The test harness here renders at about an eighth of real speed, which is now measured rather than guessed: five seconds of game time took forty four seconds of wall clock. That is what made me report a working boar charge as broken earlier this week, so tests now wait on the game's own clock instead of counting seconds on a stopwatch.
+
+The server brain has its own test suite now, ten checks, and it runs the real code rather than reading it.
+
+
 ## August 5, 2026 (roam) - Monsters stay in their own fields
 
 A bug that has been in the game since the world got big, found while writing a test for something else.
@@ -308,29 +327,3 @@ Determinism still holds: two fresh boots generate identical prop lists. 652 gene
 STILL TO COME IN PHASE 2
 
 The Heartlands creatures: boar, giant rat and the young goblin's shriek.
-
-
-## August 5, 2026 (art) — the Plague Rat is solid again, and so is everything else
-
-You could see straight through the Plague Rat into the inside of its own body.
-Its head looked fine, which is what made it read as one broken monster rather
-than what it actually was: a bug in the geometry builder that every lofted model
-in the game runs through.
-
-Bodies are built by stacking cross sections along the length of the model and
-skinning between them. The triangle order that skinning used only produced
-outward-facing surfaces when the sections happened to be listed back to front.
-List them nose first and the whole model comes out inside out, and since the
-renderer throws away back faces, it discards the surface nearest you and draws
-the inside of the far wall instead. That is the see-through look.
-
-Sixteen models were listed one way and nine the other, so nine were inverted:
-the Plague Rat's body and legs, its tail, your own cape, the wolf and deer legs,
-and the donkey's legs and tail. The rat was the obvious one because it is the
-biggest thing in the game and it is scaled up almost twice.
-
-The builder now reads which way the sections run and winds the surface to match,
-so it no longer matters which way a model is written. Every one of the 25 lofted
-meshes in the game now faces outward, and the 16 that were already correct are
-untouched, triangle for triangle. Lighting on the nine fixed models is better
-too, since their surfaces were previously being lit from the inside.
