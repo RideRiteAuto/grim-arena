@@ -18,10 +18,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 python3 repack.py extract
+# nullglob: with no pending patches the glob would otherwise stay literal and
+# python3 would fail on a file called "*.py", and set -e would abort the build
+# before it ever packed. Silently shipping nothing looked exactly like success.
+shopt -s nullglob
 for p in harness/patches/*.py; do
   echo "-- $p"
   python3 "$p"
 done
+shopt -u nullglob
 
 # Syntax gate before anything is written back into the bundle.
 python3 - <<'EOF'
