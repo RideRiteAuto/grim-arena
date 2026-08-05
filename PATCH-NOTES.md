@@ -1,5 +1,18 @@
 # Grim World — patch notes
 
+## August 5, 2026 (reach) - You get the thing you are standing on
+
+Interacting with the furnace when you meant the anvil, or Margaret when you meant Fenwick, is fixed.
+
+There were two things wrong. The prompt and the F key both ran a fixed list, in order: bank, then sack, then Ball Pellinger, then Margaret, then Fenwick, then the furnace, then the anvil, then sheep. Whoever came first in that list won, no matter which one you were actually standing on. And the reaches were long and uneven, four point two metres for two of the townsfolk down to two for a sheep, so in a town where the furnace, the anvil and the smith stand a few metres apart you had three overlapping bubbles and no say in which one answered.
+
+Now there is one list of what is in reach, both the prompt and the key read it, and it is sorted by distance. The nearest thing wins. The prompt can no longer name one thing while F does another, because they are the same lookup.
+
+Reach is a consistent 2.6 metres for people and workstations, 2.8 for the bank chest, 2 for a sheep. Close enough that two things have to be nearly inside each other to overlap, far enough that you are not hunting for the exact spot. For scale, your furnace and anvil sit three metres apart, so standing at either one now offers only that one.
+
+Also cleaned up while in there: the prompt used em dashes, which is against the brand rule. It reads F - SMELT IRON ORE now.
+
+
 ## August 5, 2026 (leash) - Monsters stop shaking at the edge of their ground
 
 The one where a monster you dragged to the edge of its patch would stand there vibrating and clicking at you. Fixed, and the reason was daft.
@@ -380,36 +393,3 @@ a monster standing still still hits, one that strafes out of reach does not, one
 that ends up behind you does not, one that turns away does not, a swing damages
 exactly once no matter how many frames poll it, nothing lands before the wind-up
 finishes, a corpse deals nothing, and the wire's timings are the ones used.
-
-
-## August 5, 2026 (combat) — the splat now lands on the swing, and corpses stop swinging
-
-### Hits landed before the swing did, by exactly your ping
-The damage and the hit splat were scheduled off the swing's true start
-instant, but the swing ANIMATION was being re-seeded by every status
-update arriving from the server. Those updates carry the phase the server
-saw one network trip ago, so each one quietly dragged the animation
-backwards while the damage stayed put. You got hit roughly one ping
-before the blade looked like it arrived, and the gap jittered as your
-connection did.
-
-Measured on a stepped 60fps clock, before and after, at three
-connection speeds. Gap between the splat and the swing:
-
-  ping  60ms   before  -44ms    after  0ms
-  ping 150ms   before -134ms    after  0ms
-  ping 300ms   before -284ms    after  0ms
-
-The swing animation now rides the exact same clock its damage does, and
-a status update can no longer touch a swing that is already playing. When
-one does set the phase (a swing you only learn about late), it adds the
-time the message spent in transit, so it starts where the monster is now
-rather than where it was.
-
-### Corpses no longer get one last swing
-A swing is announced slightly before it begins. Nothing checked whether
-the monster was still alive when that moment arrived, so a monster killed
-in that window played its whole attack on top of its own body, and could
-still hurt you. Killing a monster now cancels any swing in flight: no
-animation, no damage, no splat. Verified alongside a control where the
-monster is left alive and still swings and hits normally.
