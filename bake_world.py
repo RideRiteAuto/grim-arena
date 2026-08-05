@@ -190,6 +190,107 @@ def distance_px(mask):
     return d
 
 
+def find_crossings(roads, water_polys):
+    """Where every trade route crosses water, and how wide the gap is.
+
+    The map draws exactly two bridge glyphs, Argent and Kingsford, but the
+    eight routes cross water in a lot more places than that. Rather than
+    hand-listing them, walk each road over a rasterized water mask and record
+    every entry-to-exit run.
+
+    The hard part is telling a real crossing from a road that merely HUGS a
+    shoreline: both look like "road goes in, road comes out". The test is the
+    width of the water measured through the crossing midpoint in every
+    direction. At a genuine crossing the road's run through the water is close
+    to the NARROWEST way across; a road running along a lake edge clips a
+    sliver whose along-road length is far longer than the shortest span
+    through the same point. Anything more than ~2.2x the minimum is running
+    beside the water, not over it, and is dropped.
+
+    Deliberately does NOT touch elevation. Flattening terrain at ten new sites
+    would change the baked heights, which would move every procedurally placed
+    prop in the world. The bridge geometry fits the land instead.
+    """
+    SUBPX = 3.0                       # samples per map px along the road
+    FORD_M = 6.0                      # narrower than this, wade it
+    SHORE_RATIO = 2.2                 # along-road / minimum span reject limit
+
+    mask = rasterize(water_polys, MAP_W, MAP_H, 1)
+
+    def wet(px, py):
+        ix, iy = int(px), int(py)
+        return 0 <= ix < MAP_W and 0 <= iy < MAP_H and mask[iy, ix]
+
+    def span_through(px, py, ang):
+        """Water extent through a point along one direction, in map px."""
+        dx, dy = np.cos(ang), np.sin(ang)
+        out = 0.0
+        for s in (1, -1):
+            t = 0.0
+            while t < 220:
+                t += 0.5
+                if not wet(px + dx * s * t, py + dy * s * t):
+                    break
+            out += t
+        return out
+
+    out = []
+    for ri, r in enumerate(roads):
+        inw, start = False, None
+        for j in range(len(r) - 1):
+            a, b = r[j], r[j + 1]
+            n = max(2, int(np.hypot(*(b - a)) * SUBPX))
+            for t in np.linspace(0, 1, n):
+                p = a + (b - a) * t
+                w = wet(p[0], p[1])
+                if w and not inw:
+                    inw, start = True, p
+                elif not w and inw:
+                    inw = False
+                    mid = (start + p) / 2.0
+                    along_px = float(np.hypot(*(p - start)))
+                    along_m = along_px * M_PER_PX
+                    if along_m < FORD_M:
+                        continue
+                    narrow_px = min(span_through(mid[0], mid[1], k * np.pi / 12.0)
+                                    for k in range(12))
+                    narrow_m = narrow_px * M_PER_PX
+                    # Shore-hugging only counts as a false positive when the
+                    # water at that point is genuinely a sliver. A wide river
+                    # mouth crossed at an angle also scores a high ratio, and
+                    # that is a real crossing that needs a real structure.
+                    if narrow_m < 40.0 and along_px > narrow_px * SHORE_RATIO:
+                        continue                       # running along the bank
+                    d = p - start
+                    out.append(dict(
+                        road=ri,
+                        x=round((mid[0] - ORIGIN[0]) * M_PER_PX, 1),
+                        z=round((mid[1] - ORIGIN[1]) * M_PER_PX, 1),
+                        heading=round(float(np.arctan2(d[0], d[1])), 4),
+                        span=round(along_m, 1),
+                        kind='causeway' if along_m > 80 else 'trestle'))
+    # Two spans that land on top of each other are one bridge drawn twice.
+    keep = []
+    for b in out:
+        if any((b['x'] - k['x']) ** 2 + (b['z'] - k['z']) ** 2 < 60.0 ** 2 for k in keep):
+            continue
+        keep.append(b)
+    # The map's own two glyphs win their names; the rest are generated.
+    named = {'Argent Bridge': (480, 415), 'Kingsford Bridge': (525, 600)}
+    for nm, (px, py) in named.items():
+        wx, wz = (px - ORIGIN[0]) * M_PER_PX, (py - ORIGIN[1]) * M_PER_PX
+        best, bd = None, 1e9
+        for b in keep:
+            d = (b['x'] - wx) ** 2 + (b['z'] - wz) ** 2
+            if d < bd:
+                bd, best = d, b
+        if best is not None and bd < 140.0 ** 2:
+            best['name'] = nm
+    for i, b in enumerate(keep):
+        b.setdefault('name', 'Crossing %d' % (i + 1))
+    return keep
+
+
 def blur(a, n=1):
     for _ in range(n):
         p = np.pad(a, 1, mode='edge')
@@ -326,6 +427,30 @@ def main():
              z=round((ay - ORIGIN[1]) * M_PER_PX, 1))
         for k, n, ax, ay in ANCHORS
     ]
+
+    # The trade routes, in world metres. These are the SAME polylines already
+    # used above to relax terrain along the roads, so what the player walks on
+    # and what the ground was smoothed for can never disagree.
+    #
+    # The map's own vertices are exported, not a resampling: 170 points across
+    # all 8 routes, versus ~2,400 if resampled to 4 m. The runtime smooths with
+    # a Catmull-Rom pass, which gives a better curve than dense linear points
+    # and keeps the data file small. Map pixel -> world metre uses the same
+    # transform as everything else here, so the roads are pixel accurate to the
+    # drawing by construction rather than by eyeballing.
+    world_roads = [
+        [[round((px - ORIGIN[0]) * M_PER_PX, 1),
+          round((py - ORIGIN[1]) * M_PER_PX, 1)] for px, py in r]
+        for r in roads
+    ]
+    _rn = sum(len(r) for r in world_roads)
+    _rl = sum(float(np.hypot(*(r[i + 1] - r[i]))) * M_PER_PX
+              for r in roads for i in range(len(r) - 1))
+    print('roads: %d routes, %d points, %.2f km' % (len(world_roads), _rn, _rl / 1000))
+
+    world_bridges = find_crossings(roads, water_p)
+    print('bridges: %d spans, widest %.0f m'
+          % (len(world_bridges), max([b['span'] for b in world_bridges] or [0])))
     meta = dict(GW=GW, GH=GH, CELL=G * M_PER_PX, M_PER_PX=M_PER_PX,
                 ORIGIN=list(ORIGIN), MAP_W=MAP_W, MAP_H=MAP_H,
                 ELEV_OFF=-40.0, ELEV_SCALE=0.5, GEN_V=1)
@@ -333,9 +458,12 @@ def main():
         '// GENERATED by bake_world.py from "Asterra World Map v2.html" — do not edit.\n'
         '// Layers: elevation (u8, 0.5m steps from -40m) and zone id, 825x500 cells\n'
         '// at 8m per cell, deflate+base64. Decoded once at boot by worldgen.js.\n'
+        '// WG_ROADS: the map trade routes as world-metre polylines, map order.\n'
         'const WG_META = ' + json.dumps(meta) + ';\n'
         'const WG_ANCHORS = ' + json.dumps(world_anchors) + ';\n'
         'const WG_ZONES = ' + json.dumps([z[0] for z in ZONES]) + ';\n'
+        'const WG_ROADS = ' + json.dumps(world_roads) + ';\n'
+        'const WG_BRIDGES = ' + json.dumps(world_bridges) + ';\n'
         "const WG_ELEV_B64 = '" + pack(q) + "';\n"
         "const WG_ZONE_B64 = '" + pack(zq) + "';\n"
     )

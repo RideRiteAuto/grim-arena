@@ -18,6 +18,8 @@
 //   GRIM_WORLD.walkable(x, z)    -> inside the charted world, not deep water
 //   GRIM_WORLD.anchors           -> [{kind, name, x, z}] settlement/POI sites
 //   GRIM_WORLD.toMap(x, z)       -> [mapPx, mapPy] for the world-map screen
+//   GRIM_WORLD.roadPaths()       -> smoothed trade routes, [[x,z],...] per road
+//   GRIM_WORLD.roadDist(x, z, m) -> metres to the nearest road, capped at m
 // ===========================================================================
 const GRIM_WORLD = (() => {
   const SEED = 1337;                       // WORLD SEED — never change casually
@@ -125,6 +127,98 @@ const GRIM_WORLD = (() => {
     minX: (0 - M.ORIGIN[0]) * M.M_PER_PX, maxX: (M.MAP_W - M.ORIGIN[0]) * M.M_PER_PX,
     minZ: (0 - M.ORIGIN[1]) * M.M_PER_PX, maxZ: (M.MAP_H - M.ORIGIN[1]) * M.M_PER_PX,
   };
+
+  // ---- trade routes -------------------------------------------------------
+  // WG_ROADS holds the map's own polyline vertices in world metres. The map
+  // draws them as long straight runs between sparse points, which would read
+  // as a folded ribbon in three dimensions, so they are smoothed here with a
+  // centripetal Catmull-Rom pass and resampled at a fixed step. Built lazily
+  // and once: the result is pure, so the renderer, the placement rules and any
+  // future server check all read the same curve rather than three copies of it.
+  const ROAD_STEP = 4;                    // metres between resampled points
+  const RCELL = 64;                       // spatial index cell, metres
+  let paths = null, segs = null, grid = null;
+
+  function crSpline(a, b, c, d, t) {      // centripetal-ish, tension 0.5
+    const t2 = t * t, t3 = t2 * t;
+    return 0.5 * ((2 * b) + (-a + c) * t +
+                  (2 * a - 5 * b + 4 * c - d) * t2 +
+                  (-a + 3 * b - 3 * c + d) * t3);
+  }
+
+  function smoothRoad(pts) {
+    if (pts.length < 2) return pts.slice();
+    const out = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i > 0 ? i - 1 : 0], p1 = pts[i], p2 = pts[i + 1];
+      const p3 = pts[i + 2 < pts.length ? i + 2 : pts.length - 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / ROAD_STEP));
+      for (let k = 0; k < n; k++) {
+        const t = k / n;
+        out.push([crSpline(p0[0], p1[0], p2[0], p3[0], t),
+                  crSpline(p0[1], p1[1], p2[1], p3[1], t)]);
+      }
+    }
+    out.push([pts[pts.length - 1][0], pts[pts.length - 1][1]]);
+    return out;
+  }
+
+  // Uniform grid over the road segments. Without it, one distance query walks
+  // every segment in the world: the dressing pass alone asks this thousands of
+  // times per chunk, which would be roughly two million distance tests for a
+  // single chunk of grass. With it, a query touches the handful of segments in
+  // the cells it actually overlaps.
+  function buildRoads() {
+    if (paths) return;
+    paths = (typeof WG_ROADS !== 'undefined' ? WG_ROADS : []).map(smoothRoad);
+    segs = [];
+    for (let r = 0; r < paths.length; r++) {
+      const p = paths[r];
+      for (let i = 0; i < p.length - 1; i++) segs.push([p[i][0], p[i][1], p[i + 1][0], p[i + 1][1]]);
+    }
+    grid = new Map();
+    for (let i = 0; i < segs.length; i++) {
+      const s = segs[i];
+      const cx0 = Math.floor(Math.min(s[0], s[2]) / RCELL), cx1 = Math.floor(Math.max(s[0], s[2]) / RCELL);
+      const cz0 = Math.floor(Math.min(s[1], s[3]) / RCELL), cz1 = Math.floor(Math.max(s[1], s[3]) / RCELL);
+      for (let cx = cx0; cx <= cx1; cx++) {
+        for (let cz = cz0; cz <= cz1; cz++) {
+          const k = cx + ',' + cz;
+          let b = grid.get(k);
+          if (!b) { b = []; grid.set(k, b); }
+          b.push(i);
+        }
+      }
+    }
+  }
+
+  // Distance in metres from (x, z) to the nearest road centreline, capped at
+  // maxD. Returns maxD when nothing is near, so callers can treat the cap as
+  // "far away" without a second branch.
+  function roadDist(x, z, maxD) {
+    buildRoads();
+    if (!segs.length) return maxD;
+    const rad = Math.ceil(maxD / RCELL);
+    const cx = Math.floor(x / RCELL), cz = Math.floor(z / RCELL);
+    let best = maxD * maxD;
+    for (let dx = -rad; dx <= rad; dx++) {
+      for (let dz = -rad; dz <= rad; dz++) {
+        const b = grid.get((cx + dx) + ',' + (cz + dz));
+        if (!b) continue;
+        for (let n = 0; n < b.length; n++) {
+          const s = segs[b[n]];
+          const ax = s[2] - s[0], az = s[3] - s[1];
+          const len2 = ax * ax + az * az;
+          let t = len2 ? ((x - s[0]) * ax + (z - s[1]) * az) / len2 : 0;
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          const px = s[0] + ax * t - x, pz = s[1] + az * t - z;
+          const d2 = px * px + pz * pz;
+          if (d2 < best) best = d2;
+        }
+      }
+    }
+    return Math.sqrt(best);
+  }
   const api = {
     ready: false, init: init, anchors: WG_ANCHORS, zones: WG_ZONES, bounds: bounds,
     height: height,
@@ -148,6 +242,10 @@ const GRIM_WORLD = (() => {
       }
       return false;
     },
+    bridges: (typeof WG_BRIDGES !== 'undefined' ? WG_BRIDGES : []),
+    roadPaths: () => { buildRoads(); return paths; },
+    roadSegs: () => { buildRoads(); return segs; },
+    roadDist: roadDist,
     walkable: (x, z) =>
       x > bounds.minX + 8 && x < bounds.maxX - 8 &&
       z > bounds.minZ + 8 && z < bounds.maxZ - 8 && height(x, z) > -1.15,
