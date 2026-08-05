@@ -1,0 +1,4 @@
+{
+ "build": "20260805-165551",
+ "note": "Hotfix: the monster simulation was down\n\nroamRadius and walkHome, added with the new leashing, read the rules through R.\nR is a local of stepNpc, not a module-level binding, so both threw\nReferenceError on the first tick and took the whole simulation with it: no\nmonster moved, attacked or respawned anywhere in the world. The relay health\nendpoint had been reporting it in simErr the whole time.\n\nBoth now take the rules as a parameter like every other helper in that file,\nand the file is swept: no function reads a bare R.\n\nship.py also stops trying to merge generated files: version.json and the build\nstamp are rewritten from the current run rather than three-way merged.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01UKP6GsHDE4k9gMB1t6JXyG"
+}

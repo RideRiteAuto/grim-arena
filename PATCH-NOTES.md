@@ -1,5 +1,24 @@
 # Grim World — patch notes
 
+## August 5, 2026 (hotfix) — the world had stopped moving
+
+The monster simulation was throwing on its very first tick and had been down on
+the live server: nothing walked, nothing attacked, nothing respawned, anywhere.
+
+The new leashing code called two helpers, `roamRadius` and `walkHome`, that read
+the rules through a variable called `R`. But `R` is a local inside `stepNpc`, not
+something the file has at the top level, so both threw ReferenceError the moment
+they were called, out of the middle of the simulation loop, taking every monster
+in the world with them.
+
+Both now take the rules as an argument, which is what every other helper in that
+file already did. The whole file was swept for the same mistake: no function
+reads a bare `R` any more.
+
+Caught it because the relay's health endpoint reports `simErr`, which is exactly
+what that field is for. Worth checking after any push that touches the sim.
+
+
 ## August 5, 2026 (zones-2c) - The roster goes back to full, and GRAPHICS: LOW thins the world
 
 Content that was cut to fit a budget is back, and the budget is replaced by something that actually helps a slow machine.
