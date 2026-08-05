@@ -1,5 +1,36 @@
 # Grim World — patch notes
 
+## August 5, 2026 (leash) - Monsters stop shaking at the edge of their ground
+
+The one where a monster you dragged to the edge of its patch would stand there vibrating and clicking at you. Fixed, and the reason was daft.
+
+Leashing was a distance check with nothing behind it. Hold a monster at its limit and stand next to it, and the code did this every single frame: too far from home, drop aggro, turn around; next frame, player is close, grab aggro, play the aggro sound, turn back; next frame, too far from home, drop aggro. Sixty times a second. That is the shake, and the aggro sound firing on every other frame is the noise.
+
+Now, when a monster gives up it actually GIVES UP:
+
+- It walks back to where it lives, and it cannot be pulled into a fight on the way. No amount of standing in front of it will restart the chase until it gets home.
+- It walks back noticeably faster than it wanders, so it reads as leaving rather than milling about.
+- It heals on arrival. You cannot wear something down by dragging it to the edge of its ground over and over.
+- The aggro sound only plays on a real transition into a fight, never twice within a second and a bit.
+- Nothing starts a fight from outside its own ground any more either, so a monster standing at the edge of its patch will not lunge at someone one step beyond it.
+
+ROAMING DISTANCES
+
+Every creature in the world used the same wander radius, roughly 5 to 16 metres, whether it was a townsperson or a boar. They now each have their own patch, and each will follow you 18 metres past it and no further:
+
+  townsfolk        6m patch, chases to 24m
+  workers          8m
+  camp humanoids  14m patch, chases to 32m
+  giant rats      14m, goblins 16m
+  hares           22m
+  roaming beasts  24m, wild boar 26m, chases to 44m
+  bosses          18m, they hold their lair
+
+The idea is the one RuneScape and WoW both use: a camp guards a spot, a beast owns a field, and a boss does not follow you home.
+
+The same fix is in the server simulation, so monsters behave identically whether the fight is running on your machine or the server. If those two ever disagree about who is chasing you, monsters teleport.
+
+
 ## August 5, 2026 (perf) - A performance readout on F3, and three times the ground cover
 
 Press F3 in game for a live readout: frame time, frames per second, draw calls, triangles, mesh count, and how much headroom you have before the game drops the graphics on itself.
@@ -382,44 +413,3 @@ in that window played its whole attack on top of its own body, and could
 still hurt you. Killing a monster now cancels any swing in flight: no
 animation, no damage, no splat. Verified alongside a control where the
 monster is left alive and still swings and hits normally.
-
-
-## August 5, 2026 (frame rate) — the big performance pass
-
-### Measured on real hardware first
-Profiled the live game over the Chrome bridge: about 1,050 draw calls,
-5,300 meshes, and a surprisingly small pixel load. The game was CPU and
-draw-submission bound, not resolution bound. Everything below attacks
-exactly that.
-
-### Only nearby torches cast light
-Every torch and lamp in the world was a live point light riding inside
-EVERY draw call's shading, even from across the map (their light only
-reaches 26 m). Now exactly the five nearest you are lit. This also keeps
-the shader's light count stable, so no hitching while walking.
-
-### Trees stop breathing at a distance
-Every canopy in the world ran its sway animation every frame. Past 70 m
-nobody can see a canopy breathe, so past 70 m it does not.
-
-### Static scenery frozen
-Trees, rocks and terrain no longer recompute their positions every frame
-just to stand still. Only things that actually move keep paying: swaying
-canopies nearby, and a trunk mid-fall.
-
-### Distant monsters undrawn
-Monsters past 90 m are not rendered or animated (the server stops
-sending their movements at 60 m anyway, so they were frozen statues at
-that range). Their minimap dots remain. They pop back well outside
-notice range as you approach.
-
-### Background tab stops burning your GPU
-A hidden tab kept doing full renders. Now it keeps the world alive but
-skips drawing, and no longer poisons the frame-rate average that decides
-Performance Mode.
-
-### Performance Mode safety floor
-Choosing GRAPHICS: HIGH by hand used to disable the automatic downshift
-forever. HIGH is still honored, but if the frame rate sits far below
-playable for six straight seconds the game protects itself once, with a
-banner. The button brings HIGH back any time.

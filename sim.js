@@ -39,7 +39,8 @@ function makeSimNpc(s, i) {
     vx: 0, vz: 0, wx: 0, wz: 0,            // velocity, wanted velocity
     state: 'idle', st: 0, act: null, hitDone: false,
     moveAmt: 0,
-    aggro: false, aggroPeer: null,
+    aggro: false, aggroPeer: null, returning: false,
+    homeR: s.homeR == null ? null : s.homeR, zoneSpecies: s.zoneSpecies || null,
     wayX: 0, wayZ: 0, wayT: 0, hasWay: false,
     aiT: 0, aiSwitch: 0, aiStrafe: 1,
     guardT: 0, blocking: false, dodgeCd: 0,
@@ -111,7 +112,13 @@ function stepNpc(n, dt, ctx) {
     if (rMe && Math.hypot(tgt.x - s.x, tgt.z - s.z) < rMe) meSafe = true;
     if (rNpc && Math.hypot(n.x - s.x, n.z - s.z) < rNpc) npcSafe = true;
   }
-  const leashed = Math.hypot(n.x - n.hx, n.z - n.hz) > R.LEASH_R;
+  // How far this one follows: its own ground plus a fixed overrun, capped by
+  // the world ceiling. Mirrors roamRadius on the client exactly; if the two
+  // sides disagree about who is aggro'd, monsters teleport on screen.
+  const roamR = roamRadius(n);
+  const chaseR = Math.min(R.LEASH_R, roamR + R.LEASH.CHASE_EXTRA);
+  const fromHome = Math.hypot(n.x - n.hx, n.z - n.hz);
+  const leashed = fromHome > chaseR;
   const safe = meSafe || npcSafe;
 
   // Only the timid and the genuinely passive refuse a fight outright. A
@@ -120,15 +127,32 @@ function stepNpc(n, dt, ctx) {
   // them permanent punching bags.
   if (n.skittish || (n.passive && !n.aggro)) { wander(n, dt, ctx); integrate(n, dt, ctx); return; }
 
+  // Already walking home. Nothing interrupts this. Leashing used to be a bare
+  // distance test with no state behind it, so a monster held at the edge of its
+  // ground dropped aggro and re-acquired the player on alternating ticks: it
+  // shook on the spot and retriggered its aggro cue every other frame.
+  if (n.returning) {
+    if (fromHome <= R.LEASH.HOME_TOL) {
+      n.returning = false; n.hasWay = false; n.wayT = 0;
+      // healed on arrival, so it cannot be ground down by repeated pulls
+      if (R.LEASH.HEAL_ON_RETURN && n.hp > 0 && n.max) n.hp = n.max;
+    } else {
+      walkHome(n, dt); integrate(n, dt, ctx); return;
+    }
+  }
+
   if (n.aggro && (safe || leashed)) {
     n.aggro = false; n.aggroPeer = null; n.hasWay = false; n.wayT = 0;
+    if (leashed) { n.returning = true; walkHome(n, dt); integrate(n, dt, ctx); return; }
     wander(n, dt, ctx); integrate(n, dt, ctx); return;
   }
   if (!n.aggro) {
-    if (n.aggroR >= 0 && dp < n.aggroR && !safe) { n.aggro = true; }
+    // Do not start a fight from outside your own ground either.
+    if (n.aggroR >= 0 && dp < n.aggroR && !safe && !leashed) { n.aggro = true; }
     else { wander(n, dt, ctx); integrate(n, dt, ctx); return; }
   } else if (dp > R.DEAGGRO_R) {
     n.aggro = false; n.aggroPeer = null;
+    if (fromHome > roamR) { n.returning = true; walkHome(n, dt); integrate(n, dt, ctx); return; }
     wander(n, dt, ctx); integrate(n, dt, ctx); return;
   }
 
@@ -234,6 +258,36 @@ function stepNpc(n, dt, ctx) {
   integrate(n, dt, ctx);
 }
 
+// How much ground this creature calls its own. Species first, then the role
+// defaults. Kept identical to roamRadius on the client.
+function roamRadius(n) {
+  if (n._roamR != null) return n._roamR;
+  const RR = R.ROAM_R;
+  let r = n.homeR;
+  if (r == null && n.zoneSpecies && R.BESTIARY[n.zoneSpecies]) r = R.BESTIARY[n.zoneSpecies].roamR;
+  if (r == null) {
+    r = n.civilian ? RR.civilian
+      : n.worker ? RR.worker
+      : (n.king || n.rat || n.warden || n.captain) ? RR.boss
+      : (n.passive || n.skittish) ? RR.wildlife
+      : n.beast ? RR.beast
+      : RR.camp;
+  }
+  n._roamR = r;
+  return r;
+}
+
+// The walk back: straight at the home point, a little quicker than a wander.
+function walkHome(n, dt) {
+  const dx = n.hx - n.x, dz = n.hz - n.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 0.6) { n.wx = 0; n.wz = 0; n.moveAmt *= 0.85; return; }
+  n.yaw = Math.atan2(dx / d, dz / d);
+  const sp = 2.3 * R.LEASH.RETURN_SPEED;
+  n.wx = (dx / d) * sp; n.wz = (dz / d) * sp;
+  n.moveAmt += (0.6 - n.moveAmt) * Math.min(1, dt * 6);
+}
+
 function wander(n, dt, ctx) {
   const rnd = ctx.rnd;
   // Skittish wildlife bolts from the nearest player and never fights back.
@@ -257,7 +311,7 @@ function wander(n, dt, ctx) {
   const dwx = n.wayX - n.x, dwz = n.wayZ - n.z;
   if (!n.hasWay || Math.hypot(dwx, dwz) < 1.6 || n.wayT <= 0) {
     const a = rnd() * TAU;
-    const r = n.name === 'MR. SAILERS' ? 14 + rnd() * 22 : 5 + rnd() * 11;
+    const r = n.name === 'MR. SAILERS' ? 14 + rnd() * 22 : roamRadius(n) * (0.35 + rnd() * 0.65);
     let wx = n.hx + Math.cos(a) * r, wz = n.hz + Math.sin(a) * r;
     const rr = Math.hypot(wx, wz);
     if (rr > 162) { wx *= 162 / rr; wz *= 162 / rr; }

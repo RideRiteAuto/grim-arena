@@ -121,14 +121,49 @@ const GRIM_RULES = {
     { x: 0, z: 0, r: 26, follows: 'town' },   // Hollowrest / Northreach, centre filled in from the live town position
     { x: 41, z: 31, r: 15 }                   // starting camp
   ],
-  LEASH_R: 46,           // dragged this far from home, a monster gives up
+  LEASH_R: 46,           // hard ceiling: nothing chases further than this, ever
   DEAGGRO_R: 32,         // lose interest past this
+
+  // ---- leashing -----------------------------------------------------------
+  // How a monster lets go and goes home. This used to be a single distance
+  // check with no state behind it, which meant a monster held at leash range
+  // dropped aggro and re-acquired the player on alternating frames: it shook
+  // on the spot and retriggered its aggro sound sixty times a second.
+  //
+  // The shape here is the one RuneScape and WoW both use, for the same reason:
+  // breaking off has to be a STATE with a destination, not a distance test.
+  // While returning, a monster cannot be re-aggroed at all, walks home a little
+  // faster than it wanders, and heals on arrival so it cannot be ground down by
+  // pulling it to the edge of its ground over and over.
+  LEASH: {
+    CHASE_EXTRA: 18,     // how far past its own roam radius a monster will follow
+    RETURN_SPEED: 2.4,   // multiplier on wander pace while walking home. A monster
+                         // that has given up should look like it is LEAVING, and it
+                         // should clear the area fast enough that you stop tracking it.
+    HOME_TOL: 3.2,       // close enough to count as home
+    HEAL_ON_RETURN: true,
+    MIN_AGGRO_GAP: 1.2   // seconds before the aggro sound can play again
+  },
   RESPAWN_MS: 120000,
   RESPAWN_BOSS_MS: 150000,
   // An Argent Anchor re-forges itself far faster than anything else in the
   // world dies and returns. That number IS the two-player requirement: alone
   // you cannot break the second one before the first is standing again.
   RESPAWN_ANCHOR_MS: 26000,
+
+  // Roam radius by role, for everything that predates the bestiary table. A
+  // monster wanders inside this and chases CHASE_EXTRA beyond it, which is what
+  // makes a camp of goblins feel like it guards a spot while a boar feels like
+  // it owns a field.
+  ROAM_R: {
+    civilian: 6,     // townsfolk keep to their patch
+    worker: 8,
+    camp: 14,        // humanoids clustered on a landmark
+    beast: 24,       // roaming animals
+    wildlife: 20,
+    boss: 18,        // bosses hold their lair
+    def: 16
+  },
 
   // ---- loot ---------------------------------------------------------------
   // Pure data so the game and the server roll the same table. qty may be a
@@ -321,16 +356,16 @@ const GRIM_RULES = {
   // sig names the signature move; the move itself is implemented once and
   // switched on by name, so a species never gets a reskinned basic attack.
   BESTIARY: {
-    BOAR:      { name: 'WILD BOAR',   rig: 'quad', profile: 'boar', hp: 45, xp: 50, band: [1, 5],
+    BOAR:      { name: 'WILD BOAR',   rig: 'quad', profile: 'boar', hp: 45, xp: 50, band: [1, 5], roamR: 26,
                  sig: 'TUSK CHARGE', dmgScale: 0.5, spdScale: 1.0, aggroR: 9, aiD: 0.55,
                  loot: ['BOAR HIDE', 'RAW MEAT'], tags: { boar: true } },
-    GIANT_RAT: { name: 'GIANT RAT',   rig: 'quad', profile: 'rat',  hp: 26, xp: 29, band: [1, 4],
+    GIANT_RAT: { name: 'GIANT RAT',   rig: 'quad', profile: 'rat',  hp: 26, xp: 29, band: [1, 4], roamR: 12,
                  sig: 'TAIL WHIP', dmgScale: 0.4, spdScale: 1.12, aggroR: 10, aiD: 0.6,
                  loot: ['RAT TAIL'], tags: { rat: true } },
-    YOUNG_GOBLIN: { name: 'YOUNG GOBLIN', rig: 'goblin', hp: 30, xp: 33, band: [1, 5],
+    YOUNG_GOBLIN: { name: 'YOUNG GOBLIN', rig: 'goblin', hp: 30, xp: 33, band: [1, 5], roamR: 14,
                  sig: 'GOBLIN SHRIEK', dmgScale: 0.45, spdScale: 0.95, aggroR: 11, aiD: 0.55,
                  loot: ['GOBLIN EAR'], tags: { goblin: true } },
-    HARE:      { name: 'HARE',        rig: 'quad', profile: 'hare', hp: 8,  xp: 4, band: [1, 1],
+    HARE:      { name: 'HARE',        rig: 'quad', profile: 'hare', hp: 8,  xp: 4, band: [1, 1], roamR: 20,
                  passive: true, skittish: true, spdScale: 1.45, aggroR: -1, dmgScale: 0,
                  loot: [], tags: {} }
   },
@@ -354,10 +389,10 @@ const GRIM_RULES = {
     // head lands the zone comfortably under 7,000 with the dressing on; the
     // plan's "about 30" would put it over. Measured, then set.
     HEARTLANDS: [
-      { of: 'BOAR', count: 5, pattern: 'roamer', homeR: 30 },
-      { of: 'GIANT_RAT', count: 8, pattern: 'camp', group: [2, 4], homeR: 14 },
-      { of: 'YOUNG_GOBLIN', count: 7, pattern: 'camp', group: [3, 5], homeR: 16 },
-      { of: 'HARE', count: 5, pattern: 'roamer', homeR: 22 }
+      { of: 'BOAR', count: 5, pattern: 'roamer' },
+      { of: 'GIANT_RAT', count: 8, pattern: 'camp', group: [2, 4] },
+      { of: 'YOUNG_GOBLIN', count: 7, pattern: 'camp', group: [3, 5] },
+      { of: 'HARE', count: 5, pattern: 'roamer' }
     ]
   },
   ZONE_MONSTER_CAP: { HEARTLANDS: 30 },
