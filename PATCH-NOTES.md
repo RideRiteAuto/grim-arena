@@ -1,5 +1,26 @@
 # Grim World — patch notes
 
+## August 5, 2026 (zones-2d) - The Heartlands creatures fight like themselves
+
+Boar, giant rats and young goblins each have their own move now. Not a reskinned swing, an actual different problem.
+
+TUSK CHARGE, the boar. From five to twelve metres it plants, scuffs the ground in the line it is about to run, and then goes. It commits: once it starts it does not steer, so the answer is to be somewhere else by the time it arrives. Hits hard and knocks you off your feet. Nine second cooldown or so.
+
+TAIL WHIP, the giant rat. Up close only. Winds up, then sweeps all the way round, so there is no clever side to stand on. Modest damage and a shove that puts you at arm's length again. About six seconds.
+
+GOBLIN SHRIEK, the young goblin. Does no damage at all. It screams, and every goblin within twenty five metres that was not already interested comes running. Killing the one that shrieks is not the problem. Whatever answers it is.
+
+Each has a real wind-up you can see and read before it lands, and each declines politely if you are at the wrong distance, so a boar with its nose against you fights normally instead of trying to charge from two metres.
+
+ALSO FIXED, AND IT AFFECTED EXISTING FIGHTS
+
+Charges used a single point check to decide whether they connected: is the target within two metres, right now. Anything moving quickly steps clean over that between two frames, so a fast charge could run straight through you and register nothing. Charges now test against the whole path covered since the last frame. Mr. Sailers benefits from this too.
+
+WHAT IS NOT DONE
+
+Server-run monsters do not fire signature moves yet. These live in the client's fight logic and the server simulation has no equivalent, so you will see them in single player and when you are the host. That is stated plainly rather than half-built.
+
+
 ## August 5, 2026 (hotfix) — the world had stopped moving
 
 The monster simulation was throwing on its very first tick and had been down on
@@ -299,58 +320,3 @@ too, since their surfaces were previously being lit from the inside.
 Small one. When you gather, the floating XP text now comes up in the skill's own colour instead of the same gold as everything else: green for woodcutting, orange for mining, teal for foraging. Combat XP is unchanged.
 
 The point is that you can tell what moved without reading it, which matters once you are swinging at three kinds of node in the same clearing.
-
-
-## August 4, 2026 (zones-1b) - Five new creature rigs in the model lab
-
-Groundwork for the monsters, not the monsters themselves. Nothing in the game changes with this one.
-
-Five rig types the bestiary needs did not exist yet, so each one is now built and animated on its own turntable page before any creature is wired to it. Open model-lab/index.html to see them turn.
-
-- SERPENT. Ten links, each parented to the one in front, driven by a single wave equation. Coils, travels, rears up and strikes. This is the bog serpent, and CONSTRICT hangs off it.
-- WISP. No skeleton at all, so it is a core, a halo, six orbiting motes and a light. It winds down small and dark before it bursts, which is the only telegraph a shapeless thing can give you. Ice sprites, will-o-wisps and dust devils.
-- FLYER. Three joints per wing, so the wing folds on the upstroke instead of flapping like a plank, and so the same rig can genuinely perch. Cave bats and vultures.
-- CRAB. Eight legs on a sideways gait that travels along the body, and two jointed claws. The PINCER GRAB is in: claws snap shut and then HOLD while the body hauls backward, because the hold is the move, not the snap.
-- INSECT. Six legs on the alternating tripod gait, three feet planted at all times, with mandibles and an optional tail. BURROW AMBUSH is a real state: it sinks, waits, and erupts.
-
-Each rig was checked at four points in every state, from four camera angles, with no console errors. Two problems were found and fixed that way: the crab's shell was rendering black because a vertex colour material was on a shape with no vertex colours, and the serpent was rendering as a straight pipe because its wave packed half a cycle between neighbouring links, so they cancelled each other out.
-
-
-## August 4, 2026 (zones-1) - Gathering skills and the zone dressing engine
-
-The world stops being bald. Ground outside the towns and roads now grows its own trees, bushes, stones and sticks, and the harvestable nodes in it are the ones that zone is supposed to have.
-
-WHAT LANDED
-
-- One level curve for every skill, defined in shared rules so the game and the server can never disagree about it. 2,838,130 XP to 99. Levels 1 to 40 come fast, the 50s are earned, 99 is a long haul.
-- Your existing skill XP was written against the old curve, so it is converted once on load. Your level does not change and neither does your progress through it. The old numbers are kept in your save under a backup key for one release, so this is reversible if anything looks wrong.
-- FORAGING is in. Eight skills now, so total level runs to 792.
-- Harvesting checks TWO things: your skill level and your tool tier. When you cannot take something, the message says which one stopped you and what fixes it, for example REQUIRES WOODCUTTING 5 or NEEDS A STEEL AXE. No more silent refusals.
-- Tool ladder from crude to masterwork. New characters start with crude tools. If you already own the iron axe and pickaxe, the game now reads those as tier 3, so nobody was downgraded.
-- Every tool and every gathered material is generated from the same table the gate check reads, so nothing can be required and missing.
-- Better tools and higher skill gather faster.
-- The dressing engine places props per 64m chunk from a seeded hash of the chunk and the world generation number. Same ground, same props, on every machine, forever. Nothing is placed in water, on a road, inside a town safe zone, or on a cliff face.
-- Ground clutter is merged into one mesh per chunk, no shadows, frozen matrix. A dressed chunk costs one draw call no matter how much is on it.
-- Harvestable nodes are real objects and run through the same depletion and refill code the old resources always used. Trees fall and leave a stump, ore veins empty out, picked plants leave their stalks. Walk away from a node you emptied and it is still empty when you come back.
-
-MEASURED, NOT ASSUMED
-
-Standing in the Heartlands at (-340, 200), worst frame over a full turn on the spot:
-
-- dressing off: 5,249 meshes, 1,269 draw calls
-- dressing on: 5,429 meshes, 1,286 draw calls
-
-So the whole dressing pass costs about 180 meshes and 17 draw calls. Greenwood at (-600, 420) read 5,417 meshes and 1,308 draw calls with 71 harvestable nodes and 25 dressed chunks loaded. Both are inside the 7,000 mesh and 1,400 draw call budget.
-
-Determinism was checked by booting the game twice from scratch and comparing the generated prop lists for 31 chunks: identical, down to position, rotation, scale, node kind and node id. 139 generated props were checked against the placement rules: none in water, none on a road, none in a town.
-
-Walking a twelve stop loop away and back left the mesh count where it started, so chunks are releasing their props properly.
-
-WHAT IS NOT IN YET
-
-Zone art is next, one zone at a time, starting with the Heartlands. Right now every zone uses the same shapes in its own colours. The new creature rigs, the tool forge recipes and the monsters are still to come.
-
-KNOWN, AND HONEST ABOUT IT
-
-- The arena and camp trees and iron rocks kept their old levels and yields on purpose. Retuning them to the new tables would have locked existing players out of the iron their smithing quest needs.
-- In a shared world the host still counts one swing as one swing, so a better tool does not yet make you faster when someone else is hosting. Single player and hosting are correct. This is on the list for the balance pass.

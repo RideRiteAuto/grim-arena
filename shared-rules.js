@@ -337,7 +337,9 @@ const GRIM_RULES = {
   // lands, and the rest is the move's own shape. These sit alongside MOVES
   // rather than inside it because they are not swings: they are events.
   SIGS: {
-    'TUSK CHARGE':   { cd: [7, 11],  band: [5, 16], wind: 0.9,  dur: 1.1, speed: 15, dmg: [14, 20], knock: 9 },
+    // band max pulled in from 16: a charge that opens from further than this
+    // is a long stare at a boar rather than a thing that happens to you.
+    'TUSK CHARGE':   { cd: [7, 11],  band: [5, 12], wind: 0.9,  dur: 1.1, speed: 15, dmg: [14, 20], knock: 9 },
     'TAIL WHIP':     { cd: [5, 8],   band: [0, 3.0], wind: 0.45, dur: 0.5, arc: 6.283, range: 3.2, dmg: [7, 11], knock: 7 },
     'GOBLIN SHRIEK': { cd: [12, 18], band: [0, 14], wind: 0.55, dur: 0.8, callR: 25 }
   },
