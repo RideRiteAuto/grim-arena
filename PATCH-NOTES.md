@@ -1,5 +1,34 @@
 # Grim World — patch notes
 
+## August 5, 2026 (perf) - A performance readout on F3, and three times the ground cover
+
+Press F3 in game for a live readout: frame time, frames per second, draw calls, triangles, mesh count, and how much headroom you have before the game drops the graphics on itself.
+
+WHY THIS EXISTS
+
+The zone update has been working to a budget of under 1,400 draw calls and under 7,000 meshes. That budget is a guess written down before the ground cover was merged into single meshes, and nobody could check it, so it was measured properly instead.
+
+Standing in the same field, with ground cover set four different ways:
+
+  cover per chunk   meshes   draws   triangles   ms to build a chunk
+  55 to 85           6,780   1,282        176k        7.0
+  150 to 220         6,807   1,289        213k        6.1
+  400 to 600         6,815   1,279        296k       21.3
+  900 to 1300        6,827   1,281        539k       32.0
+
+Sixteen times the grass, flowers and stones moves draw calls by ONE and mesh count by forty seven. It is all one merged mesh per chunk, so the count does not matter to the renderer. What actually grows is triangles, which are cheap, and the time to build a chunk, which is the small hitch when you walk into ground you have not seen yet. That is the real ceiling, and it is flat up to about 220 per chunk and triples past it.
+
+So the ground cover is now 150 to 220 per chunk, roughly triple what shipped yesterday, for no measurable cost.
+
+WHAT THE GAME ALREADY DOES
+
+None of this changes the safety net. The game watches its own frame time and turns shadows and extra lights off by itself if it sits above 27ms for four seconds, and does it harder above 55ms. That is a real measurement with a real consequence, which is more than a draw call count can say. The readout shows you the same number the game is watching.
+
+WHAT THIS DOES NOT TELL YOU
+
+Frame rate cannot be measured from the test harness, which renders in software and runs at about a fifth of real speed. Any number it produced would be made up. That is exactly why the readout is in the game: the only machine whose frame rate matters is yours.
+
+
 ## August 5, 2026 (zones-2b) - The Heartlands has animals in it
 
 Boar, giant rats, young goblins and hares now live in the Heartlands, out in the fields rather than only around the camp.
@@ -394,31 +423,3 @@ Choosing GRAPHICS: HIGH by hand used to disable the automatic downshift
 forever. HIGH is still honored, but if the frame rate sits far below
 playable for six straight seconds the game protects itself once, with a
 banner. The button brings HIGH back any time.
-
-
-## August 5, 2026 (combat sync) — monsters now run on the real clock on every machine
-
-### The real bug behind the weird combat
-Server-owned monsters were mixing three clocks on your screen. Their
-positions moved on real time, their damage landed on real time, but
-their ANIMATIONS ran on the game clock, which silently slows down
-whenever your frame rate dips below 20. Result on a busy machine: the
-damage arrives while the swing is still winding up, legs animate slower
-than the body glides (the stutter), and monsters keep true speed while
-you are slowed (the wrong-feeling pathing). The first seconds after
-loading always looked fine because the local stand-in brain keeps damage
-and animation on the SAME clock, and the switch to the server feed is
-what you saw as the moment everything went weird.
-
-### The fix
-Everything about a server-simulated monster now advances on real elapsed
-time: swing telegraphs, walk cycles and position settling all share the
-same wall clock the damage timer already used. Swings land when they
-look like they land, at any frame rate.
-
-### The flash you see a few seconds in
-That is PERFORMANCE MODE kicking in automatically when the frame rate
-dips: it turns shadows and extra lights off and rebuilds the materials,
-which shows as a one-time flicker. It was being blamed for the combat
-weirdness because both happened at the same moment. The combat part is
-fixed; the flicker is the graphics downshift doing its job.

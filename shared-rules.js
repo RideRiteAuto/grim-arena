@@ -466,11 +466,23 @@ const GRIM_RULES = {
     },
 
     // Per 64m chunk. The design plan says 14 to 22, which was written before
-    // the clutter was merged. Merged, a chunk's entire ground cover is ONE draw
-    // call whatever the count, so the old number bought nothing and left the
-    // starter fields looking bald: one clump every twenty metres. Raised, and
-    // the cost was measured rather than assumed. Draw calls do not move.
-    CLUTTER_PER_CHUNK: [55, 85],
+    // the clutter was merged.
+    //
+    // Measured, at four densities, standing in the same dressed field:
+    //
+    //   density      meshes   draws   triangles   ms to build a chunk
+    //   55 to 85      6780    1282       176k          7.0
+    //   150 to 220    6807    1289       213k          6.1
+    //   400 to 600    6815    1279       296k         21.3
+    //   900 to 1300   6827    1281       539k         32.0
+    //
+    // Sixteen times the ground cover moves draw calls by ONE and mesh count by
+    // forty seven, because it is all one merged mesh per chunk. What actually
+    // grows is triangles, which are cheap, and the time to BUILD a chunk, which
+    // is the hitch a player feels walking into new ground. That is the real
+    // ceiling here, and it is why this sits at 150 to 220 rather than higher:
+    // build cost is flat up to there and triples past it.
+    CLUTTER_PER_CHUNK: [150, 220],
     NODES_PER_CHUNK: [2, 4],
     ROAD_CLEAR: 7,         // metres kept clear either side of a road centreline
     TOWN_CLEAR: 60         // metres kept clear around every safe zone
