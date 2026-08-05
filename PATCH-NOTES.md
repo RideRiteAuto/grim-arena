@@ -1,5 +1,26 @@
 # Grim World — patch notes
 
+## August 5, 2026 (roam) - Monsters stay in their own fields
+
+A bug that has been in the game since the world got big, found while writing a test for something else.
+
+Wandering monsters pick a spot near home and walk to it. Before walking, the game checked that the spot was not too far away, and it measured that from the CENTRE OF THE WORLD rather than from the monster's home. Anything more than 162 metres out from the capital had its wander spot dragged back toward the capital. That was fine when the whole game was one arena about that size. In a world 4,800 metres across it meant almost every monster in it, everywhere, was slowly pulled inward instead of holding its own ground.
+
+So: monsters stay where they live now. A wolf in the Greenwood wanders the Greenwood.
+
+The same line was in the server simulation and got the same fix, so it holds whether the fight is running on your machine or ours.
+
+ALSO
+
+A monster walking home after giving up now keeps walking home even if nobody is watching it. The check for that sat below the code that picks a target, so the moment no player was nearby it fell through to ordinary wandering and ambled back at a third of the pace, sometimes never arriving.
+
+HOW IT WAS FOUND, AND WHAT IS NOW IN PLACE
+
+Yesterday's leash fix shipped a crash into the server simulation: it read the rules from a place they did not exist, threw on the first tick, and stopped every monster in the world from moving, attacking or respawning until it was hotfixed. The check that was supposed to catch that only read the file, it never ran it.
+
+There is now a test that actually runs the server brain: it builds the same world the relay builds, ticks ten different kinds of monster through sixty seconds of simulation, and fails if anything throws. It also checks the things that are easy to break silently. It found both bugs above within a minute of existing.
+
+
 ## August 5, 2026 (zones-2d) - The Heartlands creatures fight like themselves
 
 Boar, giant rats and young goblins each have their own move now. Not a reskinned swing, an actual different problem.
@@ -313,10 +334,3 @@ so it no longer matters which way a model is written. Every one of the 25 lofted
 meshes in the game now faces outward, and the 16 that were already correct are
 untouched, triangle for triangle. Lighting on the nine fixed models is better
 too, since their surfaces were previously being lit from the inside.
-
-
-## August 4, 2026 (zones-1c) - Gathering XP splats read in their skill's colour
-
-Small one. When you gather, the floating XP text now comes up in the skill's own colour instead of the same gold as everything else: green for woodcutting, orange for mining, teal for foraging. Combat XP is unchanged.
-
-The point is that you can tell what moved without reading it, which matters once you are swinging at three kinds of node in the same clearing.

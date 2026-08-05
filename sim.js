@@ -98,6 +98,22 @@ function stepNpc(n, dt, ctx) {
     }
   }
 
+  // Walking home outranks everything, including having no target at all. This
+  // check used to live below, after the aggro gates, so a monster that gave up
+  // and then lost sight of every player fell through to `wander` and ambled
+  // back at a third of the pace, sometimes never arriving. Returning is a
+  // journey with a destination; it does not care whether anyone is watching.
+  if (n.returning) {
+    const fh = Math.hypot(n.x - n.hx, n.z - n.hz);
+    if (fh <= R.LEASH.HOME_TOL) {
+      n.returning = false; n.hasWay = false; n.wayT = 0;
+      if (R.LEASH.HEAL_ON_RETURN && n.hp > 0 && n.max) n.hp = n.max;
+    } else {
+      n.aggro = false; n.aggroPeer = null;
+      walkHome(n, dt, R); integrate(n, dt, ctx); return;
+    }
+  }
+
   if (!tgt) { wander(n, dt, ctx); integrate(n, dt, ctx); return; }
 
   const dp = bestD;
@@ -127,19 +143,7 @@ function stepNpc(n, dt, ctx) {
   // them permanent punching bags.
   if (n.skittish || (n.passive && !n.aggro)) { wander(n, dt, ctx); integrate(n, dt, ctx); return; }
 
-  // Already walking home. Nothing interrupts this. Leashing used to be a bare
-  // distance test with no state behind it, so a monster held at the edge of its
-  // ground dropped aggro and re-acquired the player on alternating ticks: it
-  // shook on the spot and retriggered its aggro cue every other frame.
-  if (n.returning) {
-    if (fromHome <= R.LEASH.HOME_TOL) {
-      n.returning = false; n.hasWay = false; n.wayT = 0;
-      // healed on arrival, so it cannot be ground down by repeated pulls
-      if (R.LEASH.HEAL_ON_RETURN && n.hp > 0 && n.max) n.hp = n.max;
-    } else {
-      walkHome(n, dt, R); integrate(n, dt, ctx); return;
-    }
-  }
+  // (the returning state is handled above, before target selection)
 
   if (n.aggro && (safe || leashed)) {
     n.aggro = false; n.aggroPeer = null; n.hasWay = false; n.wayT = 0;
@@ -318,8 +322,15 @@ function wander(n, dt, ctx) {
     const a = rnd() * TAU;
     const r = n.name === 'MR. SAILERS' ? 14 + rnd() * 22 : roamRadius(n, ctx.rules) * (0.35 + rnd() * 0.65);
     let wx = n.hx + Math.cos(a) * r, wz = n.hz + Math.sin(a) * r;
+    // Keep the waypoint inside the WORLD, not inside a 162m circle around the
+    // world origin. The old clamp measured the waypoint's distance from 0,0 and
+    // pulled anything past 162m back toward it, which was harmless when the
+    // whole game was one arena and badly wrong in a 4,800m world: every monster
+    // living further out than that had its wander target dragged toward the
+    // capital, so nothing stayed in its own field.
+    const WR = (ctx.rules && ctx.rules.WORLD_R) || 4800;
     const rr = Math.hypot(wx, wz);
-    if (rr > 162) { wx *= 162 / rr; wz *= 162 / rr; }
+    if (rr > WR) { wx *= WR / rr; wz *= WR / rr; }
     n.wayX = wx; n.wayZ = wz; n.hasWay = true;
     n.wayT = 6 + rnd() * 6;
   }
