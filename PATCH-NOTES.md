@@ -1,5 +1,46 @@
 # Grim World — patch notes
 
+## August 5, 2026 (ops) — the game tells you when it has been updated
+
+Shipping used to mean messaging whoever was online and asking them to log out,
+because a browser that is already running keeps the old copy of the game until
+it reloads, and the server will not swap the world over while people are still
+on the old one.
+
+Now the game handles it. Every client checks once a minute whether the build it
+is playing is still the build that is deployed. When a new one lands you get:
+
+  GAME UPDATE READY
+  SAVING AND LOGGING YOU OUT IN 30s. YOUR PROGRESS IS SAFE.
+  [ SAVE AND LOG OUT NOW ]
+
+Then it saves and drops you at the front door, where your name is already filled
+in and the password box is empty on purpose: press LOGIN & PLAY and you are back
+in. One click, not a retype.
+
+**It waits if you are fighting.** Getting yanked out at five percent of a boss
+would be the single most annoying thing a patch could do, so if you have landed
+or taken a hit in the last eight seconds the countdown holds and says so. It
+holds for up to two minutes, then goes anyway, because one person parked in
+combat must not be able to keep everyone else on an old build.
+
+Two things worth saying plainly. Your progress was never actually at risk from a
+push: saves already run every four seconds, every forty five seconds, and again
+when the page closes. The old warning would have been a lie. And this now flushes
+the save and WAITS for the server to confirm it before logging you out, which is
+something even the LOG OUT button did not do.
+
+There is no admin command and nothing to log into. Each client reads a static
+version file, so there is no endpoint to secure and no message another player
+could forge to kick everyone out. It also fires for any push at all, not only
+one that remembered to announce itself.
+
+For whoever is shipping: `python3 ship.py "what changed"` stamps the build,
+packs both bundles, syntax checks the game, the relay and the sim, commits,
+rebases, pushes, and then waits until GitHub Pages is really serving the new
+build before telling you how many players are about to see the notice. It
+refuses to run if PATCH-NOTES.md has no new entry.
+
 ## August 5, 2026 (reach) - You get the thing you are standing on
 
 Interacting with the furnace when you meant the anvil, or Margaret when you meant Fenwick, is fixed.
