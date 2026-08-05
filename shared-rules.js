@@ -276,6 +276,55 @@ const GRIM_RULES = {
     ISLES:      { name: 'Shattered Isles',   cont: 'Ashmar',   band: [10, 16] }
   },
 
+  // ---- bestiary -----------------------------------------------------------
+  // Who lives where. Pure data so the client and any future server sim spawn
+  // the same roster, and so adding a species to a zone is a table row.
+  //
+  // pattern: 'roamer' wanders a home radius, 'camp' clusters around a landmark.
+  // sig names the signature move; the move itself is implemented once and
+  // switched on by name, so a species never gets a reskinned basic attack.
+  BESTIARY: {
+    BOAR:      { name: 'WILD BOAR',   rig: 'quad', profile: 'boar', hp: 45, xp: 50, band: [1, 5],
+                 sig: 'TUSK CHARGE', dmgScale: 0.5, spdScale: 1.0, aggroR: 9, aiD: 0.55,
+                 loot: ['BOAR HIDE', 'RAW MEAT'], tags: { boar: true } },
+    GIANT_RAT: { name: 'GIANT RAT',   rig: 'quad', profile: 'rat',  hp: 26, xp: 29, band: [1, 4],
+                 sig: 'TAIL WHIP', dmgScale: 0.4, spdScale: 1.12, aggroR: 10, aiD: 0.6,
+                 loot: ['RAT TAIL'], tags: { rat: true } },
+    YOUNG_GOBLIN: { name: 'YOUNG GOBLIN', rig: 'goblin', hp: 30, xp: 33, band: [1, 5],
+                 sig: 'GOBLIN SHRIEK', dmgScale: 0.45, spdScale: 0.95, aggroR: 11, aiD: 0.55,
+                 loot: ['GOBLIN EAR'], tags: { goblin: true } },
+    HARE:      { name: 'HARE',        rig: 'quad', profile: 'hare', hp: 8,  xp: 4, band: [1, 1],
+                 passive: true, skittish: true, spdScale: 1.45, aggroR: -1, dmgScale: 0,
+                 loot: [], tags: {} }
+  },
+
+  // Signature moves. wind is the telegraph the player reads, act is when it
+  // lands, and the rest is the move's own shape. These sit alongside MOVES
+  // rather than inside it because they are not swings: they are events.
+  SIGS: {
+    'TUSK CHARGE':   { cd: [7, 11],  band: [5, 16], wind: 0.9,  dur: 1.1, speed: 15, dmg: [14, 20], knock: 9 },
+    'TAIL WHIP':     { cd: [5, 8],   band: [0, 3.0], wind: 0.45, dur: 0.5, arc: 6.283, range: 3.2, dmg: [7, 11], knock: 7 },
+    'GOBLIN SHRIEK': { cd: [12, 18], band: [0, 14], wind: 0.55, dur: 0.8, callR: 25 }
+  },
+
+  // Deterministic zone rosters. count is the cap for that species in that zone;
+  // the spawn points come from the same seeded generator the dressing uses, so
+  // two players see the same boar in the same field.
+  ZONE_SPAWNS: {
+    // Counts are set by the MESH budget, not by taste. A quad variant costs
+    // about 50 scene meshes, so a roster is roughly 50 meshes a head and the
+    // Heartlands sits at 5,300 meshes before anything is spawned. Twenty five
+    // head lands the zone comfortably under 7,000 with the dressing on; the
+    // plan's "about 30" would put it over. Measured, then set.
+    HEARTLANDS: [
+      { of: 'BOAR', count: 5, pattern: 'roamer', homeR: 30 },
+      { of: 'GIANT_RAT', count: 8, pattern: 'camp', group: [2, 4], homeR: 14 },
+      { of: 'YOUNG_GOBLIN', count: 7, pattern: 'camp', group: [3, 5], homeR: 16 },
+      { of: 'HARE', count: 5, pattern: 'roamer', homeR: 22 }
+    ]
+  },
+  ZONE_MONSTER_CAP: { HEARTLANDS: 30 },
+
   // ---- gathering ----------------------------------------------------------
   // Three skills, one curve, tiered nodes, tiered tools. A node needs BOTH a
   // skill level and a tool tier; the trade economy is the tool ladder, because

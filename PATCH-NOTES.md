@@ -1,5 +1,31 @@
 # Grim World — patch notes
 
+## August 5, 2026 (zones-2b) - The Heartlands has animals in it
+
+Boar, giant rats, young goblins and hares now live in the Heartlands, out in the fields rather than only around the camp.
+
+WHAT LANDED
+
+- WILD BOAR. Heavy through the shoulders, bristled ridge down the spine, tusks. 45 health.
+- GIANT RAT. Low, long and lean, with a naked segmented tail. 26 health.
+- YOUNG GOBLIN. 30 health.
+- HARE. Small, big eared, harmless, and it runs. Killable, but it drops nothing worth the walk.
+
+Twenty five head in total, spawned at fixed points across Heartlands ground. The points come out of the same seeded generator that places the trees and stones, so the same boar stands in the same field on your screen and on everyone else's. That is not cosmetic: monster state travels between players by position in a list, so a roster that changed per machine would desync every fight in the zone.
+
+Nothing spawns in water, on a road, or inside a town. That was checked against every spawn point, and the roster was checked for being identical across two cold boots.
+
+MEASURED
+
+Standing in a dressed Heartlands field with the whole roster loaded: 6,757 meshes and 1,292 draw calls, worst frame over a full turn on the spot. Greenwood reads 6,749 and 1,303. Both inside the 7,000 mesh and 1,400 draw call budget.
+
+The roster is 25 head rather than the 30 the design plan asks for, and that is a budget decision, not a taste one. A quad costs about 50 scene meshes and the zone already sits near 5,300 before anything spawns, so 30 head put it over 7,000. Twenty five fits with room. If the budget moves, the number is one line in the rules.
+
+WHAT IS NOT IN YET
+
+The signature moves. TUSK CHARGE, TAIL WHIP and GOBLIN SHRIEK are written down and the animals are wired to know which one is theirs, but none of them fire yet, so right now a boar fights like a boar-shaped wolf. That is the next push, and it is deliberately its own push because signature moves reach into the fight and the fight is being worked on elsewhere at the same time.
+
+
 ## August 5, 2026 (content) — THE ARGENT WARDEN
 
 There is something standing in the northern Heartlands now, about 215 metres
@@ -61,6 +87,7 @@ The world generation number went to 6, which is what makes the relay throw away
 its stored world and take the new one even with people online. Spawn order is a
 protocol invariant so the Warden and its anchors are appended at the end of the
 list: every creature already in the world keeps the index it had.
+
 
 ## August 4, 2026 (zones-2a) - Zone art: every tree its own shape, every zone its own ground
 
@@ -395,43 +422,3 @@ dips: it turns shadows and extra lights off and rebuilds the materials,
 which shows as a one-time flicker. It was being blamed for the combat
 weirdness because both happened at the same moment. The combat part is
 fixed; the flicker is the graphics downshift doing its job.
-
-
-## August 5, 2026 (server combat sync) — the fixes reach the server brain
-
-Mystery solved on the lingering combat weirdness: for your first few
-seconds in the world, monsters run on YOUR machine's AI (which had all
-the recent combat fixes) - then the relay server takes over every
-monster at once, and the server's copy of the AI still had the old
-behavior. That is why combat felt right at login and went strange
-moments later, all monsters at the same time.
-
-The server brain now runs the exact same rules as the client: melee
-starts from 85 percent of reach so visible swings connect, a first
-attack is near-guaranteed within about half a second of reaching you,
-and the attack dice are clamped against slow ticks. One combat feel,
-from the first second to the last.
-
-
-## August 5, 2026 (performance) — shadow diet + steady combat dice
-
-### Why it slowed down
-The model rewrite tripled the number of meshes in the scene, and nearly
-every tiny part (teeth, tusks, ore studs, rivets, ears) was casting its
-own shadow - invisible shadows the GPU still had to draw every frame.
-On HIGH graphics that was a slideshow on many machines.
-
-### The fix
-A shadow diet now strips shadow-casting from any part too small for its
-shadow to be visible - over HALF of all shadow casters removed with zero
-visual difference - and it re-sweeps every few seconds so newly spawned
-players, boats and mounts get the same treatment.
-
-### Combat un-weirded
-The slideshow was also what made monster attacks look broken: slow
-frames made the attack dice fire in bursts and skip animation frames.
-All attack rolls are now clamped so slow frames can never burst-fire
-attacks, on top of the earlier timing fixes. If your machine still dips,
-GRAPHICS: LOW on the menu turns shadows off entirely - and the coming
-zone dressing engine batches its scenery from day one so density stays
-cheap.
