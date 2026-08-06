@@ -1,5 +1,44 @@
 # Grim World — patch notes
 
+## The keep, cleared out and lit green
+
+Kevin rode up to the new castle and sent back what was wrong with the inside.
+
+THE COURTYARD WAS CLUTTERED JUNK. He was right, and most of it was not even
+placed on purpose: the floor was still grass, so the world's own grass tufts,
+boulders and bushes were growing up through a castle. On top of that I had
+scattered seven fallen pillars and twenty-one rubble stones through the middle
+of the bailey, which is exactly where the fight with the King happens.
+
+The bailey is a proper flagstone floor now, laid over packed earth so the joins
+between stones show dirt rather than grass, with a worn track running from the
+gate to the throne. Nothing wild grows inside the walls or on the road any
+more. What is left is deliberate and against the walls, out of the fighting
+ground: two toppled columns, a broken cart, a stack of crates that has given
+way, and dead ivy climbing the back wall.
+
+THE ENTRANCE WAS EMPTY. There is a timber palisade down the inside of the front
+wall either side of the gate now, two barricades angled across the way in, and
+a rack of spears with one missing. It reads as somewhere being held.
+
+OUTSIDE WAS PLAIN GRASS. A cobbled road runs forty metres south out of the
+gatehouse, kerbed on both sides, with four abandoned fruit stands along it,
+awnings half gone and their baskets tipped over and empty. Somebody traded here
+before the King took the place.
+
+IT LOOKS RUINED NOW. Merlons are knocked out of the battlements and a few of
+the ones still standing sit askew, so the walls are gap-toothed instead of
+machined.
+
+THE FIRE IS GREEN. The braziers in the keep burn fell fire, the same green as
+the Hollow King, and the light they throw is green with it. It uses the same
+flame the bridge torches do, so it moves and tears apart the same way.
+
+EVERYTHING IS SOLID. You cannot walk through furniture any more. The hearth,
+table, benches, bed and chest in every house, the woodpile, barrel, drying rail
+and vegetable beds in every garden, the garden fences (the gate is still the way
+in), the market crates, and every prop in and around the keep.
+
 ## You can go inside the houses now, and the barrow is a castle
 
 Kevin walked round the new town and sent back six screenshots. All of this is
