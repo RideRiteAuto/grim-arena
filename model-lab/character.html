@@ -144,22 +144,45 @@ function poseFighter(P, t, pose) {
 
   if (pose === 'shield') {
     P.sword.visible = true; P.shield.visible = true;
-    // the carry: shoulder out a touch, elbow near a right angle, fist at
-    // the grip; the shield lies along the forearm, face out, point aft
-    P.armL.rotation.set(-0.10, 0, -0.16);
-    P.elbowL.rotation.set(-1.22, 0.10, 0);
-    P.shield.position.set(0.075, -0.19, 0.12);
-    P.shield.rotation.set(Math.PI, Math.PI, 0);
+    // The carry, matched to Kevin's Dragonwilds reference shots: the arm
+    // hangs with only a soft elbow bend, and the shield rides UPRIGHT and
+    // LOW at the side (point down, face out, a slight lean). The right-angle
+    // elbow of the first cut put the shield chest-high, which Kevin caught
+    // against the references.
+    P.armL.rotation.set(-0.05, 0, -0.10);
+    P.elbowL.rotation.set(-0.35, 0.05, 0);
+    P.shield.position.set(0.075, -0.34, 0.05);
+    P.shield.rotation.set(-0.06, Math.PI, 0.10);
   } else if (pose === 'staff') {
     P.staff.visible = true;
     P.armR.rotation.set(-0.06, 0, 0.08);
     P.elbowR.rotation.set(-0.42, 0, 0);
   } else if (pose === 'bow') {
     P.bow.visible = true;
-    P.armL.rotation.set(-0.04, 0, -0.10);
-    P.elbowL.rotation.set(-0.38, 0, 0);
-    // the fist counter-rotates the arm chain so the bow hangs upright
-    P.handL.rotation.x = -(P.armL.rotation.x + P.elbowL.rotation.x);
+    // Reference: the archer idles with the bow held across the FRONT at hip
+    // height, roughly horizontal, string side toward the body. Hand comes in
+    // front of the hip; the fist pitches the bow forward from vertical.
+    P.armL.rotation.set(-0.50, 0, 0.20);
+    P.elbowL.rotation.set(-0.32, 0, 0);
+    // fixed fist euler, chosen against the reference: the bow lies in the
+    // body's frontal plane, full curve showing, string toward the body
+    P.handL.rotation.set(0.35, 1.55, -0.55);
+    P.bowSet.setDraw(0);
+  } else if (pose === 'bowrun') {
+    P.bow.visible = true;
+    // running with the bow: the arm joins the swing and the bow rides at
+    // the side, still horizontal-ish in the fist (the reference's run frame)
+    const phB = t * 9.0;
+    const hipB = Math.sin(phB) * 0.70;
+    P.legR.rotation.x = hipB; P.legL.rotation.x = -hipB;
+    P.kneeR.rotation.x = 0.08 + 1.65 * Math.pow(Math.max(0, Math.sin(phB - 0.65)), 1.4);
+    P.kneeL.rotation.x = 0.08 + 1.65 * Math.pow(Math.max(0, Math.sin(phB - 0.65 + Math.PI)), 1.4);
+    P.upper.rotation.x = 0.20;
+    P.armR.rotation.set(-hipB * 0.55, 0, 0.05);
+    P.elbowR.rotation.set(-0.18 - Math.max(0, Math.sin(phB + Math.PI)) * 0.42, 0, 0);
+    P.armL.rotation.set(hipB * 0.45, 0, -0.08);
+    P.elbowL.rotation.set(-0.35, 0, 0);
+    P.handL.rotation.set(0.35, 1.55, -0.55);   // fixed fist: the bow rides the swing
     P.bowSet.setDraw(0);
   } else if (pose === 'bowdraw') {
     P.bow.visible = true;
@@ -236,10 +259,10 @@ function poseFighter(P, t, pose) {
     // its carry and just tightens with pace
     P.armR.rotation.set(-hip * 0.55, 0, 0.05);
     P.elbowR.rotation.set(-0.18 - Math.max(0, Math.sin(ph + Math.PI)) * 0.42 * (0.4 + 0.6 * s), 0, 0);
-    P.armL.rotation.set(-0.10 + hip * 0.18, 0, -0.16);
-    P.elbowL.rotation.set(-1.22, 0.10, 0);
-    P.shield.position.set(0.075, -0.19, 0.12);
-    P.shield.rotation.set(Math.PI, Math.PI, 0);
+    P.armL.rotation.set(-0.05 + hip * 0.18, 0, -0.10);
+    P.elbowL.rotation.set(-0.35, 0.05, 0);
+    P.shield.position.set(0.075, -0.34, 0.05);
+    P.shield.rotation.set(-0.06, Math.PI, 0.10);
   }
 }
 const kit = { tick: (t) => { poseFighter(model.parts, t, POSE); } };
@@ -280,6 +303,14 @@ window.__shot = (view, t, light, opts) => {
   const v = VIEWS[view] || VIEWS.front;
   cam.position.set(...v.pos);
   cam.lookAt(...v.look);
+  renderer.render(scene, cam);
+  return true;
+};
+// tweak-and-rerender hook for pose iteration: runs a snippet against the
+// parts with the camera left where the last __shot put it, then re-renders
+// WITHOUT re-posing - so a candidate value can be photographed directly.
+window.__tweak = (src) => {
+  (new Function('P', 'model', 'T', src))(model.parts, model, T);
   renderer.render(scene, cam);
   return true;
 };
