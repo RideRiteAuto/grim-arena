@@ -191,29 +191,36 @@ def distance_px(mask):
 
 
 def find_crossings(roads, water_polys):
-    """Where every trade route crosses water, and how wide the gap is.
+    """Where every trade route must bridge water, and the shortest way across.
 
-    The map draws exactly two bridge glyphs, Argent and Kingsford, but the
-    eight routes cross water in a lot more places than that. Rather than
-    hand-listing them, walk each road over a rasterized water mask and record
-    every entry-to-exit run.
+    Three rules, learned from looking at the first build in game:
 
-    The hard part is telling a real crossing from a road that merely HUGS a
-    shoreline: both look like "road goes in, road comes out". The test is the
-    width of the water measured through the crossing midpoint in every
-    direction. At a genuine crossing the road's run through the water is close
-    to the NARROWEST way across; a road running along a lake edge clips a
-    sliver whose along-road length is far longer than the shortest span
-    through the same point. Anything more than ~2.2x the minimum is running
-    beside the water, not over it, and is dropped.
+    1. A bridge crosses at the NARROWEST point, not along the road's own line.
+       The first version measured the span as the road's run through the water
+       and used the road's heading, so a route meeting a river at forty degrees
+       got a bridge twice as long as the river is wide, sitting diagonally
+       across it. The narrowest chord through a point is perpendicular to the
+       banks by definition, so finding it gives both the right angle and the
+       shortest deck.
 
-    Deliberately does NOT touch elevation. Flattening terrain at ten new sites
-    would change the baked heights, which would move every procedurally placed
-    prop in the world. The bridge geometry fits the land instead.
+    2. Both abutments must be on dry land. Walking out from the chord until the
+       water ends, plus a margin, puts them there by construction. The first
+       version put them a fixed distance from the midpoint, which on a diagonal
+       was still river, so decks began mid-water.
+
+    3. If you could walk around it, it is not a crossing. A road clipping the
+       tip of a lake looks exactly like a river crossing locally. Measuring how
+       far the water continues along the bank either side tells the two apart.
+
+    Deliberately does NOT touch elevation. Flattening terrain at these sites
+    would change the baked heights and move every procedurally placed prop in
+    the world. The bridge geometry fits the land instead.
     """
-    SUBPX = 3.0                       # samples per map px along the road
-    FORD_M = 6.0                      # narrower than this, wade it
-    SHORE_RATIO = 2.2                 # along-road / minimum span reject limit
+    SUBPX = 3.0                    # samples per map px along the road
+    FORD_M = 6.0                   # narrower than this, wade it
+    DIRS = 24                      # chord directions tested, over 180 degrees
+    ABUT_M = 7.0                   # dry margin past the water line, metres
+    AROUND = 1.5                   # water must run this x span along each bank
 
     mask = rasterize(water_polys, MAP_W, MAP_H, 1)
 
@@ -221,18 +228,30 @@ def find_crossings(roads, water_polys):
         ix, iy = int(px), int(py)
         return 0 <= ix < MAP_W and 0 <= iy < MAP_H and mask[iy, ix]
 
-    def span_through(px, py, ang):
-        """Water extent through a point along one direction, in map px."""
+    def ray(px, py, dx, dy, limit=300.0):
+        """Distance in map px until the water ends in one direction."""
+        t = 0.0
+        while t < limit:
+            t += 0.5
+            if not wet(px + dx * t, py + dy * t):
+                return t
+        return limit
+
+    def chord(px, py, ang):
+        """Full water width through a point along one axis, and its endpoints."""
         dx, dy = np.cos(ang), np.sin(ang)
-        out = 0.0
-        for s in (1, -1):
-            t = 0.0
-            while t < 220:
-                t += 0.5
-                if not wet(px + dx * s * t, py + dy * s * t):
-                    break
-            out += t
-        return out
+        a = ray(px, py, dx, dy)
+        b = ray(px, py, -dx, -dy)
+        return a + b, np.array([px + dx * a, py + dy * a]), np.array([px - dx * b, py - dy * b])
+
+    def narrowest(px, py):
+        best = None
+        for k in range(DIRS):
+            ang = k * np.pi / DIRS
+            w, e1, e2 = chord(px, py, ang)
+            if best is None or w < best[0]:
+                best = (w, e1, e2, ang)
+        return best
 
     out = []
     for ri, r in enumerate(roads):
@@ -247,44 +266,72 @@ def find_crossings(roads, water_polys):
                     inw, start = True, p
                 elif not w and inw:
                     inw = False
-                    mid = (start + p) / 2.0
-                    along_px = float(np.hypot(*(p - start)))
-                    along_m = along_px * M_PER_PX
-                    if along_m < FORD_M:
+                    seed = (start + p) / 2.0
+
+                    # --- rule 1: search a little way along the water for the
+                    # genuinely narrowest chord, so the bridge sits at the
+                    # pinch rather than wherever the road happened to hit.
+                    w0, _e1, _e2, ang0 = narrowest(seed[0], seed[1])
+                    axis = np.array([-np.sin(ang0), np.cos(ang0)])   # along the bank
+                    best = (w0, seed, ang0)
+                    for step in np.arange(-40, 40.1, 4.0):
+                        q = seed + axis * step
+                        if not wet(q[0], q[1]):
+                            continue
+                        wq, _a, _b, angq = narrowest(q[0], q[1])
+                        # a small bias to stay near the road, so the bridge does
+                        # not wander off to a pinch nobody is travelling to
+                        if wq + abs(step) * 0.08 < best[0]:
+                            best = (wq, q, angq)
+                    width_px, mid, ang = best
+                    span_water = width_px * M_PER_PX
+                    if span_water < FORD_M:
                         continue
-                    narrow_px = min(span_through(mid[0], mid[1], k * np.pi / 12.0)
-                                    for k in range(12))
-                    narrow_m = narrow_px * M_PER_PX
-                    # Shore-hugging only counts as a false positive when the
-                    # water at that point is genuinely a sliver. A wide river
-                    # mouth crossed at an angle also scores a high ratio, and
-                    # that is a real crossing that needs a real structure.
-                    if narrow_m < 40.0 and along_px > narrow_px * SHORE_RATIO:
-                        continue                       # running along the bank
-                    d = p - start
+
+                    # --- rule 3: could the road just go around it?
+                    perp = np.array([-np.sin(ang), np.cos(ang)])
+                    run_a = ray(mid[0], mid[1], perp[0], perp[1]) * M_PER_PX
+                    run_b = ray(mid[0], mid[1], -perp[0], -perp[1]) * M_PER_PX
+                    if min(run_a, run_b) < span_water * AROUND:
+                        continue                       # a lake tip, not a river
+
+                    # --- rule 2: abutments on dry land, by construction
+                    d = np.array([np.cos(ang), np.sin(ang)])
+                    ea = ray(mid[0], mid[1], d[0], d[1]) + ABUT_M / M_PER_PX
+                    eb = ray(mid[0], mid[1], -d[0], -d[1]) + ABUT_M / M_PER_PX
+                    centre = mid + d * (ea - eb) / 2.0
+                    span = (ea + eb) * M_PER_PX
+
                     out.append(dict(
                         road=ri,
-                        x=round((mid[0] - ORIGIN[0]) * M_PER_PX, 1),
-                        z=round((mid[1] - ORIGIN[1]) * M_PER_PX, 1),
+                        x=round((centre[0] - ORIGIN[0]) * M_PER_PX, 1),
+                        z=round((centre[1] - ORIGIN[1]) * M_PER_PX, 1),
                         heading=round(float(np.arctan2(d[0], d[1])), 4),
-                        span=round(along_m, 1),
-                        kind='causeway' if along_m > 80 else 'trestle'))
-    # Two spans that land on top of each other are one bridge drawn twice.
+                        span=round(span, 1),
+                        water=round(span_water, 1),
+                        kind='causeway' if span > 80 else 'trestle'))
+
+    # Merge by FOOTPRINT, not by a fixed radius. The first build kept a 55 m
+    # trestle and a 121 m causeway 89 m apart, whose decks needed 108 m between
+    # them, so one bridge visibly turned into the other halfway across.
+    def reach(b):
+        return b['span'] / 2 + (12 if b['kind'] == 'causeway' else 8)
+    out.sort(key=lambda b: b['span'])       # keep the shortest of any overlap
     keep = []
     for b in out:
-        if any((b['x'] - k['x']) ** 2 + (b['z'] - k['z']) ** 2 < 60.0 ** 2 for k in keep):
+        if any(np.hypot(b['x'] - k['x'], b['z'] - k['z']) < reach(b) + reach(k) for k in keep):
             continue
         keep.append(b)
-    # The map's own two glyphs win their names; the rest are generated.
+
     named = {'Argent Bridge': (480, 415), 'Kingsford Bridge': (525, 600)}
     for nm, (px, py) in named.items():
         wx, wz = (px - ORIGIN[0]) * M_PER_PX, (py - ORIGIN[1]) * M_PER_PX
         best, bd = None, 1e9
         for b in keep:
-            d = (b['x'] - wx) ** 2 + (b['z'] - wz) ** 2
-            if d < bd:
-                bd, best = d, b
-        if best is not None and bd < 140.0 ** 2:
+            d2 = (b['x'] - wx) ** 2 + (b['z'] - wz) ** 2
+            if d2 < bd:
+                bd, best = d2, b
+        if best is not None and bd < 200.0 ** 2:
             best['name'] = nm
     for i, b in enumerate(keep):
         b.setdefault('name', 'Crossing %d' % (i + 1))
