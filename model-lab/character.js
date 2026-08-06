@@ -297,6 +297,14 @@ export function buildFighterRig(T, pal, opt) {
   // toward the trap, so the shoulder line runs neck -> trap -> deltoid in one
   // slope instead of humping up into a puffed sleeve. The widened tunic shelf
   // folds over the dome's inner quarter and hides the meeting line.
+  //
+  // v6: the arm has a real ELBOW. The upper arm ends in a dome centered on
+  // the elbow pivot and the forearm begins as one, so the joint is a pair of
+  // nested spheres about the same point - it can bend to a right angle
+  // without opening, same trick as the shoulder. The forearm is authored
+  // STRAIGHT down its own local axis (the old baked forward drift is now a
+  // small default rotation on the joint), so the geometry stays honest at
+  // any bend.
   const armGeo = (mirror) => {
     const arm = new T.Group();
     const sleeve = loftY(T, [
@@ -312,24 +320,40 @@ export function buildFighterRig(T, pal, opt) {
     const cuffRoll = new T.Mesh(new T.TorusGeometry(0.052, 0.010, 6, 12), cloth);
     cuffRoll.rotation.x = Math.PI / 2; cuffRoll.position.y = -0.225; cuffRoll.castShadow = true;
     arm.add(cuffRoll);
-    const limbSkin = loftY(T, [
+    // upper arm skin: out of the sleeve, ending in a dome ON the elbow pivot
+    const upperSkin = loftY(T, [
       { y: -0.170, w: 0.049, d: 0.049, p: 2.2 },              // capped inside the sleeve
-      { y: -0.240, w: 0.047, d: 0.049, p: 2.2 },              // above the elbow
-      { y: -0.300, w: 0.044, d: 0.048, p: 2.2, z: 0.012 },    // elbow, drifting forward
-      { y: -0.360, w: 0.049, d: 0.051, p: 2.2, z: 0.022 },    // forearm peak: widest BELOW the elbow
-      { y: -0.480, w: 0.036, d: 0.037, p: 2.2, z: 0.028 },
-      { y: -0.585, w: 0.028, d: 0.030, p: 2.1, z: 0.030 }     // wrist, reaching INTO the palm
+      { y: -0.245, w: 0.047, d: 0.049, p: 2.2 },
+      { y: -0.276, w: 0.043, d: 0.046, p: 2.2, z: 0.004 },
+      { y: -0.298, w: 0.036, d: 0.039, p: 2.2, z: 0.008 },    // elbow dome
+      { y: -0.318, w: 0.024, d: 0.027, p: 2.1, z: 0.010 }
     ], 12, skin);
-    arm.add(limbSkin);
+    arm.add(upperSkin);
+    // ELBOW: the forearm hangs from here. Anatomical pivot, world y 0.46.
+    const elbow = new T.Group(); elbow.position.set(0, -0.295, 0.012); arm.add(elbow);
+    const foreSkin = loftY(T, [
+      { y: 0.022, w: 0.026, d: 0.029, p: 2.1 },               // dome nested in the upper arm's
+      { y: -0.008, w: 0.040, d: 0.044, p: 2.2 },
+      { y: -0.065, w: 0.049, d: 0.051, p: 2.2 },              // forearm peak: widest BELOW the elbow
+      { y: -0.185, w: 0.036, d: 0.037, p: 2.2 },
+      { y: -0.290, w: 0.028, d: 0.030, p: 2.1 }               // wrist, reaching INTO the palm
+    ], 12, skin);
+    elbow.add(foreSkin);
+    arm.elbow = elbow;
     return arm;
   };
   const armR = armGeo(-1); armR.position.set(-0.295, 0.755, 0); upper.add(armR);
   const armL = armGeo(1);  armL.position.set(0.295, 0.755, 0); upper.add(armL);
+  const elbowR = armR.elbow, elbowL = armL.elbow;
+  // the old baked elbow drift, now a joint default the animation adds to
+  elbowR.rotation.x = -0.10; elbowL.rotation.x = -0.10;
 
-  // Hands: unchanged from v4 - palm loft, curled finger mass, thumb. The
-  // right fist is the weapon grip origin, so every weapon still sits right.
-  const handAt = (arm, curl) => {
-    const hand = new T.Group(); hand.position.set(0, -0.60, 0.030); arm.add(hand);
+  // Hands: palm loft, curled finger mass, thumb. Parented to the FOREARM
+  // now, so a bent elbow carries the hand (and everything gripped in it).
+  // The right fist stays the weapon grip origin; at the default joint pose
+  // it sits where it always did, so every weapon still sits right.
+  const handAt = (elbow, side, curl) => {
+    const hand = new T.Group(); hand.position.set(0, -0.305, 0.018); elbow.add(hand);
     const palm = loftY(T, [
       { y: 0.032, w: 0.029, d: 0.034, p: 2.3 },   // overlaps up into the wrist: no gap ring
       { y: -0.045, w: 0.036, d: 0.040, p: 2.6 },
@@ -343,13 +367,13 @@ export function buildFighterRig(T, pal, opt) {
     ], 10, skin);
     hand.add(fing);
     const thumb = sph(0.013, skin, 1, 1.55, 1, 8);
-    thumb.position.set(0.026 * (arm === armL ? 1 : -1), -0.052, 0.030);
-    thumb.rotation.set(0.35, 0, 0.30 * (arm === armL ? -1 : 1));
+    thumb.position.set(0.026 * side, -0.052, 0.030);
+    thumb.rotation.set(0.35, 0, 0.30 * -side);
     hand.add(thumb);
     return hand;
   };
-  const hand = handAt(armR, 1.0);       // weapon fist
-  const handL = handAt(armL, 0.45);     // relaxed
+  const hand = handAt(elbowR, -1, 1.0);     // weapon fist
+  const handL = handAt(elbowL, 1, 0.45);    // relaxed
 
   // ---- legs ---------------------------------------------------------------
   // Trouser loft: hip dome centered on the pivot (born inside the pelvis, so
@@ -359,6 +383,10 @@ export function buildFighterRig(T, pal, opt) {
   // rising toe box. Sole is a separate slab - a real boot's sole is - and
   // the sole plane sits at world 0.015 so the foot STANDS ON the ground
   // instead of reaching under it, which is what kept eating v4's feet.
+  // v6: the leg has a real KNEE. Thigh ends in a trouser dome centered on
+  // the knee pivot; the shin group (boot and sole included) starts as one
+  // nested inside it. Flexion never opens the joint, and the knee reads as
+  // a knee because the shin actually swings back in the stride.
   const legGeo = () => {
     const leg = new T.Group();
     const thigh = loftY(T, [
@@ -367,35 +395,46 @@ export function buildFighterRig(T, pal, opt) {
       { y: 0.000, w: 0.098, d: 0.108, p: 2.4 },              // dome equator at the pivot
       { y: -0.14, w: 0.086, d: 0.093, p: 2.3, z: 0.006 },
       { y: -0.30, w: 0.072, d: 0.078, p: 2.3, z: 0.010 },
-      { y: -0.375, w: 0.064, d: 0.070, p: 2.3, z: 0.010 },   // approaching the knee
-      { y: -0.415, w: 0.060, d: 0.066, p: 2.3, z: 0.014 },   // KNEE, in the same surface
-      { y: -0.465, w: 0.056, d: 0.061, p: 2.3, z: 0.006 }    // tucked into the boot
+      { y: -0.375, w: 0.064, d: 0.070, p: 2.3, z: 0.012 },   // approaching the knee
+      { y: -0.412, w: 0.056, d: 0.062, p: 2.3, z: 0.014 },   // KNEE dome on the pivot
+      { y: -0.442, w: 0.042, d: 0.048, p: 2.2, z: 0.012 }
     ], 12, pants);
     leg.add(thigh);
+    const knee = new T.Group(); knee.position.set(0, -0.415, 0.012); leg.add(knee);
+    // trouser continues INSIDE the boot from the knee dome down
+    const shinTrouser = loftY(T, [
+      { y: 0.024, w: 0.040, d: 0.046, p: 2.2 },              // nested in the thigh's knee dome
+      { y: -0.005, w: 0.054, d: 0.059, p: 2.3 },
+      { y: -0.055, w: 0.055, d: 0.060, p: 2.3 }              // tucked into the boot cuff
+    ], 12, pants);
+    knee.add(shinTrouser);
+    leg.knee = knee;
     // Boot: shin to toe as one surface. w is half-width throughout; d is
     // half-depth on the shin and becomes half-HEIGHT as the spine turns
     // forward at the ankle. Heel comes from the spine kinking back before the
     // turn, and every foot section's UNDERSIDE sits on the same plane
     // (y = -0.985, world 0.035) so the whole foot stands flat on the sole -
     // v5's first pass had the midfoot digging through it and the toe floating.
+    // Boot sections are in KNEE space now (leg space shifted by the pivot),
+    // so the whole boot swings with the shin.
     const boot = sweep(T, [
       // The cuff FLARES: its lip is clearly wider than the trouser leg above
       // it (0.077 against 0.058), so the leg reads as going INTO the boot
       // instead of the boot being painted on. Leg armor will cover this line
       // later; the flare stays subtle for that reason.
-      { at: [0, -0.425, 0.006], w: 0.077, d: 0.082, p: 2.35 },  // flared lip
-      { at: [0, -0.455, 0.004], w: 0.070, d: 0.075, p: 2.3 },   // cuff settling in
-      { at: [0, -0.56, -0.002], w: 0.063, d: 0.069, p: 2.3 },   // calf peak, upper third
-      { at: [0, -0.72, -0.006], w: 0.046, d: 0.051, p: 2.2 },
-      { at: [0, -0.845, -0.010], w: 0.040, d: 0.045, p: 2.2 },  // ankle
-      { at: [0, -0.90, -0.018], w: 0.041, d: 0.047, p: 2.3 },   // front-of-ankle bridge
-      { at: [0, -0.923, -0.030], w: 0.044, d: 0.062, p: 2.4 },  // heel, kicked back behind the shin
-      { at: [0, -0.949, 0.020], w: 0.045, d: 0.036, p: 2.5 },   // instep
-      { at: [0, -0.955, 0.085], w: 0.048, d: 0.030, p: 2.6 },   // midfoot
-      { at: [0, -0.959, 0.145], w: 0.046, d: 0.026, p: 2.6 },   // toe box
-      { at: [0, -0.969, 0.185], w: 0.036, d: 0.015, p: 2.4 }    // toe
+      { at: [0, -0.010, -0.006], w: 0.077, d: 0.082, p: 2.35 },  // flared lip
+      { at: [0, -0.040, -0.008], w: 0.070, d: 0.075, p: 2.3 },   // cuff settling in
+      { at: [0, -0.145, -0.014], w: 0.063, d: 0.069, p: 2.3 },   // calf peak, upper third
+      { at: [0, -0.305, -0.018], w: 0.046, d: 0.051, p: 2.2 },
+      { at: [0, -0.430, -0.022], w: 0.040, d: 0.045, p: 2.2 },   // ankle
+      { at: [0, -0.485, -0.030], w: 0.041, d: 0.047, p: 2.3 },   // front-of-ankle bridge
+      { at: [0, -0.508, -0.042], w: 0.044, d: 0.062, p: 2.4 },   // heel, kicked back behind the shin
+      { at: [0, -0.534, 0.008], w: 0.045, d: 0.036, p: 2.5 },    // instep
+      { at: [0, -0.540, 0.073], w: 0.048, d: 0.030, p: 2.6 },    // midfoot
+      { at: [0, -0.544, 0.133], w: 0.046, d: 0.026, p: 2.6 },    // toe box
+      { at: [0, -0.554, 0.173], w: 0.036, d: 0.015, p: 2.4 }     // toe
     ], 12, leather);
-    leg.add(boot);
+    knee.add(boot);
     // Sole: ONE extruded outline that follows the foot - rounded heel,
     // waist, wider at the ball, rounded toe - with a few millimetres of
     // welt standing proud of the leather, the way a stitched medieval
@@ -417,13 +456,16 @@ export function buildFighterRig(T, pal, opt) {
       sg.rotateX(Math.PI / 2);   // plan-y becomes forward z, thickness extrudes down
       const sole = new T.Mesh(sg, dark);
       sole.castShadow = true;
-      sole.position.set(0, -0.985, 0);
-      leg.add(sole);
+      sole.position.set(0, -0.570, -0.012);   // knee space
+      knee.add(sole);
     }
     return leg;
   };
   const legR = legGeo(); legR.position.set(-0.122, 1.02, 0); body.add(legR);
   const legL = legGeo(); legL.position.set(0.122, 1.02, 0); body.add(legL);
+  const kneeR = legR.knee, kneeL = legL.knee;
+  // the old baked knee bend, now a joint default the stride adds to
+  kneeR.rotation.x = 0.06; kneeL.rotation.x = 0.06;
 
   // ---- gear: every armor piece, fitted OVER the body ----------------------
   const gear = { list: [] };
@@ -469,29 +511,30 @@ export function buildFighterRig(T, pal, opt) {
     ], 12, steel));
     p2.rotation.z = sd * -0.06;
     const pRim = gearAdd(arm, cyl(0.072, 0.078, 0.022, trim, -0.118, 12));
-    // bracer wrapping the forearm peak down to the wrist
-    const bracer = gearAdd(arm, loftY(T, [
-      { y: -0.330, w: 0.058, d: 0.060, p: 2.4, z: 0.020 },
-      { y: -0.450, w: 0.046, d: 0.047, p: 2.4, z: 0.027 },
-      { y: -0.545, w: 0.038, d: 0.040, p: 2.3, z: 0.030 }
+    // bracer wrapping the forearm peak down to the wrist - on the FOREARM,
+    // so it bends with the elbow
+    const bracer = gearAdd(arm.elbow, loftY(T, [
+      { y: -0.035, w: 0.058, d: 0.060, p: 2.4 },
+      { y: -0.155, w: 0.046, d: 0.047, p: 2.4 },
+      { y: -0.250, w: 0.038, d: 0.040, p: 2.3 }
     ], 12, steel));
-    const cuff = gearAdd(arm, cyl(0.043, 0.047, 0.030, trim, -0.552, 10)); cuff.position.z = 0.030;
+    const cuff = gearAdd(arm.elbow, cyl(0.043, 0.047, 0.030, trim, -0.257, 10)); cuff.position.z = 0.018;
   }
 
-  // greaves + sabaton caps hugging the new boot
+  // greaves + sabaton caps hugging the boot - on the SHIN, in knee space
   for (const leg of [legR, legL]) {
-    gearAdd(leg, loftY(T, [
-      { y: -0.45, w: 0.072, d: 0.076, p: 2.4 },
-      { y: -0.60, w: 0.066, d: 0.072, p: 2.4 },
-      { y: -0.76, w: 0.048, d: 0.053, p: 2.3 }
+    gearAdd(leg.knee, loftY(T, [
+      { y: -0.035, w: 0.072, d: 0.076, p: 2.4 },
+      { y: -0.185, w: 0.066, d: 0.072, p: 2.4 },
+      { y: -0.345, w: 0.048, d: 0.053, p: 2.3 }
     ], 12, steel));
-    const sab = gearAdd(leg, sweep(T, [
+    const sab = gearAdd(leg.knee, sweep(T, [
       // first ring hugs the boot tight so the open end's cap is a sliver -
       // a loose ring left a bright steel disc gleaming at the ankle in low sun
-      { at: [0, -0.895, -0.012], w: 0.0435, d: 0.0475, p: 2.4 },
-      { at: [0, -0.945, 0.030], w: 0.052, d: 0.034, p: 2.6 },
-      { at: [0, -0.952, 0.100], w: 0.054, d: 0.028, p: 2.6 },
-      { at: [0, -0.960, 0.150], w: 0.046, d: 0.020, p: 2.5 }
+      { at: [0, -0.480, -0.024], w: 0.0435, d: 0.0475, p: 2.4 },
+      { at: [0, -0.530, 0.018], w: 0.052, d: 0.034, p: 2.6 },
+      { at: [0, -0.537, 0.088], w: 0.054, d: 0.028, p: 2.6 },
+      { at: [0, -0.545, 0.138], w: 0.046, d: 0.020, p: 2.5 }
     ], 12, steel));
   }
 
@@ -520,9 +563,11 @@ export function buildFighterRig(T, pal, opt) {
   }
   for (let i = 0; i < 6; i++) {
     const t = i / 5;
-    const seg = new T.Mesh(new T.CylinderGeometry(0.040 - t * 0.026, 0.033 - t * 0.022, 0.105, 5), cloth);
-    seg.position.set(0, 0.005 - t * t * 0.17, -0.155 - t * 0.155);
-    seg.rotation.x = 1.05 + t * 0.75; seg.castShadow = true; crest.add(seg);
+    // segments overlap (0.125 spacing against 0.15 length) so the tail is a
+    // tail, not a dotted line - the old spacing showed daylight between them
+    const seg = new T.Mesh(new T.CylinderGeometry(0.042 - t * 0.024, 0.036 - t * 0.020, 0.15, 5), cloth);
+    seg.position.set(0, 0.005 - t * t * 0.155, -0.145 - t * 0.125);
+    seg.rotation.x = 1.05 + t * 0.72; seg.castShadow = true; crest.add(seg);
   }
 
   // cape: pivot always exists (animate writes it), the cloth rides the toggle
@@ -540,6 +585,7 @@ export function buildFighterRig(T, pal, opt) {
 
   return {
     g, body, upper, chest, torso, head, hair, helm, armR, armL, legR, legL,
+    elbowR, elbowL, kneeR, kneeL,
     hand, handL, crest, capePiv, gear,
     mats: { steel, cloth, trim, skin, pants, leather, dark },
     box, cyl, sph
@@ -554,8 +600,8 @@ export function buildFighterRig(T, pal, opt) {
 // followed (len 0.2 per station, +0.13 rad each), so every swing arc and the
 // bladeTip trail anchor land exactly where they always did.
 export function buildWeaponSet(T, rig) {
-  const { armR, armL, upper, hand, handL, box, cyl, sph, g } = rig;
-  const steel = rig.mats.steel, cloth = rig.mats.cloth, trim = rig.mats.trim, dark = rig.mats.dark;
+  const { armR, armL, elbowR, elbowL, upper, hand, handL, box, cyl, sph, g } = rig;
+  const steel = rig.mats.steel, cloth = rig.mats.cloth, trim = rig.mats.trim, dark = rig.mats.dark, leather = rig.mats.leather;
 
   const bladeMat = new T.MeshStandardMaterial({ color: 0xccd4dc, roughness: 0.34, metalness: 0.78 });
   const edgeMat  = new T.MeshStandardMaterial({ color: 0xf2f6fa, roughness: 0.22, metalness: 0.85 });
@@ -644,26 +690,108 @@ export function buildWeaponSet(T, rig) {
   staff.rotation.x = 0.35;   // leans forward out of the fist, orb clear of the head
   staff.visible = false; hand.add(staff);
 
-  // Bow lives in the LEFT hand (archer's off-hand), gripped at its centre,
-  // limbs vertical, belly facing away from the archer.
+  // ---- the bow, from scratch ----------------------------------------------
+  // A strung recurve, built the way one is actually shaped. Local frame:
+  // +Y up the riser, +Z toward the TARGET, string side -Z. The numbers:
+  // 1.17 tall tip to tip; limbs sweep BACK toward the archer as they leave
+  // the riser and the tips hook FORWARD - that reversed hook is what makes
+  // it a recurve; the string runs dead straight between the nock grooves at
+  // z = -0.148, which puts a real brace height between grip and string. The
+  // old bow was a torus with a stick through it, held sideways through the
+  // body; nothing of it survives.
+  const bowWood = new T.MeshStandardMaterial({ color: 0x4a3420, roughness: 0.62, metalness: 0 });
+  const bowHorn = new T.MeshStandardMaterial({ color: 0x8a6a3c, roughness: 0.5, metalness: 0.05 });
+  const bowStringM = new T.MeshStandardMaterial({ color: 0xd8d2c0, roughness: 0.8 });
   const bow = new T.Group();
-  const bowMat = new T.MeshStandardMaterial({ color: 0x6b4a2a, roughness: 0.85, flatShading: true });
-  const arc = new T.Mesh(new T.TorusGeometry(0.52, 0.035, 5, 16, Math.PI * 1.3), bowMat);
-  arc.rotation.z = Math.PI / 2 - Math.PI * 1.3 / 2;   // arc centred on the Y axis, bulge +X
-  arc.castShadow = true; bow.add(arc);
-  const grip = box(0.06, 0.16, 0.06, dark, 0); grip.position.x = 0.52; bow.add(grip);
-  const tipY = Math.sin(Math.PI * 1.3 / 2) * 0.52;
-  const tipX = Math.cos(Math.PI * 1.3 / 2) * 0.52;
-  const string = new T.Mesh(new T.CylinderGeometry(0.008, 0.008, tipY * 2, 3), new T.MeshBasicMaterial({ color: 0xd8d2c0 }));
-  string.position.x = tipX; bow.add(string);
-  bow.position.set(-0.52, 0, 0);          // grip sits in the palm
-  bow.rotation.y = -Math.PI / 2;          // belly faces the character's +Z (forward)
+  // riser: pocketed ends, thin waist, leather-wrapped grip, arrow rest
+  bow.add(loftY(T, [
+    { y: -0.185, w: 0.021, d: 0.032, z: -0.002, p: 2.2 },   // lower limb pocket
+    { y: -0.095, w: 0.017, d: 0.027, z: 0.004, p: 2.2 },
+    { y: -0.030, w: 0.0155, d: 0.024, z: 0.006, p: 2.2 },   // grip waist
+    { y: 0.045, w: 0.016, d: 0.025, z: 0.005, p: 2.2 },
+    { y: 0.115, w: 0.018, d: 0.028, z: 0.002, p: 2.2 },
+    { y: 0.185, w: 0.021, d: 0.032, z: -0.002, p: 2.2 }     // upper limb pocket
+  ], 10, bowWood));
+  const gripWrap = loftY(T, [
+    { y: -0.062, w: 0.0185, d: 0.027, z: 0.006, p: 2.3 },
+    { y: -0.015, w: 0.020, d: 0.029, z: 0.006, p: 2.3 },
+    { y: 0.030, w: 0.0185, d: 0.027, z: 0.006, p: 2.3 }
+  ], 10, leather);
+  bow.add(gripWrap);
+  const rest = box(0.012, 0.008, 0.016, bowHorn); rest.position.set(0.02, 0.052, 0.004); bow.add(rest);
+  // limbs: one sweep each, flat lens section tapering to the tip, with a
+  // horn lamination sweep on the belly for the two-tone read
+  const limbAt = (sgn) => {
+    const spine = [
+      [0, 0.170 * sgn, 0.004], [0, 0.30 * sgn, -0.042], [0, 0.42 * sgn, -0.102],
+      [0, 0.50 * sgn, -0.148], [0, 0.552 * sgn, -0.152], [0, 0.585 * sgn, -0.126]
+    ];
+    const secs = spine.map((at, i) => {
+      const t = i / 5;
+      return { at, w: 0.023 - t * 0.013, d: 0.010 - t * 0.0045, p: 2.6 };
+    });
+    bow.add(sweep(T, secs, 8, bowWood));
+    const belly = spine.slice(0, 5).map((at, i) => {
+      const t = i / 4;
+      return { at: [at[0], at[1], at[2] - 0.006], w: 0.017 - t * 0.009, d: 0.004, p: 2.4 };
+    });
+    bow.add(sweep(T, belly, 8, bowHorn));
+    const nock = cyl(0.006, 0.008, 0.02, trim, 0, 6);
+    nock.position.set(0, 0.572 * sgn, -0.140); nock.rotation.x = sgn * -0.9;
+    bow.add(nock);
+  };
+  limbAt(1); limbAt(-1);
+  // string: two segments meeting at the nocking point, re-aimed by setDraw
+  // so drawing pulls a clean V toward the archer. Unit cylinders scaled to
+  // length, endpoint to endpoint - never composed angles.
+  const NOCK_T = new T.Vector3(0, 0.572, -0.148);
+  const NOCK_B = new T.Vector3(0, -0.572, -0.148);
+  const strTop = new T.Mesh(new T.CylinderGeometry(0.004, 0.004, 1, 4, 1), bowStringM);
+  const strBot = strTop.clone();
+  bow.add(strTop); bow.add(strBot);
+  // nocked arrow, shown by the game only while drawing
+  const arrow = new T.Group();
+  const arrowShaft = new T.Mesh(new T.CylinderGeometry(0.0055, 0.0055, 0.60, 5), bowWood);
+  arrowShaft.rotation.x = Math.PI / 2; arrowShaft.position.z = 0.30; arrow.add(arrowShaft);
+  const headA = new T.Mesh(new T.ConeGeometry(0.013, 0.05, 5), steel);
+  headA.rotation.x = Math.PI / 2; headA.position.z = 0.615; arrow.add(headA);
+  for (const fr of [0, 2.1, 4.2]) {
+    const f = box(0.002, 0.022, 0.055, cloth); f.position.set(0, 0.012, 0.05);
+    const fg = new T.Group(); fg.rotation.z = fr; fg.add(f); fg.position.z = 0.02; arrow.add(fg);
+  }
+  arrow.visible = false; bow.add(arrow);
+  const aim = (mesh, a, b) => {
+    const dir = new T.Vector3().subVectors(b, a);
+    const len = dir.length();
+    mesh.scale.set(1, len, 1);
+    mesh.position.copy(a).addScaledVector(dir, 0.5);
+    mesh.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), dir.normalize());
+  };
+  const bowSet = {
+    arrow,
+    // t: 0 at brace, 1 at full draw. The nocking point rides just below
+    // centre, like a real nock, and the arrow tail follows it.
+    setDraw(t) {
+      const np = new T.Vector3(0, -0.015, -0.148 - Math.max(0, Math.min(1, t)) * 0.46);
+      aim(strTop, NOCK_T, np);
+      aim(strBot, np, NOCK_B);
+      arrow.position.set(np.x, np.y + 0.006, np.z);
+    }
+  };
+  bowSet.setDraw(0);
+  // Held in the LEFT hand at IDENTITY: the game counter-rotates handL
+  // against the arm chain (it already does this for the bow), so the fist's
+  // world frame stays upright and the bow reads vertical in every pose -
+  // exactly how a wrist works. Authoring any fixed tilt here instead is what
+  // had the old bow lying through the body.
+  bow.position.set(0, -0.055, 0.02);
+  bow.rotation.set(0, 0, 0);
+  bow.scale.setScalar(1.15);   // hero scale: 1.35 tip to tip
   bow.visible = false; handL.add(bow);
-  // Slung copy for when the bow isn't drawn — diagonal across the back like
-  // any archer carries it. The hand copy only appears while drawing/firing.
+  // Slung copy for when the bow isn't drawn - diagonal across the back.
   const backBow = bow.clone();
-  backBow.position.set(0.05, 0.3, -0.36);
-  backBow.rotation.set(0.15, Math.PI / 2, 0.55);
+  backBow.position.set(0.06, 0.34, -0.30);
+  backBow.rotation.set(0.35, 0, 0.6);
   backBow.visible = false; upper.add(backBow);
 
   // Gathering tools: pickaxe (slot 4) and woodcutting axe (slot 5).
@@ -715,13 +843,14 @@ export function buildWeaponSet(T, rig) {
   for (const [yy, zz] of [[0.38, 0.24], [0.38, -0.24], [-0.12, 0.24], [-0.12, -0.24]]) {
     const stud = box(0.06, 0.06, 0.06, trim); stud.position.set(-0.06, yy, zz); shield.add(stud);
   }
-  // Rest carry: flat along the side, point AFT. With euler order XYZ the
-  // rotation that puts the top rim forward and the point behind is
-  // x = +PI/2 (with y = PI keeping the face outward). The first attempt used
-  // -PI/2 and Kevin's review caught it immediately: point leading forward.
-  // "Try it on the axes by hand" is how that shipped - the lab render from
-  // the shield side is the check now.
-  shield.position.set(0.07, -0.55, -0.05); shield.rotation.set(Math.PI / 2, Math.PI, 0); shield.scale.setScalar(0.86); armL.add(shield);
+  // v6 carry: the shield is strapped to the FOREARM. With the carry pose
+  // (shoulder out a touch, elbow near a right angle) the forearm runs along
+  // the shield's back and the fist sits at the grip, which is how a heater
+  // is actually held. In elbow space: long axis along the forearm (top rim
+  // toward the hand, so the point trails aft of the elbow), face outboard.
+  // Every angle here is reviewed on the lab's shieldside camera, not derived
+  // on paper - deriving it on paper shipped the point facing forward once.
+  shield.position.set(0.075, -0.17, 0.14); shield.rotation.set(Math.PI, Math.PI, 0); shield.scale.setScalar(0.86); elbowL.add(shield);
 
   const ward = new T.Mesh(new T.SphereGeometry(1.15, 16, 12), new T.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: 0.16, side: T.DoubleSide }));
   ward.position.y = 1.1; ward.visible = false; g.add(ward);
@@ -729,7 +858,7 @@ export function buildWeaponSet(T, rig) {
   const frostShell = new T.Mesh(new T.IcosahedronGeometry(1.05, 1), new T.MeshBasicMaterial({ color: 0x9fdcff, transparent: true, opacity: 0.3, wireframe: true }));
   frostShell.position.y = 1.05; frostShell.visible = false; g.add(frostShell);
 
-  return { sword, staff, bow, backBow, shield, ward, frostShell, orb, pick,
+  return { sword, staff, bow, backBow, bowSet, shield, ward, frostShell, orb, pick,
            axe: waxe, great, greatTip, bladeTip };
 }
 
@@ -746,9 +875,11 @@ export function makeFighterModel(T, pal) {
       upper: rig.upper, torso: rig.torso, head: rig.head,
       chest: rig.chest, hair: rig.hair, helm: rig.helm,
       armR: rig.armR, armL: rig.armL, legR: rig.legR, legL: rig.legL,
+      elbowR: rig.elbowR, elbowL: rig.elbowL, kneeR: rig.kneeR, kneeL: rig.kneeL,
       hand: rig.hand, handL: rig.handL,
       crest: rig.crest, capePiv: rig.capePiv,
       sword: wep.sword, staff: wep.staff, bow: wep.bow, backBow: wep.backBow,
+      bowSet: wep.bowSet,
       shield: wep.shield, ward: wep.ward, frostShell: wep.frostShell,
       orb: wep.orb, pick: wep.pick, axe: wep.axe, great: wep.great,
       greatTip: wep.greatTip, bladeTip: wep.bladeTip

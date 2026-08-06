@@ -115,22 +115,134 @@ window.__model = model;
 window.__scene = scene;
 model.parts.sword.visible = true;
 model.parts.shield.visible = true;
-const kit = { tick: (t) => {
-  // the lab's stand-in for animate(): the NEW idle. Arms hang straight down
-  // at the sides (Kevin's Aug 6 direction), shield carried flat along the
-  // side, point aft. These are the exact values patch 33 writes game-side.
-  const P = model.parts;
+// The lab's stand-in for animate(), and the REFERENCE implementation the
+// game patch ports. Poses:
+//   shield  - sword+board idle: right arm hangs, left carries the shield
+//             out at the side with the elbow near a right angle
+//   staff   - staff idle
+//   bow     - bow idle, carried in the left hand at the side
+//   bowdraw - full draw: bow arm extended, string hand at the cheek
+//   walk / run - the gait cycle, knees actually flexing
+let POSE = 'shield';
+function poseFighter(P, t, pose) {
+  const brT = Math.sin(t * (Math.PI * 2 / 3.9));
+  P.chest.scale.set(1 + 0.010 * brT, 1 + 0.006 * brT, 1 + 0.016 * brT);
+  model.body.position.y = 0.012 * brT;
+  model.body.rotation.z = 0.015 * Math.sin(t * (Math.PI * 2 / 7.3));
+  P.upper.rotation.set(0, 0, -0.012 * Math.sin(t * (Math.PI * 2 / 7.3) + 0.5));
+  P.head.rotation.y = 0.06 * Math.sin(t * (Math.PI * 2 / 11));
+  // neutral base
   P.armR.rotation.set(0, 0, 0.04);
   P.armL.rotation.set(0, 0, -0.06);
-  const br = Math.sin(t * (Math.PI * 2 / 3.9));
-  P.chest.scale.set(1 + 0.010 * br, 1 + 0.006 * br, 1 + 0.016 * br);
-  model.body.position.y = 0.012 * br;
-  model.body.rotation.z = 0.015 * Math.sin(t * (Math.PI * 2 / 7.3));
-  P.upper.rotation.z = -0.012 * Math.sin(t * (Math.PI * 2 / 7.3) + 0.5);
-  P.head.rotation.y = 0.06 * Math.sin(t * (Math.PI * 2 / 11));
-  P.shield.rotation.set(Math.PI / 2, Math.PI, -P.armL.rotation.z);
-  P.shield.position.set(0.07, -0.55, -0.05);
-} };
+  P.elbowR.rotation.set(-0.12, 0, 0);
+  P.elbowL.rotation.set(-0.12, 0, 0);
+  P.legR.rotation.set(0, 0, 0);
+  P.legL.rotation.set(0, 0, 0);
+  P.kneeR.rotation.set(0.06, 0, 0);
+  P.kneeL.rotation.set(0.06, 0, 0);
+  P.bow.visible = false; P.shield.visible = false; P.sword.visible = false;
+
+  if (pose === 'shield') {
+    P.sword.visible = true; P.shield.visible = true;
+    // the carry: shoulder out a touch, elbow near a right angle, fist at
+    // the grip; the shield lies along the forearm, face out, point aft
+    P.armL.rotation.set(-0.10, 0, -0.16);
+    P.elbowL.rotation.set(-1.22, 0.10, 0);
+    P.shield.position.set(0.075, -0.19, 0.12);
+    P.shield.rotation.set(Math.PI, Math.PI, 0);
+  } else if (pose === 'staff') {
+    P.staff.visible = true;
+    P.armR.rotation.set(-0.06, 0, 0.08);
+    P.elbowR.rotation.set(-0.42, 0, 0);
+  } else if (pose === 'bow') {
+    P.bow.visible = true;
+    P.armL.rotation.set(-0.04, 0, -0.10);
+    P.elbowL.rotation.set(-0.38, 0, 0);
+    // the fist counter-rotates the arm chain so the bow hangs upright
+    P.handL.rotation.x = -(P.armL.rotation.x + P.elbowL.rotation.x);
+    P.bowSet.setDraw(0);
+  } else if (pose === 'bowdraw') {
+    P.bow.visible = true;
+    P.bowSet.arrow.visible = true;
+    // bow arm extended at the target, string hand drawn to the cheek
+    P.armL.rotation.set(-1.50, 0, -0.04);
+    P.elbowL.rotation.set(-0.08, 0, 0);
+    P.handL.rotation.x = -(P.armL.rotation.x + P.elbowL.rotation.x);
+    // The string arm is aimed with VECTORS, not hand-tuned eulers: the upper
+    // arm points at a high drawn-back elbow, the forearm folds forward so the
+    // fist anchors at the cheek. three derives the euler; __drawPose() prints
+    // the numbers the game patch bakes in.
+    const mY = new T.Vector3(0, -1, 0);
+    const vSE = new T.Vector3(0.72, 0.40, -0.56).normalize();   // shoulder -> elbow
+    const vEC = new T.Vector3(-0.10, -0.06, 1).normalize();     // elbow -> fist (to the cheek)
+    P.armR.quaternion.setFromUnitVectors(mY, vSE);
+    const qF = new T.Quaternion().setFromUnitVectors(mY, vEC);
+    P.elbowR.quaternion.copy(P.armR.quaternion).invert().multiply(qF);
+    P.upper.rotation.y = 0.35;
+    P.bowSet.setDraw(0.9);
+    window.__drawPose = () => ({
+      armR: [P.armR.rotation.x, P.armR.rotation.y, P.armR.rotation.z].map(v => +v.toFixed(3)),
+      elbowR: [P.elbowR.rotation.x, P.elbowR.rotation.y, P.elbowR.rotation.z].map(v => +v.toFixed(3))
+    });
+  } else if (pose === 'block') {
+    P.sword.visible = true; P.shield.visible = true;
+    // guard: arm forward, shield face square to the front. The shield's
+    // orientation is SOLVED in elbow space from the desired world frame
+    // (face +Z, long axis vertical) and __blockPose() prints the eulers the
+    // game patch bakes in.
+    P.armL.rotation.set(-0.72, 0, -0.14);
+    P.elbowL.rotation.set(-1.15, 0.15, 0);
+    model.g.updateMatrixWorld(true);
+    const qParent = new T.Quaternion();
+    P.elbowL.getWorldQuaternion(qParent);
+    // position solved from world targets too: shield centre sits a hand's
+    // depth IN FRONT of the fist (the first cut had the fist poking through
+    // the boss), a touch down so the guard covers chest to thigh
+    {
+      const fist = new T.Vector3();
+      P.handL.getWorldPosition(fist);
+      const target = fist.add(new T.Vector3(0.02, -0.10, 0.16)).sub(model.g.position);
+      P.elbowL.worldToLocal(target.add(model.g.position));
+      P.shield.position.copy(target);
+    }
+    // desired: shield local +X (face, after the y-flip) -> world +Z, local
+    // +Y (top rim) -> world +Y
+    const m = new T.Matrix4().makeBasis(
+      new T.Vector3(0, 0, 1),      // local x -> world +z... face flipped below
+      new T.Vector3(0, 1, 0),      // local y -> world up
+      new T.Vector3(-1, 0, 0));
+    const qWorld = new T.Quaternion().setFromRotationMatrix(m)
+      .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI));
+    P.shield.quaternion.copy(qParent).invert().multiply(qWorld);
+    window.__blockPose = () => ({
+      shield: [P.shield.rotation.x, P.shield.rotation.y, P.shield.rotation.z].map(v => +v.toFixed(3))
+    });
+  } else if (pose === 'walk' || pose === 'run') {
+    P.sword.visible = true; P.shield.visible = true;
+    const s = pose === 'run' ? 1 : 0.35;          // speed blend 0..1
+    const ph = t * (4.6 + 4.4 * s);
+    const hipA = 0.40 + 0.38 * s;
+    const hip = Math.sin(ph) * hipA;
+    P.legR.rotation.x = hip;
+    P.legL.rotation.x = -hip;
+    // knee flexion peaks during the swing phase, the leg is near straight
+    // in stance - this is what makes it a stride instead of scissors
+    const kMax = 0.85 + 0.85 * s;
+    P.kneeR.rotation.x = 0.08 + kMax * Math.pow(Math.max(0, Math.sin(ph - 0.65)), 1.4);
+    P.kneeL.rotation.x = 0.08 + kMax * Math.pow(Math.max(0, Math.sin(ph - 0.65 + Math.PI)), 1.4);
+    model.body.position.y = Math.abs(Math.cos(ph)) * (0.025 + 0.045 * s);
+    P.upper.rotation.x = 0.05 + 0.15 * s;
+    // arms counter-swing with elbow follow-through; the shield arm keeps
+    // its carry and just tightens with pace
+    P.armR.rotation.set(-hip * 0.55, 0, 0.05);
+    P.elbowR.rotation.set(-0.18 - Math.max(0, Math.sin(ph + Math.PI)) * 0.42 * (0.4 + 0.6 * s), 0, 0);
+    P.armL.rotation.set(-0.10 + hip * 0.18, 0, -0.16);
+    P.elbowL.rotation.set(-1.22, 0.10, 0);
+    P.shield.position.set(0.075, -0.19, 0.12);
+    P.shield.rotation.set(Math.PI, Math.PI, 0);
+  }
+}
+const kit = { tick: (t) => { poseFighter(model.parts, t, POSE); } };
 
 // Named cameras. Standing, seated, close, far and straight down: the five ways
 // a player will ever look at a thing on the ground.
@@ -162,9 +274,10 @@ window.__shot = (view, t, light, opts) => {
   if (light) applyLights(light);
   man.visible = !!opts.man;
   if (opts.armor !== undefined) model.setArmor(!!opts.armor);
-  if (opts.weapons !== undefined) { model.parts.sword.visible = !!opts.weapons; model.parts.shield.visible = !!opts.weapons; }
+  if (opts.pose) POSE = opts.pose;
   kit.tick(t === undefined ? 3.0 : t);
-  const v = VIEWS[view] || VIEWS.stand;
+  if (opts.weapons === false) { model.parts.sword.visible = false; model.parts.shield.visible = false; }
+  const v = VIEWS[view] || VIEWS.front;
   cam.position.set(...v.pos);
   cam.lookAt(...v.look);
   renderer.render(scene, cam);
