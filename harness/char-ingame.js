@@ -71,8 +71,8 @@ const OUT = process.env.OUT || '/tmp/char-ingame';
         weapon: g.me.weapon
       };
     });
-    if (pose.state === 'idle' && Math.abs(pose.armLz - (-0.10)) < 0.03 && Math.abs(pose.armLx - (-0.05)) < 0.03
-        && (pose.elbowL === null || Math.abs(pose.elbowL - (-0.35)) < 0.06)) break;
+    if (pose.state === 'idle' && Math.abs(pose.armLz - 0.20) < 0.03 && Math.abs(pose.armLx - (-0.05)) < 0.03
+        && (pose.elbowL === null || Math.abs(pose.elbowL - (-0.30)) < 0.06)) break;
     await page.waitForTimeout(2000);
   }
 
@@ -102,9 +102,9 @@ const OUT = process.env.OUT || '/tmp/char-ingame';
   if (pose.weapon === 0) {
     if (pose.elbowL === null) fail.push('rig has no elbows - v6 module missing');
     if (pose.kneeR === null) fail.push('rig has no knees - v6 module missing');
-    if (pose.elbowL !== null && Math.abs(pose.elbowL - (-0.35)) > 0.08) fail.push('shield elbow not at soft carry: ' + pose.elbowL);
-    if (Math.abs(pose.armLz - (-0.10)) > 0.05) fail.push('armL.z not at carry: ' + pose.armLz);
-    if (Math.abs(pose.shX - (-0.06)) > 0.1) fail.push('shield not in upright carry: x=' + pose.shX);
+    if (pose.elbowL !== null && Math.abs(pose.elbowL - (-0.30)) > 0.08) fail.push('shield elbow not at soft carry: ' + pose.elbowL);
+    if (Math.abs(pose.armLz - 0.20) > 0.05) fail.push('armL.z not at OUTWARD carry: ' + pose.armLz);
+    if (Math.abs(pose.shX - (-1.22)) > 0.1) fail.push('shield not horizontal point-aft: x=' + pose.shX);
   }
   if (errs.length) fail.push(errs.length + ' page error(s): ' + errs.slice(0, 2).join(' | '));
   console.log(JSON.stringify({ pose, fail, out: OUT }, null, 2));
