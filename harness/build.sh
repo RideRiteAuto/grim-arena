@@ -39,3 +39,17 @@ node --check /tmp/gamecode.mjs
 echo "-- syntax ok"
 
 python3 repack.py pack
+
+# Second syntax gate, AFTER packing. The first one runs before repack injects
+# shared-rules, worldgen and the editor, so a syntax error inside any of those
+# three files would sail past it and ship. This one reads what is actually in
+# the bundle.
+python3 repack.py extract > /dev/null
+python3 - <<'EOF'
+import io
+s = io.open('/tmp/game-src.html', encoding='utf-8').read()
+i = s.find('data-props='); i = s.find('>', i) + 1; j = s.find('</script>', i)
+io.open('/tmp/gamecode.mjs', 'w', encoding='utf-8').write(s[i:j])
+EOF
+node --check /tmp/gamecode.mjs
+echo "-- packed bundle syntax ok"

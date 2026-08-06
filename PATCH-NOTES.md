@@ -1,11 +1,17 @@
 # Grim World — patch notes
 
+## The world editor exists
+
+Phases 3 to 6 of the build plan, all four in one push. A private editor at the game URL plus ?edit=1: the real engine with a free camera (WASD, Q and E, right mouse look), so what it shows is exactly what players get. Paint any of the sixteen ground surfaces with a feathered brush, lay roads as smoothed splines that suppress grass down their middle, place objects from a 58-kind catalog (walls with doorways and windows, floors, stairs, a watchtower and platform with genuinely walkable decks, props, packing benches and trade posts for the coming economy, and every tree, ore and plant grown by the game's own builders so they match the world), select, move, rotate, scale, duplicate, copy and paste, delete placed objects or generated ones, save prefabs and stamp them, sculpt terrain with raise, lower, flatten and smooth, drop monster spawn markers, trace housing district boundaries, bookmark places and jump to coordinates, undo, redo, and revert everything. Edits save to the relay as a layer every client fetches at boot, so a change goes live without a deploy. The layer never blocks boot, an empty layer is proven byte-inert by the new 51-check harness, and the whole existing suite stays green including dressing determinism. Saving from the editor needs the EDIT_KEY secret set on the worker once; until then it runs read-only with file export.
+
+
 ## 2026-08-06 (v18) - Every zone has its own music
 
 NEW - twelve original themes, one for each region of the world, generated as a single cohesive set: the Heartlands, Greenwood, Frostwild, Ironspire, Sun Coast, Windscar, Ember, Mistfen, Sunscorch, Eastridge, the Shattered Isles, and the open sea. All instrumental, all built from the same small acoustic ensemble so the world sounds like one place rather than twelve stock tracks, and all matched to the same loudness so no region is suddenly louder than its neighbour.
 CHANGED - the music follows the real map now. It used to pick between two tracks using two hardcoded circles left over from before the world was generated; it now asks the world which zone you are standing in, so it stays right wherever the map goes.
 NEW - zone changes crossfade over about five seconds instead of cutting, and the track will not change until you have been in the new zone for a couple of seconds. Step over a border and step back and the music never reacts at all. Stand on a border and it stays put instead of flapping between two songs.
 NEW - each theme loops seamlessly, and the next zone's music starts loading the moment you look like you are heading there, so the fade lands on music instead of silence.
+
 
 ## 2026-08-06 (v15.1) - Key hints say PRESS, mount hints move home
 
@@ -132,117 +138,3 @@ over the wire rounded to a tenth of a metre. At walking pace that rounding is
 about a fifth of the distance covered between updates, so it is worth roughly
 20 percent apparent speed variation on its own. Fixing it is a wire format
 change and wants its own patch.
-
-
-## The distant NPCs stop flashing, and stop fighting the server
-
-Kevin said NPCs in the far distance were jittery, flashing and flickering, and
-that everything felt choppy and slow after the recent updates. Three separate
-causes, all found and measured rather than guessed at.
-
-THEY WERE BEING DRAWN AT SEA LEVEL. This is the big one. Only one piece of code
-in the whole game put a body on the terrain, and it lived inside the animation
-function. The animation function is deliberately skipped on two frames out of
-three past 50 metres, and five out of six past 85 metres, to save work. On
-every skipped frame the body was drawn at height zero, absolute sea level.
-
-The ground in this world runs from 27 metres below sea level to 87 above. So a
-distant NPC was being thrown roughly 23 metres up or down, ten to twenty times
-a second, usually straight into the dirt. That is the flashing. Measured on an
-NPC standing still 82 metres away: twenty of thirty frames drew it at sea level
-and ten drew it correctly.
-
-The reason nobody caught it in months: the starting field is flattened to
-exactly height zero, where the bug is invisible.
-
-Placement is its own step now and runs every frame at every distance. Animation
-can still be thinned as much as we like without a body ever leaving the ground.
-There is a test, harness/ground.js, that reads the rendered height frame by
-frame and fails if a single frame lands at sea level.
-
-THINGS BLINKED AT THE CULL LINE. NPCs vanish past 90 metres, and that was a
-bare comparison against a distance that changes every frame. Anything pacing
-near the line blinked in and out once per pass. Measured: 89.4 visible, 90.3
-hidden, 90.6 hidden, 89.9 visible, over and over. The same went for the 50 and
-85 metre animation thresholds, so a monster walking toward you changed gait
-speed on and off. Every band now has to be left by a wider margin than it was
-entered by, so a wobble cannot cross it twice.
-
-THE GAME WAS FIGHTING THE SERVER OVER MONSTER POSITIONS. Monsters in a pack
-shove each other apart so they surround you instead of stacking on one point.
-The server already does this, ten times a second. The client was also doing it,
-sixty times a second, on top of the positions the server had just sent, because
-one half of the check that was supposed to switch it off was missing. The
-client shoved six times harder than the server, the smoothing pulled back, and
-the monsters you were actually fighting vibrated. One line.
-
-WALKING AWAY FROM MONSTERS BROKE THE FEED. The server only tells you about
-monsters within 60 metres, and if there were none it sent nothing at all. The
-game waits two seconds for word and then assumes the connection is dead and
-starts simulating all 88 NPCs on your own machine, colliders and all. The world
-is 4800 metres across, so being more than 60 metres from every monster is the
-ordinary case, and that fallback was switching on and off as Kevin walked
-around. The server now sends an empty heartbeat, about 30 bytes, so the game
-knows the silence is real.
-
-Still on the list and not done yet: monster positions are played back using the
-time each packet ARRIVED rather than the timestamp the server put on it, with
-no jitter buffer, which is its own source of chop. That one needs two machines
-to test properly.
-
-
-## Your levels stop falling every time you log in
-
-Kevin logged out at 11 woodcutting and came back at 7. This is why, and it was
-not a rollback, a lost save, or a bad connection. It was the game converting
-his XP to the new skill curve every single time he logged in.
-
-The zone update changed the XP curve, so old saves needed converting once. The
-converter did its job and then stamped the save so it would never run twice.
-The problem is where the stamp went: onto a temporary object the code threw
-away on the very next line. Nothing about the stamp ever reached the save file.
-
-So every login the game read the save, found no stamp, and decided this must be
-an old save that still needed converting. It read XP that was already on the
-new curve as if it were on the old one, which always lands lower, and wrote the
-result back four seconds later as the truth. Once. Then again. Then again.
-
-The ratchet, measured: woodcutting 11 becomes 7, then 5, then 4, then 3. Every
-skill at once, melee and hitpoints included. And because a deploy forces
-everyone back to the login screen, every patch that shipped took another bite.
-
-Guests were never affected. The guest save writes its stamp somewhere that
-survives, which is why this only ever showed up on real accounts.
-
-Saves now carry a version number, and the converter is retired outright. Every
-save in the database has already been through it many times over, precisely
-because the old code ran it on every login, so letting it run one more time on
-the way past would have taken one more level off everybody. There is nothing
-left for it to convert. Saves also carry a backup of their XP from here on, so
-if a conversion is ever needed again it can be undone.
-
-The only account this does not help is one that has not logged in since before
-the zone update. That character will read a little high rather than a little
-low, which is the right side to be wrong on.
-
-Two more holes in the same path, closed while I was in there:
-
-A SAVE THE SERVER REFUSED WAS COUNTED AS A SAVE. The database answers every
-save with yes or no, and says no if the password hash does not match or the
-save is too big. Both of those come back looking like a successful request, and
-only the request was being checked, never the answer. A refused save cleared
-the unsaved flag and was never retried. The answer is read now, and a refusal
-is logged and retried.
-
-NOTHING WAS WATCHING FOR XP GOING BACKWARDS. Nothing in this game lowers a
-skill, so a save about to write less XP than the last one is always a bug. That
-is now checked on the way out and shouted into the console. This one check
-would have caught the whole thing in a single login instead of over weeks.
-
-There is a new test, harness/savecurve.js, that logs a character in and out ten
-times and asserts nothing moved. It was written against the broken build first
-and reproduced Kevin's exact numbers, 11 to 7 on the first login, so it is a
-real guard and not a formality.
-
-Kevin's lost XP is not recoverable. The backup that would have made it
-recoverable was part of what was being thrown away.

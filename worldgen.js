@@ -114,14 +114,28 @@ const GRIM_WORLD = (() => {
     const iz = Math.max(0, Math.min(M.GH - 1, Math.round(g[1] - 0.5)));
     return zone[iz * M.GW + ix];
   }
+  // The world editor's terrain deltas, registered at boot by the edit layer.
+  // A hook rather than a direct reference so this file stays independent of
+  // the editor and can still be injected into the worker on its own, and so
+  // there is no declaration-order trap between two module-scope consts.
+  //
+  // Hooking HERE rather than in the game's own terrain reader is deliberate:
+  // every system that asks how high the ground is (chunk meshes, prop
+  // placement, bridge abutments, collision, the dressing pass) goes through
+  // this one function, so an authored hill has trees standing ON it instead
+  // of buried in it, with no second code path to keep in step.
+  let heightEdit = null;
+  function setHeightEdit(fn) { heightEdit = (typeof fn === 'function') ? fn : null; }
+
   function height(x, z) {
     if (!api.ready) return 0;
     const m = macro(x, z);
-    if (m < -1.5) return m;                // under water: keep beds smooth
+    if (m < -1.5) return heightEdit ? m + heightEdit(x, z) : m;   // under water: keep beds smooth
     const zi = zoneAt(x, z);
     // fade the noise out at the waterline so beaches and banks stay gentle
     const shore = Math.min(1, Math.max(0, (m - 0.4) / 3.2));
-    return m + fbm(x, z) * (ROUGH[zi] || 1.5) * 0.62 * shore * calm(x, z);
+    const h = m + fbm(x, z) * (ROUGH[zi] || 1.5) * 0.62 * shore * calm(x, z);
+    return heightEdit ? h + heightEdit(x, z) : h;
   }
   const bounds = {
     minX: (0 - M.ORIGIN[0]) * M.M_PER_PX, maxX: (M.MAP_W - M.ORIGIN[0]) * M.M_PER_PX,
@@ -222,6 +236,17 @@ const GRIM_WORLD = (() => {
   const api = {
     ready: false, init: init, anchors: WG_ANCHORS, zones: WG_ZONES, bounds: bounds,
     height: height,
+    setHeightEdit: setHeightEdit,
+    // The generated height with no authored delta, for the editor's own
+    // "revert to generated" and for anything that must compare the two.
+    baseHeight: (x, z) => {
+      if (!api.ready) return 0;
+      const m = macro(x, z);
+      if (m < -1.5) return m;
+      const zi = zoneAt(x, z);
+      const shore = Math.min(1, Math.max(0, (m - 0.4) / 3.2));
+      return m + fbm(x, z) * (ROUGH[zi] || 1.5) * 0.62 * shore * calm(x, z);
+    },
     zone: zoneAt,
     waterDepth: (x, z) => { const h = height(x, z); return h < 0 ? -h : 0; },
     // true when baked water (macro < 0) lies within ~3 cells (24 m) — used

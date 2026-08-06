@@ -50,6 +50,25 @@ const GRIM_RULES = {
     FALL_SAFE: 12,    // landing speed below which falling never hurts
   },
 
+  // ---- the world editor (phases 3 to 6) -----------------------------------
+  // The editor is the real game engine with an editor flag, so what Kevin
+  // sees IS what players get. Nothing here ships any behaviour to a player
+  // except LAYER, which is the authored edit layer the game fetches at boot.
+  // With LAYER off the world is exactly the generated one, which is the
+  // revert switch for the entire project.
+  EDIT: {
+    LAYER: true,      // fetch and apply the authored edit layer at boot
+    UI: true,         // ?edit=1 can open the editor at all (master kill switch)
+    CELL: 4,          // ground paint cell size in metres, per the plan
+    SNAP: 0.5,        // object placement snap in metres; Alt places free
+    FEATHER: 1,       // paint edge feather, in cells
+    MAXH: 12,         // biggest terrain delta the sculpt tools may author (m)
+    FLATMIN: 0.06,    // never flatten perfectly level: the walk-out-of-water
+                      // routine marches things to the world origin on dead
+                      // flat ground, so flatten always leaves this much tilt
+    URL: 'https://grim-arena.kevin-230.workers.dev/world/main/edits',
+  },
+
   // ---- attacks ------------------------------------------------------------
   // wind = telegraph, act = damage frame, rec = recovery. range/arc define the
   // hit shape; a client judges only ITSELF against this shape, so these numbers

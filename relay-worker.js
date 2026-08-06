@@ -87,6 +87,25 @@ const GRIM_RULES = {
     FALL_SAFE: 12,    // landing speed below which falling never hurts
   },
 
+  // ---- the world editor (phases 3 to 6) -----------------------------------
+  // The editor is the real game engine with an editor flag, so what Kevin
+  // sees IS what players get. Nothing here ships any behaviour to a player
+  // except LAYER, which is the authored edit layer the game fetches at boot.
+  // With LAYER off the world is exactly the generated one, which is the
+  // revert switch for the entire project.
+  EDIT: {
+    LAYER: true,      // fetch and apply the authored edit layer at boot
+    UI: true,         // ?edit=1 can open the editor at all (master kill switch)
+    CELL: 4,          // ground paint cell size in metres, per the plan
+    SNAP: 0.5,        // object placement snap in metres; Alt places free
+    FEATHER: 1,       // paint edge feather, in cells
+    MAXH: 12,         // biggest terrain delta the sculpt tools may author (m)
+    FLATMIN: 0.06,    // never flatten perfectly level: the walk-out-of-water
+                      // routine marches things to the world origin on dead
+                      // flat ground, so flatten always leaves this much tilt
+    URL: 'https://grim-arena.kevin-230.workers.dev/world/main/edits',
+  },
+
   // ---- attacks ------------------------------------------------------------
   // wind = telegraph, act = damage frame, rec = recovery. range/arc define the
   // hit shape; a client judges only ITSELF against this shape, so these numbers
@@ -1095,8 +1114,113 @@ export class World {
     }
   }
 
+  /* EDITOR-STORE-BEGIN */
+  // ------------------------------------------------------------- edit layer
+  //
+  // The world editor's authored layer: ground paint, roads, placed objects,
+  // deleted procedural props, terrain deltas, spawn markers, prefabs and
+  // districts. Reads are PUBLIC because every player's client fetches this at
+  // boot to draw the world Kevin authored. Writes require the editor key.
+  //
+  // Stored in chunks. A Durable Object storage value caps at 128 KiB and the
+  // plan expects 100 to 300 KB of edits, so a single put would start failing
+  // silently somewhere around Kevin's third road. The chunk count lives in the
+  // index record, so a shrinking layer cannot leave orphaned tail chunks
+  // behind that a later read would splice back on.
+  static EDIT_CHUNK = 96 * 1024;
+
+  async editsRead() {
+    const idx = await this.state.storage.get('edits:idx');
+    if (!idx || !idx.n) return null;
+    const keys = [];
+    for (let i = 0; i < idx.n; i++) keys.push('edits:' + i);
+    const got = await this.state.storage.get(keys);
+    let s = '';
+    for (let i = 0; i < idx.n; i++) {
+      const part = got.get('edits:' + i);
+      if (typeof part !== 'string') return null;     // torn write: refuse it
+      s += part;
+    }
+    return { body: s, rev: idx.rev || 0, at: idx.at || 0, bytes: s.length };
+  }
+
+  async editsWrite(body) {
+    const CH = World.EDIT_CHUNK;
+    const n = Math.max(1, Math.ceil(body.length / CH));
+    const prev = await this.state.storage.get('edits:idx');
+    const put = {};
+    for (let i = 0; i < n; i++) put['edits:' + i] = body.slice(i * CH, (i + 1) * CH);
+    await this.state.storage.put(put);
+    // Index last, so a failure mid-write leaves the OLD layer readable rather
+    // than a half-written new one.
+    const rev = ((prev && prev.rev) || 0) + 1;
+    await this.state.storage.put('edits:idx', { n, rev, at: Date.now(), bytes: body.length });
+    if (prev && prev.n > n) {
+      const stale = [];
+      for (let i = n; i < prev.n; i++) stale.push('edits:' + i);
+      try { await this.state.storage.delete(stale); } catch (e) {}
+    }
+    return rev;
+  }
+
+  async editsFetch(request, url) {
+    const key = (this.env && this.env.EDIT_KEY) || '';
+    const given = request.headers.get('x-edit-key') || '';
+
+    if (request.method === 'GET') {
+      const cur = await this.editsRead();
+      if (!cur) return new Response('{"v":1,"empty":true}', {
+        headers: {
+          'content-type': 'application/json',
+          'access-control-allow-origin': '*',
+          'cache-control': 'no-cache',
+          'x-edit-rev': '0'
+        }
+      });
+      return new Response(cur.body, {
+        headers: {
+          'content-type': 'application/json',
+          'access-control-allow-origin': '*',
+          'cache-control': 'no-cache',
+          'x-edit-rev': String(cur.rev),
+          'etag': '"e' + cur.rev + '"'
+        }
+      });
+    }
+
+    // Anything that writes needs the key. With no key configured on the
+    // worker the editor is READ ONLY, which is the safe default: a
+    // misconfigured deploy cannot leave the world open to anyone who guesses
+    // the URL.
+    if (request.method === 'PUT' || request.method === 'POST') {
+      if (!key) return json({ ok: false, err: 'no-key-configured' }, 503);
+      if (given !== key) return json({ ok: false, err: 'bad-key' }, 403);
+      let body;
+      try { body = await request.text(); } catch (e) { return json({ ok: false, err: 'unreadable' }, 400); }
+      if (body.length > 4 * 1024 * 1024) return json({ ok: false, err: 'too-big' }, 413);
+      try { JSON.parse(body); } catch (e) { return json({ ok: false, err: 'not-json' }, 400); }
+      const rev = await this.editsWrite(body);
+      return json({ ok: true, rev, bytes: body.length });
+    }
+
+    // A key check with no write, so the editor can verify a password before
+    // it lets Kevin spend an hour painting.
+    if (request.method === 'HEAD') {
+      if (!key) return new Response(null, { status: 503, headers: { 'access-control-allow-origin': '*' } });
+      return new Response(null, {
+        status: given === key ? 204 : 403,
+        headers: { 'access-control-allow-origin': '*' }
+      });
+    }
+    return json({ ok: false, err: 'method' }, 405);
+  }
+  /* EDITOR-STORE-END */
+
   async fetch(request) {
     const url = new URL(request.url);
+
+    /* EDITOR-STORE-ROUTE */
+    if (url.pathname.endsWith('/edits')) return this.editsFetch(request, url);
 
     if (url.pathname.endsWith('/health') || request.headers.get('Upgrade') !== 'websocket') {
       const socks = this.sockets();
@@ -1451,8 +1575,9 @@ export class World {
   }
 }
 
-function json(o) {
+function json(o, status) {
   return new Response(JSON.stringify(o), {
+    status: status || 200,
     headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }
   });
 }
@@ -1461,7 +1586,18 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } });
+      return new Response(null, {
+        headers: {
+          'access-control-allow-origin': '*',
+          'access-control-allow-headers': '*',
+          // The editor PUTs its layer with an x-edit-key header, which makes
+          // it a preflighted request: without an explicit method list the
+          // browser refuses the write and reports it as a network error.
+          'access-control-allow-methods': 'GET, PUT, POST, HEAD, OPTIONS',
+          'access-control-expose-headers': 'x-edit-rev, etag',
+          'access-control-max-age': '86400'
+        }
+      });
     }
     const parts = url.pathname.split('/').filter(Boolean);
     if (parts.length && parts[0] !== 'world' && parts[0] !== 'health') {

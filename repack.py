@@ -18,6 +18,13 @@ END = '/* SHARED-RULES-END */'
 WORLD_FILES = ['worldgen-data.js', 'worldgen.js']
 WBEGIN = '/* WORLD-GEN-BEGIN */'
 WEND = '/* WORLD-GEN-END */'
+# World editor: the edit layer and object catalog ship to players (a player
+# has to see the world Kevin authored); the tools and interface only ever run
+# behind ?edit=1. Injected into the GAME only. Order matters: core defines
+# GRIM_EDIT, tools defines the catalog it reads, ui drives both.
+EDITOR_FILES = ['editor-core.js', 'editor-tools.js', 'editor-ui.js']
+EBEGIN = '/* EDITOR-BEGIN */'
+EEND = '/* EDITOR-END */'
 
 def inject(text, rules, what):
     """Replace everything between the markers with the shared rules body.
@@ -57,6 +64,26 @@ def sync_world():
         io.open(SRC, 'w', encoding='utf-8').write(out)
     print('world gen synced (%d bytes) into game source' % len(body))
 
+def sync_editor():
+    """Inject the world editor between the EDITOR markers.
+
+    Optional on purpose: a bundle built before the editor landed has no
+    markers, and that must keep building rather than failing. Missing FILES,
+    however, is loud, because that would silently ship a world with no edit
+    layer and every authored road would vanish."""
+    src = io.open(SRC, encoding='utf-8').read()
+    a, b = src.find(EBEGIN), src.find(EEND)
+    if a < 0 or b < 0:
+        print('editor markers not present, skipping (pre-editor bundle)')
+        return
+    if b < a:
+        raise SystemExit('editor markers out of order in ' + SRC)
+    body = '\n'.join(io.open(f, encoding='utf-8').read().rstrip() for f in EDITOR_FILES)
+    out = src[:a] + EBEGIN + '\n' + body + '\n' + src[b:]
+    if out != src:
+        io.open(SRC, 'w', encoding='utf-8').write(out)
+    print('editor synced (%d bytes) into game source' % len(body))
+
 def find_doc_line(lines):
     # The document payload is the JSON string line starting with "<!DOCTYPE
     for i, ln in enumerate(lines):
@@ -75,6 +102,7 @@ def extract():
 def pack():
     sync_rules()
     sync_world()
+    sync_editor()
     doc = io.open(SRC, encoding='utf-8').read()
     payload = json.dumps(doc, ensure_ascii=False).replace('</', '<\\u002F')
     for b in BUNDLES:
