@@ -931,7 +931,18 @@ export class World {
         rows.push([n.i, Math.round(n.x * 10), Math.round(n.z * 10), Math.round(n.yaw * 100),
                    n.state, Math.round(n.st * 100), Math.round(n.moveAmt * 100), n.act || 0]);
       }
-      if (!rows.length) continue;
+      if (!rows.length) {
+        // Silence is not the same as nothing to say. A player who has walked
+        // away from every monster was sent NOTHING, so the client's 2s
+        // is-the-feed-alive timer expired and it quietly fell back to
+        // simulating all 88 NPCs locally, colliders and all. WORLD_R is 4800
+        // against an INTEREST_R of 60, so that is the ordinary case out in
+        // the world, and the fallback was flapping on and off as you walked.
+        // An empty snapshot costs about 30 bytes. onNpcSnap already handles
+        // an empty r, and the idle rate keeps this well inside the timer.
+        if (now - (x.hbAt || 0) >= slow) { this.send(ws, { t: 'nsnap', at: now, r: [] }); x.hbAt = now; this.setMeta(ws, x); }
+        continue;
+      }
       this.send(ws, { t: 'nsnap', at: now, r: rows });
     }
     for (const n of sim) {

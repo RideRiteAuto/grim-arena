@@ -1,5 +1,62 @@
 # Grim World — patch notes
 
+## The distant NPCs stop flashing, and stop fighting the server
+
+Kevin said NPCs in the far distance were jittery, flashing and flickering, and
+that everything felt choppy and slow after the recent updates. Three separate
+causes, all found and measured rather than guessed at.
+
+THEY WERE BEING DRAWN AT SEA LEVEL. This is the big one. Only one piece of code
+in the whole game put a body on the terrain, and it lived inside the animation
+function. The animation function is deliberately skipped on two frames out of
+three past 50 metres, and five out of six past 85 metres, to save work. On
+every skipped frame the body was drawn at height zero, absolute sea level.
+
+The ground in this world runs from 27 metres below sea level to 87 above. So a
+distant NPC was being thrown roughly 23 metres up or down, ten to twenty times
+a second, usually straight into the dirt. That is the flashing. Measured on an
+NPC standing still 82 metres away: twenty of thirty frames drew it at sea level
+and ten drew it correctly.
+
+The reason nobody caught it in months: the starting field is flattened to
+exactly height zero, where the bug is invisible.
+
+Placement is its own step now and runs every frame at every distance. Animation
+can still be thinned as much as we like without a body ever leaving the ground.
+There is a test, harness/ground.js, that reads the rendered height frame by
+frame and fails if a single frame lands at sea level.
+
+THINGS BLINKED AT THE CULL LINE. NPCs vanish past 90 metres, and that was a
+bare comparison against a distance that changes every frame. Anything pacing
+near the line blinked in and out once per pass. Measured: 89.4 visible, 90.3
+hidden, 90.6 hidden, 89.9 visible, over and over. The same went for the 50 and
+85 metre animation thresholds, so a monster walking toward you changed gait
+speed on and off. Every band now has to be left by a wider margin than it was
+entered by, so a wobble cannot cross it twice.
+
+THE GAME WAS FIGHTING THE SERVER OVER MONSTER POSITIONS. Monsters in a pack
+shove each other apart so they surround you instead of stacking on one point.
+The server already does this, ten times a second. The client was also doing it,
+sixty times a second, on top of the positions the server had just sent, because
+one half of the check that was supposed to switch it off was missing. The
+client shoved six times harder than the server, the smoothing pulled back, and
+the monsters you were actually fighting vibrated. One line.
+
+WALKING AWAY FROM MONSTERS BROKE THE FEED. The server only tells you about
+monsters within 60 metres, and if there were none it sent nothing at all. The
+game waits two seconds for word and then assumes the connection is dead and
+starts simulating all 88 NPCs on your own machine, colliders and all. The world
+is 4800 metres across, so being more than 60 metres from every monster is the
+ordinary case, and that fallback was switching on and off as Kevin walked
+around. The server now sends an empty heartbeat, about 30 bytes, so the game
+knows the silence is real.
+
+Still on the list and not done yet: monster positions are played back using the
+time each packet ARRIVED rather than the timestamp the server put on it, with
+no jitter buffer, which is its own source of chop. That one needs two machines
+to test properly.
+
+
 ## Your levels stop falling every time you log in
 
 Kevin logged out at 11 woodcutting and came back at 7. This is why, and it was

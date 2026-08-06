@@ -39,6 +39,12 @@ Tooling, not game code. None of this is served to players.
   `skillXpV1` backup. Verified to FAIL on the bundle before patch 29, where it
   reproduced Kevin's exact numbers (woodcutting 11, 7, 5, 4, 3), so it is a
   real regression test and not a tautology.
+- `ground.js` proves a distant NPC stays on the terrain and stops blinking at
+  the cull line. Parks an NPC on genuinely uneven ground inside the thinning
+  band, reads `g.position.y` frame by frame, and fails if ANY frame lands at
+  sea level; then sweeps it back and forth across the 90m line and counts
+  visibility flips. Verified to FAIL before patch 29 with 20 of 30 frames at
+  sea level, so it is a real regression test and not a tautology.
 - `patches/` holds the exact scripts used to edit `/tmp/game-src.html`, one per
   shipped change, so every bundle edit is reproducible and reviewable.
 
@@ -51,6 +57,7 @@ Run:
     node harness/plants.js
     node harness/bridges.js
     node harness/savecurve.js
+    node harness/ground.js
 
 ## `dressing.js` determinism failures here are usually not real
 
