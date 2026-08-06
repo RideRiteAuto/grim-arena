@@ -149,10 +149,10 @@ function poseFighter(P, t, pose) {
     // LOW at the side (point down, face out, a slight lean). The right-angle
     // elbow of the first cut put the shield chest-high, which Kevin caught
     // against the references.
-    P.armL.rotation.set(-0.05, 0, 0.20);
+    P.armL.rotation.set(-0.05, 0, 0.10);
     P.elbowL.rotation.set(-0.30, 0, 0);
-    P.shield.position.set(0.102, -0.351, -0.157);
-    P.shield.rotation.set(-1.220, 0.207, 3.131);
+    P.shield.position.set(0.112, -0.341, -0.154);
+    P.shield.rotation.set(-1.221, 0.107, 3.137);
   } else if (pose === 'staff') {
     P.staff.visible = true;
     P.armR.rotation.set(-0.06, 0, 0.08);
@@ -162,11 +162,13 @@ function poseFighter(P, t, pose) {
     // Reference: the archer idles with the bow held across the FRONT at hip
     // height, roughly horizontal, string side toward the body. Hand comes in
     // front of the hip; the fist pitches the bow forward from vertical.
-    P.armL.rotation.set(-0.50, 0, 0.06);
+    P.upper.rotation.x = 0.18;
+    P.head.rotation.x = -0.09;
+    P.armL.rotation.set(-0.50, 0, -0.22);
     P.elbowL.rotation.set(-0.30, 0, 0);
     // fixed fist euler, chosen against the reference: the bow lies in the
     // body's frontal plane, full curve showing, string toward the body
-    P.handL.rotation.set(0.799, -0.029, 1.227);
+    P.handL.rotation.set(0.613, 0.069, 1.489);
     P.bowSet.setDraw(0);
   } else if (pose === 'bowrun') {
     P.bow.visible = true;
@@ -188,15 +190,16 @@ function poseFighter(P, t, pose) {
     P.bow.visible = true;
     P.bowSet.arrow.visible = true;
     // bow arm extended at the target, string hand drawn to the cheek
-    P.armL.rotation.set(-1.50, 0, -0.04);
-    P.elbowL.rotation.set(-0.08, 0, 0);
-    P.handL.rotation.x = -(P.armL.rotation.x + P.elbowL.rotation.x);
-    // The string arm comes from two-bone IK (harness/pose38-draw.js): the
-    // fist lands ON the nocking point, keys solved at setDraw 0.15 and 0.9.
-    // These are the FULL-draw eulers the game lerps to with the charge.
-    P.armR.rotation.set(0.72, 0.159, 1.363);
-    P.elbowR.rotation.set(-0.395, 0.393, 0.179);
-    P.upper.rotation.y = 0.45;
+    // Real archer form (patch 48): torso near-sideways to the target, the
+    // drawing forearm in line with the arrow, elbow pointing away from the
+    // target. Everything solved by harness/pose47.js with armL.y pinned 0.
+    P.upper.rotation.set(0.04, 0.80, 0);
+    P.head.rotation.y = -0.64;
+    P.armL.rotation.set(-1.612, 0, -0.704);
+    P.elbowL.rotation.set(-0.06, 0, 0);
+    P.handL.rotation.set(1.619, -0.096, -0.118);
+    P.armR.rotation.set(0.798, -0.01, 1.533);
+    P.elbowR.rotation.set(-0.019, 0.123, 0.034);
     P.bowSet.setDraw(0.9);
     window.__drawPose = () => ({
       armR: [P.armR.rotation.x, P.armR.rotation.y, P.armR.rotation.z].map(v => +v.toFixed(3)),
@@ -254,10 +257,10 @@ function poseFighter(P, t, pose) {
     // its carry and just tightens with pace
     P.armR.rotation.set(-hip * 0.55, 0, 0.05);
     P.elbowR.rotation.set(-0.18 - Math.max(0, Math.sin(ph + Math.PI)) * 0.42 * (0.4 + 0.6 * s), 0, 0);
-    P.armL.rotation.set(-0.05 + hip * 0.18, 0, 0.20);
+    P.armL.rotation.set(-0.05 + hip * 0.18, 0, 0.10);
     P.elbowL.rotation.set(-0.30, 0, 0);
-    P.shield.position.set(0.102, -0.351, -0.157);
-    P.shield.rotation.set(-1.220, 0.207, 3.131);
+    P.shield.position.set(0.112, -0.341, -0.154);
+    P.shield.rotation.set(-1.221, 0.107, 3.137);
   }
 }
 const kit = { tick: (t) => { poseFighter(model.parts, t, POSE); } };
