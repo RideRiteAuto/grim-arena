@@ -12,21 +12,28 @@ const OUT = process.env.OUT || '/tmp/char-review';
 
 const SHOTS = [
   // the joint/seam review: NO armor, NO weapons - just the body
-  { view: 'front',   light: 'day',  opts: { armor: false, weapons: false }, name: 'body-front' },
-  { view: 'three4',  light: 'day',  opts: { armor: false, weapons: false }, name: 'body-three4' },
-  { view: 'profile', light: 'day',  opts: { armor: false, weapons: false }, name: 'body-profile' },
-  { view: 'back',    light: 'day',  opts: { armor: false, weapons: false }, name: 'body-back' },
-  { view: 'face',    light: 'day',  opts: { armor: false, weapons: false }, name: 'face' },
-  { view: 'face',    light: 'dusk', opts: { armor: false, weapons: false }, name: 'face-dusk' },
-  { view: 'feet',    light: 'day',  opts: { armor: false, weapons: false }, name: 'feet' },
-  { view: 'under',   light: 'day',  opts: { armor: false, weapons: false }, name: 'under' },
-  // armored, with sword and shield: what the game actually shows
-  { view: 'front',   light: 'day',  opts: { armor: true, weapons: true }, name: 'armored-front' },
-  { view: 'three4',  light: 'dusk', opts: { armor: true, weapons: true }, name: 'armored-three4' },
-  { view: 'shieldside', light: 'day', opts: { armor: true, weapons: true }, name: 'shield-carry' },
-  { view: 'profile', light: 'day',  opts: { armor: true, weapons: true }, name: 'armored-profile' },
-  { view: 'feet',    light: 'dusk', opts: { armor: true, weapons: true }, name: 'feet-armored' },
-  { view: 'hands',   light: 'day',  opts: { armor: true, weapons: true }, name: 'sword-hand' }
+  { view: 'front',   light: 'day',  opts: { armor: false, weapons: false, pose: 'shield' }, name: 'body-front' },
+  { view: 'three4',  light: 'day',  opts: { armor: false, weapons: false, pose: 'shield' }, name: 'body-three4' },
+  { view: 'profile', light: 'day',  opts: { armor: false, weapons: false, pose: 'shield' }, name: 'body-profile' },
+  { view: 'face',    light: 'day',  opts: { armor: false, weapons: false, pose: 'shield' }, name: 'face' },
+  { view: 'feet',    light: 'day',  opts: { armor: false, weapons: false, pose: 'shield' }, name: 'feet' },
+  { view: 'under',   light: 'day',  opts: { armor: false, weapons: false, pose: 'shield' }, name: 'under' },
+  // armored, posed: what the game actually shows
+  { view: 'front',   light: 'day',  opts: { armor: true, pose: 'shield' }, name: 'armored-front' },
+  { view: 'shieldside', light: 'day', opts: { armor: true, pose: 'shield' }, name: 'shield-carry' },
+  { view: 'three4',  light: 'day',  opts: { armor: true, pose: 'shield' }, name: 'shield-three4' },
+  { view: 'profile', light: 'day',  opts: { armor: true, pose: 'shield' }, name: 'armored-profile' },
+  // the gait, frozen mid-swing: knees must read as knees
+  { view: 'profile', light: 'day',  opts: { armor: true, pose: 'walk', t: 0.32 }, name: 'walk-swing' },
+  { view: 'profile', light: 'day',  opts: { armor: true, pose: 'run', t: 0.18 }, name: 'run-swing' },
+  { view: 'three4',  light: 'day',  opts: { armor: true, pose: 'run', t: 0.53 }, name: 'run-three4' },
+  // the new bow
+  { view: 'front',   light: 'day',  opts: { armor: true, pose: 'bow' }, name: 'bow-idle' },
+  { view: 'profile', light: 'day',  opts: { armor: true, pose: 'bow' }, name: 'bow-idle-side' },
+  { view: 'three4',  light: 'day',  opts: { armor: true, pose: 'bowdraw' }, name: 'bow-draw' },
+  { view: 'front',   light: 'day',  opts: { armor: true, pose: 'bowdraw' }, name: 'bow-draw-front' },
+  { view: 'hands',   light: 'day',  opts: { armor: true, pose: 'bow' }, name: 'bow-hand' },
+  { view: 'front',   light: 'day',  opts: { armor: true, pose: 'staff' }, name: 'staff-idle' }
 ];
 
 (async () => {
@@ -44,7 +51,7 @@ const SHOTS = [
     await page.waitForTimeout(300);
   }
   for (const s of SHOTS) {
-    await page.evaluate(([v, l, o]) => window.__shot(v, 3.0, l, o), [s.view, s.light, s.opts]);
+    await page.evaluate(([v, l, o]) => window.__shot(v, o.t !== undefined ? o.t : 3.0, l, o), [s.view, s.light, s.opts]);
     await page.waitForTimeout(60);
     await page.screenshot({ path: OUT + '/' + s.name + '.png' });
   }
