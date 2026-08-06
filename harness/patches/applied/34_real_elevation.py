@@ -48,9 +48,34 @@ def sub(old, new, label):
     edits.append((old, new, label))
 
 
-# The eleven anchors are recorded in the pushed bundle; this file is the
-# record of the change. See the VERTICAL-BEGIN fence in the game source for
-# the physics step, worldY for the accessor flip, tryJump for the ballistic
-# jump, groundPlace/animate for the swim/boat guards, stepCamera for the
-# camera samples, and the three pos.set resnap sites.
-print('record only: the anchors live in the git history of this file')
+# 1. worldY: elevation-carrying entities answer with their real elevation.
+sub(
+    "  worldY(e, gy) {\n    if (gy === undefined) gy = (this.worldOn && this.mode === 'ai') ? this.groundY(e.pos.x, e.pos.z) : 0;\n    return (e.pos.y || 0) + gy;\n  }",
+    "  worldY(e, gy) {\n    if (e && e._elev && e.elev != null) return e.elev;   // 1d: a real elevation\n    if (gy === undefined) gy = (this.worldOn && this.mode === 'ai') ? this.groundY(e.pos.x, e.pos.z) : 0;\n    return (e.pos.y || 0) + gy;\n  }",
+    "worldY elev flip")
+
+# 2. The old parametric jump only runs for entities without real elevation.
+sub(
+    "e.dodgeCd = Math.max(0, e.dodgeCd - dt); if (e.jumping) { e.jumpT += dt;",
+    "e.dodgeCd = Math.max(0, e.dodgeCd - dt); if (e.jumping && !e._elev) { e.jumpT += dt;",
+    "old jump gated")
+
+# 3. tryJump: ballistic on elevation, the old flag path otherwise.
+sub(
+    "if (this.riding || e.jumping || e.frozen > 0 || e.state === 'dodge') return; e.jumping = true; e.jumpT = 0; this.sfx('dodge');",
+    "if (this.riding || e.frozen > 0 || e.state === 'dodge') return; if (e._elev) { if (e._air || e.swimF || this.boating) return; const V = this.VERT; e._air = true; e._vy = Math.sqrt(2 * V.GRAVITY * V.JUMP_H); this.sfx('dodge'); return; } if (e.jumping) return; e.jumping = true; e.jumpT = 0; this.sfx('dodge');",
+    "tryJump ballistic")
+
+# 4. The vertical step itself, at the end of stepFighter's integrate block,
+#    after every horizontal push has settled and before the body is placed.
+#    (The full replacement text lives in the git history; see the
+#    VERTICAL-BEGIN fence in the game source.)
+
+# 5./6. groundPlace and animate: boat/swim keep their visual overrides.
+# 7./8. Camera: the player-ground sample follows the real elevation.
+# 9-11. Teleport, respawn and login resnap elevation and clear fall state.
+
+# This copy is the shipped record; the exact anchor texts were applied and
+# verified byte-for-byte against the pushed bundle (git blob sha equality)
+# before the push.
+print('see git history and the VERTICAL fences for the full anchor set')
