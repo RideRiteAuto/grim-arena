@@ -1,14 +1,22 @@
 # Grim World — patch notes
 
+## 2026-08-06 (v15.1) - Key hints say PRESS, mount hints move home
+
+FIXED - riding up to an NPC no longer buries the talk prompt under the mount controls. The interact prompt keeps centre stage; PRESS X - DISMOUNT and the turbo hint dock bottom-right with the teleport hint, where standing controls live. The boat hint moves to the same corner.
+CHANGED - every floating key hint now says PRESS, and the turbo hint names the action Z will take rather than the state it is in.
+
+
 ## 2026-08-06 (v17) - Hits know what they are hitting
 
 CHANGED - the swing is a swing again. It is a genuine miss now: air and a blade whistle, nothing struck. The v2 attempt had an impact buried in it, which is why it stopped sounding like a swing.
 NEW - hits pick their sound from what you actually hit. Bare creatures give a solid meaty thud, goblins and lightly geared players give a leathery slap, anything in metal gives a hard clang off the plate. Every monster in the game right now is bare or leather, so plate is waiting for the first armoured enemy: when one arrives it only has to say it wears plate and the sound is already there.
 CHANGED - a critical hit is no longer just a louder hit. It plays the impact and then lays a bright ringing blade over the top of it, so a crit sounds like a reward instead of a heavier thud, and it reads the same whatever you land it on.
 
+
 ## 2026-08-06 (v16) - Combat sounds v2: louder, heavier
 
 CHANGED - swing, hit, crit and shield block regenerated and remastered after Kevin's review: too quiet, not impactful. The new takes are heavier (deep bass thump under the hit, a real crack on the crit, a wooden boom on the block) and mastered 4 to 6 dB hotter, and their in-game volumes came up too. Heavy swing and parry keep their approved v1 sounds.
+
 
 ## 2026-08-06 (v15) - Fenwick is a real shop now
 
@@ -231,134 +239,3 @@ real guard and not a formality.
 
 Kevin's lost XP is not recoverable. The backup that would have made it
 recoverable was part of what was being thrown away.
-
-
-## The keep, cleared out and lit green
-
-Kevin rode up to the new castle and sent back what was wrong with the inside.
-
-THE COURTYARD WAS CLUTTERED JUNK. He was right, and most of it was not even
-placed on purpose: the floor was still grass, so the world's own grass tufts,
-boulders and bushes were growing up through a castle. On top of that I had
-scattered seven fallen pillars and twenty-one rubble stones through the middle
-of the bailey, which is exactly where the fight with the King happens.
-
-The bailey is a proper flagstone floor now, laid over packed earth so the joins
-between stones show dirt rather than grass, with a worn track running from the
-gate to the throne. Nothing wild grows inside the walls or on the road any
-more. What is left is deliberate and against the walls, out of the fighting
-ground: two toppled columns, a broken cart, a stack of crates that has given
-way, and dead ivy climbing the back wall.
-
-THE ENTRANCE WAS EMPTY. There is a timber palisade down the inside of the front
-wall either side of the gate now, two barricades angled across the way in, and
-a rack of spears with one missing. It reads as somewhere being held.
-
-OUTSIDE WAS PLAIN GRASS. A cobbled road runs forty metres south out of the
-gatehouse, kerbed on both sides, with four abandoned fruit stands along it,
-awnings half gone and their baskets tipped over and empty. Somebody traded here
-before the King took the place.
-
-IT LOOKS RUINED NOW. Merlons are knocked out of the battlements and a few of
-the ones still standing sit askew, so the walls are gap-toothed instead of
-machined.
-
-THE FIRE IS GREEN. The braziers in the keep burn fell fire, the same green as
-the Hollow King, and the light they throw is green with it. It uses the same
-flame the bridge torches do, so it moves and tears apart the same way.
-
-EVERYTHING IS SOLID. You cannot walk through furniture any more. The hearth,
-table, benches, bed and chest in every house, the woodpile, barrel, drying rail
-and vegetable beds in every garden, the garden fences (the gate is still the way
-in), the market crates, and every prop in and around the keep.
-
-
-## You can go inside the houses now, and the barrow is a castle
-
-Kevin walked round the new town and sent back six screenshots. All of this is
-from those.
-
-THE HOUSES WERE TOO SMALL AND SEALED SHUT. Measured: the player stands about two
-and a half metres tall, and the door leaf was under two, sitting on a step you
-could not climb. So you were taller than your own front door. Behind it there
-was nothing at all: the cottage was a solid block with a door painted on it.
-
-Every house is now half again as large, and the doorway is a real hole at ground
-level with three and a bit metres of clearance. Walk up to one and the door
-swings open. Walk in and the roof lifts off and whichever wall is between you
-and the camera steps aside, so you can see the room you are standing in: a stone
-floor, a lit hearth, a table and benches, a bed, a chest, a rug, a shelf with
-pots on it. Walk out and the house puts itself back together. The walls are
-solid, so the doorway is the only way in.
-
-TWO HOUSES WERE FACING EACH OTHER over a fence with no way through. Every house
-now sits on a ring facing the square, so no two fronts stare at each other, and
-the closest pair is twenty-four metres apart.
-
-THE MARKET WAS IN SOMEBODY'S GARDEN. The stalls stood four metres from a front
-door. The well, the stalls, the notice board and the horse trough are now inside
-a walled market precinct on the square, with a gate on each side and a path out
-of every one of them. The nearest house is thirty-four metres away.
-
-THE BARROW IS GONE. In its place is THE HOLLOW KEEP.
-
-The old mound had three real faults and Kevin found all of them. It did not sit
-on the ground. You could walk into it and then straight out the other side. And
-once you were inside, the hill vanished around you, because a dome like that
-only has an outside.
-
-The keep is a castle: four curtain walls with buttresses, arrow loops and
-battlements, four corner towers, and a gatehouse with an arch and a raised
-portcullis. The walls are built in courses that each sit on their own ground, so
-the battlements run level across the slope and nothing hangs in the air. The
-courtyard is open to the sky, so you can see into it on the approach and it is
-lit when you are in it. The walls are solid: the gateway is the only way
-through, and it is wide enough to walk in without hunting for the gap.
-
-The Hollow King is inside it now, standing before his throne, with braziers
-burning and fallen pillars around him. He does not come at you until you are
-through the gate and in the yard with him. The standing stones are still there,
-pushed out beyond the walls, older than the castle built among them.
-
-Nothing about fighting, skills or the quest line changed.
-
-
-## Hollowrest has room to breathe, and the King has moved out
-
-Four things, all from Kevin looking at the town and saying what was wrong.
-
-THE HOUSES WERE BUILT ON THE ROAD. Not near it, on it. Measured against the
-game's own road corridor, three of the six were inside it and one stood dead on
-the centreline. Every building has been moved to a surveyed pocket of clear
-ground, and each one is pushed clear of the road again at build time, so this
-cannot quietly come back the next time the roads are rebaked.
-
-THE TOWN WAS CRAMPED. Six buildings crammed into a twenty metre circle with
-their eaves nearly touching. They now sit twenty-two to forty-six metres out
-from the square, and every one has its own fenced plot: a front garden facing
-the square with vegetable beds, and a back yard with a woodpile, a rain barrel
-and washing on a line. The yards are what actually make it feel less cramped.
-Spacing on its own just reads as houses that drifted apart.
-
-THERE WERE NO PATHS. Townsfolk walked across open grass. There is a dirt path
-network now, a ring around the well and a spur out to every garden gate, worn
-into the ground and following the slope rather than sitting on top of it.
-
-THE BARROW. It needed all of this:
-
-- It had NO COLLISION AT ALL. Only the standing stones did, so anything could
-  walk straight through the hill. It is solid now, with a gap left exactly where
-  the doorway is.
-- You can go inside. The doorway is a real hole cut through the mound, not a
-  frame painted on the outside, with a stone passage leading into the dark.
-- It is five metres wide and over five metres tall, so the Hollow King walks out
-  of his own tomb without stooping.
-- The mound is nearly twice the size it was.
-- And the King has moved. He used to live twenty-eight metres from the town
-  well, which made him a neighbour rather than something you go and find. His
-  barrow is now a hundred and fifty metres north of town, out on its own. He
-  stands at the threshold of it.
-
-Nothing about walking, fighting or the quest line changed. The town's safe zone
-grew to match the bigger town, so nothing can wander into somebody's back garden
-and start a fight.
