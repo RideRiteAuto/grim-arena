@@ -117,9 +117,9 @@ MANIFEST = [
     # artificial sound in combat.
     {
         'id': 'combat-swing',
-        'text': 'A single fast sword swing whooshing through air. Short sharp '
-                'swish of a light blade, no impact, no contact, no voice. '
-                'Clean close recording, brief.',
+        'text': 'A powerful aggressive sword swing cutting through air. One fast '
+                'sharp whoosh with a blade whistle, strong air pressure, '
+                'cinematic and punchy. No impact, no contact, no voice. Brief.',
         'seconds': 1.0,
         'takes': [0.3, 0.5, 0.7],
     },
@@ -133,25 +133,28 @@ MANIFEST = [
     },
     {
         'id': 'combat-hit',
-        'text': 'A single blunt melee weapon impact on a padded leather '
-                'armored body. One short solid punchy thud with a low thump '
-                'and a slight leather slap, no voice, no gore. Brief, dry.',
+        'text': 'A brutal melee weapon blow landing on a body in leather armor. '
+                'One massive punchy impact: deep bass thump, sharp mid crack, '
+                'leather snap layered together. Cinematic video game hit, '
+                'powerful, dry, close. No voice, no gore.',
         'seconds': 1.0,
         'takes': [0.3, 0.5, 0.7],
     },
     {
         'id': 'combat-crit',
-        'text': 'A single very heavy critical melee weapon impact on leather '
-                'armor. One powerful deep punchy blow, hard low thump with a '
-                'sharp crack on top, slight debris, no voice, no gore. Brief.',
+        'text': 'A devastating critical weapon strike on armor. One enormous '
+                'cinematic impact: huge deep bass slam, violent sharp crack, '
+                'debris scatter, short low rumble tail. Extremely powerful '
+                'and punchy video game critical hit. No voice, no gore.',
         'seconds': 1.2,
         'takes': [0.3, 0.5, 0.7],
     },
     {
         'id': 'combat-block',
-        'text': 'A sword blow landing on a round wooden shield with a steel '
-                'boss. One solid dead wooden thunk with a short damped '
-                'metallic knock, no ring out, no voice. Brief, dry.',
+        'text': 'A heavy sword strike slamming into a sturdy round wooden shield '
+                'with a steel boss. One massive solid impact: deep wooden '
+                'boom, sharp crack of wood, short damped metallic clank. '
+                'Powerful, punchy, dry, no long ring, no voice.',
         'seconds': 1.0,
         'takes': [0.3, 0.5, 0.7],
     },
