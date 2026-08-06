@@ -32,7 +32,9 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     if (!G._samples) return { fail: 'sampleInit did not build a player' };
     await G._samples.load;
 
-    const want = ['anvil-strike', 'anvil-ring', 'anvil-dead', 'fire-bed'];
+    const want = ['anvil-strike', 'anvil-ring', 'anvil-dead', 'fire-bed',
+                  'combat-swing', 'combat-heavy', 'combat-hit', 'combat-crit',
+                  'combat-block', 'combat-parry'];
     const got = {};
     for (const n of want) got[n] = G._samples.has(n);
 
@@ -83,7 +85,11 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     if (typeof st === 'string') { fail.push(n + ': ' + st); continue; }
     // a decode that silently produced silence is the failure this catches
     if (st.peak < 0.05) fail.push(n + ' decoded to near silence, peak ' + st.peak);
-    if (st.seconds < 0.5) fail.push(n + ' is only ' + st.seconds + 's');
+    // Anvil rings and the fire bed must carry a tail; combat one-shots are
+    // MEANT to be short (a 0.2s hit is a hit, not a truncation). Floor per
+    // family: 0.15s catches a decode that produced near-nothing either way.
+    const minSec = n.indexOf('combat-') === 0 ? 0.15 : 0.5;
+    if (st.seconds < minSec) fail.push(n + ' is only ' + st.seconds + 's');
   }
   if (res.anvilOk !== true) fail.push('anvilStrike threw: ' + res.anvilOk);
   if (res.fireOk !== true) fail.push('campfireVoice: ' + res.fireOk);

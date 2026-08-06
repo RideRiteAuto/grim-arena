@@ -93,7 +93,78 @@ MANIFEST = [
         'loop': True,
         'takes': [0.4, 0.6],
     },
+
+    # COMBAT ONE-SHOTS, August 6. The melee funnel in applyDamage plays
+    # parry/block/crit/hit; windups play swing/heavy. These six are the most
+    # heard sounds in the game.
+    #
+    # SWING. A real swing is 150-350 ms of broadband air displacement with no
+    # tonal content and NO impact at the end -- the model loves to add one, so
+    # the prompt forbids it twice. Light swing sits brighter; the heavy swing
+    # wants audible low-end mass, which "thick blade" and "deep" buy.
+    #
+    # HIT. A game melee hit is a composite: a low thump around 80-120 Hz, a
+    # mid crack, and a thin leather/cloth layer. "Blunt" and "padded" keep the
+    # model away from gore squelch, which would be wrong for this game's tone.
+    # CRIT is the same family, stated heavier, so the pair reads as one weapon
+    # at two intensities rather than two different weapons.
+    #
+    # BLOCK. A wooden shield with a metal boss: dead wood thunk, boss ring
+    # damped almost immediately. If the ring sustains it reads as a bell.
+    #
+    # PARRY. Steel on steel, bright, with a fast decay and a hint of scrape.
+    # The synth version is currently two triangle waves, the single most
+    # artificial sound in combat.
+    {
+        'id': 'combat-swing',
+        'text': 'A single fast sword swing whooshing through air. Short sharp '
+                'swish of a light blade, no impact, no contact, no voice. '
+                'Clean close recording, brief.',
+        'seconds': 1.0,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'combat-heavy',
+        'text': 'A single slow powerful weapon swing through air, a heavy '
+                'thick blade or club moving fast. One deep forceful whoosh '
+                'with low air pressure, no impact, no voice. Brief.',
+        'seconds': 1.2,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'combat-hit',
+        'text': 'A single blunt melee weapon impact on a padded leather '
+                'armored body. One short solid punchy thud with a low thump '
+                'and a slight leather slap, no voice, no gore. Brief, dry.',
+        'seconds': 1.0,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'combat-crit',
+        'text': 'A single very heavy critical melee weapon impact on leather '
+                'armor. One powerful deep punchy blow, hard low thump with a '
+                'sharp crack on top, slight debris, no voice, no gore. Brief.',
+        'seconds': 1.2,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'combat-block',
+        'text': 'A sword blow landing on a round wooden shield with a steel '
+                'boss. One solid dead wooden thunk with a short damped '
+                'metallic knock, no ring out, no voice. Brief, dry.',
+        'seconds': 1.0,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'combat-parry',
+        'text': 'Two steel sword blades clashing once in a parry. One bright '
+                'sharp metallic clang with a brief scrape, decaying quickly, '
+                'no voice. Close, dry.',
+        'seconds': 1.2,
+        'takes': [0.3, 0.5, 0.7],
+    },
 ]
+
 
 
 def generate(key, text, seconds, influence, loop):
