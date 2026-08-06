@@ -33,8 +33,9 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     await G._samples.load;
 
     const want = ['anvil-strike', 'anvil-ring', 'anvil-dead', 'fire-bed',
-                  'combat-swing', 'combat-heavy', 'combat-hit', 'combat-crit',
-                  'combat-block', 'combat-parry'];
+                  'combat-swing', 'combat-heavy', 'combat-block', 'combat-parry',
+                  'combat-hit-flesh', 'combat-hit-leather', 'combat-hit-plate',
+                  'combat-crit-ring'];
     const got = {};
     for (const n of want) got[n] = G._samples.has(n);
 

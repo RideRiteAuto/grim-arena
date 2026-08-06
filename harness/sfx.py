@@ -115,37 +115,66 @@ MANIFEST = [
     # PARRY. Steel on steel, bright, with a fast decay and a hint of scrape.
     # The synth version is currently two triangle waves, the single most
     # artificial sound in combat.
+    # v3 (patch 44). SWING is a miss: every impact word was removed and the
+    # take chosen on shape, since a whoosh peaks in the MIDDLE and an impact
+    # peaks at sample zero. HITS split by target material, because one impact
+    # cannot serve a rat and a suit of plate; naming the metal twice
+    # ("steel sword blade", "steel plate armor") is the same trick that got
+    # the anvil to sound like metal. CRIT is no longer a sound of its own: it
+    # is the material impact plus crit-ring layered over it, so it stays
+    # satisfying whatever it lands on and armoured enemies never need a crit
+    # sample of their own. Six takes each.
     {
         'id': 'combat-swing',
-        'text': 'A powerful aggressive sword swing cutting through air. One fast '
-                'sharp whoosh with a blade whistle, strong air pressure, '
-                'cinematic and punchy. No impact, no contact, no voice. Brief.',
+        'text': 'A sword swinging through empty air and missing. One fast '
+                'clean whoosh with a soft airy whistle as the blade passes '
+                'by. The blade hits nothing at all: no impact, no contact, '
+                'no clang. Dry close recording, brief. No voice, no music.',
         'seconds': 1.0,
-        'takes': [0.3, 0.5, 0.7],
+        'takes': [0.25, 0.4, 0.5, 0.6, 0.7, 0.85],
+    },
+    {
+        'id': 'combat-hit-flesh',
+        'text': 'A sword blade striking an unarmored creature. One solid '
+                'meaty impact, a dull muffled thud with a soft slicing edge '
+                'to it. Close and dry. No metal, no clang, no voice, no '
+                'music. Brief.',
+        'seconds': 1.0,
+        'takes': [0.25, 0.4, 0.5, 0.6, 0.7, 0.85],
+    },
+    {
+        'id': 'combat-hit-leather',
+        'text': 'A steel sword blade striking hardened leather armor. One '
+                'firm impact: a thick leathery slap with a dull woody crack '
+                'as the blade bites into the hide, slight creak of leather. '
+                'Close and dry. No clang, no voice, no music. Brief.',
+        'seconds': 1.0,
+        'takes': [0.25, 0.4, 0.5, 0.6, 0.7, 0.85],
+    },
+    {
+        'id': 'combat-hit-plate',
+        'text': 'A steel sword blade striking steel plate armor. One hard '
+                'metallic impact: a bright clang with a short scraping skid '
+                'as the steel blade glances off the steel plate, quick '
+                'metallic decay. Close and dry. No voice, no music. Brief.',
+        'seconds': 1.2,
+        'takes': [0.25, 0.4, 0.5, 0.6, 0.7, 0.85],
+    },
+    {
+        'id': 'combat-crit-ring',
+        'text': 'A bright shimmering metallic ring of a fine steel blade '
+                'singing after a perfect strike. Clean bell-like sustain '
+                'with a sparkling shimmer, rising and satisfying, decaying '
+                'smoothly. Only the ring: no impact, no thud, no clang at '
+                'the start. No voice, no music.',
+        'seconds': 1.8,
+        'takes': [0.25, 0.4, 0.5, 0.6, 0.7, 0.85],
     },
     {
         'id': 'combat-heavy',
         'text': 'A single slow powerful weapon swing through air, a heavy '
                 'thick blade or club moving fast. One deep forceful whoosh '
                 'with low air pressure, no impact, no voice. Brief.',
-        'seconds': 1.2,
-        'takes': [0.3, 0.5, 0.7],
-    },
-    {
-        'id': 'combat-hit',
-        'text': 'A brutal melee weapon blow landing on a body in leather armor. '
-                'One massive punchy impact: deep bass thump, sharp mid crack, '
-                'leather snap layered together. Cinematic video game hit, '
-                'powerful, dry, close. No voice, no gore.',
-        'seconds': 1.0,
-        'takes': [0.3, 0.5, 0.7],
-    },
-    {
-        'id': 'combat-crit',
-        'text': 'A devastating critical weapon strike on armor. One enormous '
-                'cinematic impact: huge deep bass slam, violent sharp crack, '
-                'debris scatter, short low rumble tail. Extremely powerful '
-                'and punchy video game critical hit. No voice, no gore.',
         'seconds': 1.2,
         'takes': [0.3, 0.5, 0.7],
     },
