@@ -45,6 +45,23 @@ Tooling, not game code. None of this is served to players.
   sea level; then sweeps it back and forth across the 90m line and counts
   visibility flips. Verified to FAIL before patch 29 with 20 of 30 frames at
   sea level, so it is a real regression test and not a tautology.
+- `interp.js` proves position playback survives network jitter. Drives the real
+  `onNpcSnap` and the real `tick()` against a monster walking a dead straight
+  line at a constant speed, sampled every 100ms exactly but DELIVERED early,
+  late, out of order and with one packet dropped, then measures the speed the
+  player would actually see. Deterministic: render loop frozen, `Date.now`
+  faked, fixed `dt`, so it is not measuring SwiftShader. Verified to FAIL
+  before patch 30 with 40 percent speed variance, 14 sprints and 2 dead stops;
+  passes at 1.6 percent with none of either.
+- `combat.js` proves the playout buffer did NOT move the moment a blow lands.
+  Announces a real swing through `onAttackEvent` and records the exact instant
+  `judgeMyDodge` resolves it, planted and moving. 450ms after the swing begins,
+  which is the wind-up, on both sides of patch 30. Also reports how far the
+  drawn body is from the server's at the damage instant: zero when the attacker
+  is planted, which is what the server sim actually does. Fake `performance.now`
+  as well as `Date.now`, because the swing clock runs on the former; and the
+  snapshot fixture has to report the attack while it is playing, since feeding
+  idle rows through a swing correctly cancels it.
 - `patches/` holds the exact scripts used to edit `/tmp/game-src.html`, one per
   shipped change, so every bundle edit is reproducible and reviewable.
 
@@ -58,6 +75,8 @@ Run:
     node harness/bridges.js
     node harness/savecurve.js
     node harness/ground.js
+    node harness/interp.js
+    node harness/combat.js
 
 ## `dressing.js` determinism failures here are usually not real
 

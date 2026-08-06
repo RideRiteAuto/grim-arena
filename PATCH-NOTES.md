@@ -1,5 +1,69 @@
 # Grim World — patch notes
 
+## Monsters move on the server's clock now, not on whenever the packet showed up
+
+The last of the choppiness. The game drew each monster by interpolating between
+the last two positions it had received, and it timed that using the moment
+those packets ARRIVED. The packets carry the server's own timestamp and always
+have; it was being used for the swing animation but never for the position.
+
+So the network's jitter was being rendered as movement. Two packets arriving
+together made a monster cover a tenth of a second of ground in six hundredths
+and then hold still. A packet arriving late made it stop dead until the next
+one landed. On top of that a second smoother chased the first one, which added
+lag and rounded off the start and stop of every step, so the stalls read as
+sagging rather than being hidden.
+
+Monsters are now drawn where the server actually had them a fixed moment ago,
+two snapshot intervals back, with a short buffer of recent positions to read
+from. Jitter goes into the buffer instead of into the legs. Nothing guesses
+ahead of the newest position the server has sent, which was already the rule
+and still is.
+
+Measured, on a recording of a monster walking a dead straight line at a
+constant speed while the network misbehaves around it (arrivals early, late,
+out of order, one packet dropped entirely):
+
+    before      speed varied by 40 percent, 14 sprints, 2 dead stops
+    after       speed varied by 1.6 percent, no sprints, no dead stops
+
+Nothing moves backwards any more either, which it used to do when the feed
+hiccuped and the game replayed a stale position before crawling forward again.
+
+COMBAT TIMING IS UNTOUCHED, AND THIS WAS CHECKED RATHER THAN ASSUMED. Drawing a
+body a moment later is only safe if the blow still lands when the animation
+says it does. There is a new test, harness/combat.js, that announces a real
+swing and records the exact instant the damage resolves. Before this change:
+450ms after the swing began, which is the wind-up. After: 450ms. Identical. The
+swing rides its own clock and always did, and the blow is still judged against
+the body you can actually see, so what you dodge is still what is on screen.
+
+For the one case where it could cost anything, a monster still walking while it
+swings, the drawn body sits about a third of a metre further behind than it
+used to. That case does not happen in practice: the server plants an attacker
+the moment it commits, and with it planted the drawn body and the server's body
+are in exactly the same place, measured at zero difference.
+
+Two things tried and rejected on the way, written down so nobody spends the
+evening rediscovering them:
+
+ADAPTING THE DELAY to the worst gap the connection had recently shown. Reads
+well, measures badly. Moving the target moves the playback clock, and that gets
+rendered as a speed change, so it came out worse than doing nothing at all: 40
+percent speed variance against 12 for a fixed delay.
+
+THROWING THE BUFFER AWAY when a packet arrived out of order. That is exactly
+the case the buffer exists for, and discarding it left one stale position and
+froze the monster until the feed caught up. Late packets are inserted into the
+timeline where they belong instead.
+
+Still not done, and now the largest remaining source of roughness: positions go
+over the wire rounded to a tenth of a metre. At walking pace that rounding is
+about a fifth of the distance covered between updates, so it is worth roughly
+20 percent apparent speed variation on its own. Fixing it is a wire format
+change and wants its own patch.
+
+
 ## The distant NPCs stop flashing, and stop fighting the server
 
 Kevin said NPCs in the far distance were jittery, flashing and flickering, and
