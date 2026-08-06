@@ -167,6 +167,84 @@ export function tongueGeo(T, R, H, p, q, radial, steps) {
   return new T.LatheGeometry(pts, radial);
 }
 
+// A ring on the superellipse |u/hu|^p + |v/hv|^p = 1, sampled at n even angles.
+//
+// p = 2 is an ellipse, p = 12 is very nearly a rectangle with eased corners,
+// and everything between is a rounded rectangle. This is the shape most
+// man-made objects actually are, and the reason it is parametrised by ANGLE
+// rather than by walking the perimeter is correspondence: two rings with
+// different p and different half-extents still have their i-th points in the
+// same place around, so they can be lofted together without shearing.
+//
+// That is what lets one loft run from a round horn into a square-edged anvil
+// face, or a round handle into a rectangular blade, in a single surface.
+export function superRing(hu, hv, p, n) {
+  const pts = [];
+  const e = 2 / Math.max(0.5, p);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    pts.push([
+      hu * Math.sign(ca) * Math.pow(Math.abs(ca), e),
+      hv * Math.sign(sa) * Math.pow(Math.abs(sa), e)
+    ]);
+  }
+  return pts;
+}
+
+// Loft a rounded-rectangular profile along one axis.
+//
+// sections: [{ at, hu, hv, cu, cv, p }] where `at` is the position along the
+// run axis, hu/hv are the half-extents in the other two axes, cu/cv offset the
+// section's centre, and p is the superellipse exponent for that section.
+// axis: 'x', 'y' or 'z'. For 'x' the cross-section is (z, y); for 'y' it is
+// (x, z); for 'z' it is (x, y).
+//
+// Repeat an `at` value with different extents to get a HARD STEP rather than a
+// ramp: the two rings sit at the same position and the quad between them is a
+// vertical wall. That is how an anvil's cutting step, a chest lid lip or a
+// blade's ricasso are made in one surface instead of two overlapping boxes.
+//
+// paint(c, x, y, z, t) is optional, with t running 0..1 along the axis.
+export function loftRect(T, axis, sections, n, paint) {
+  const pos = [], col = [];
+  const c = new T.Color();
+  const put3 = (a, b, at) => (axis === 'x' ? [at, b, a] : axis === 'y' ? [a, at, b] : [a, b, at]);
+  const rings = sections.map(s => superRing(s.hu, s.hv, s.p === undefined ? 8 : s.p, n)
+    .map(q => put3(q[0] + (s.cu || 0), q[1] + (s.cv || 0), s.at)));
+  const lo = sections[0].at, hi = sections[sections.length - 1].at;
+  const span = (hi - lo) || 1;
+  const push = (v, t) => {
+    pos.push(v[0], v[1], v[2]);
+    if (paint) { paint(c, v[0], v[1], v[2], t); col.push(c.r, c.g, c.b); }
+  };
+  for (let r = 0; r < rings.length - 1; r++) {
+    const t0 = (sections[r].at - lo) / span, t1 = (sections[r + 1].at - lo) / span;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const a = rings[r][i], b = rings[r][j], cc = rings[r + 1][i], d = rings[r + 1][j];
+      push(a, t0); push(cc, t1); push(b, t0);
+      push(b, t0); push(cc, t1); push(d, t1);
+    }
+  }
+  // End caps, wound so both face outward along the run axis.
+  for (const [ri, dir] of [[0, -1], [rings.length - 1, 1]]) {
+    const s = sections[ri];
+    const ctr = put3(s.cu || 0, s.cv || 0, s.at);
+    const t = (s.at - lo) / span;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n, a = rings[ri][i], b = rings[ri][j];
+      if (dir < 0) { push(ctr, t); push(a, t); push(b, t); }
+      else { push(ctr, t); push(b, t); push(a, t); }
+    }
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  if (paint) g.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
 // ---------------------------------------------------------------------------
 // shader building blocks
 // ---------------------------------------------------------------------------
