@@ -151,7 +151,7 @@ function poseFighter(P, t, pose) {
     // against the references.
     P.armL.rotation.set(-0.05, 0, 0.10);
     P.elbowL.rotation.set(-0.30, 0, 0);
-    P.shield.position.set(0.112, -0.341, -0.154);
+    P.shield.position.set(0.042, -0.333, -0.152);
     P.shield.rotation.set(-1.221, 0.107, 3.137);
   } else if (pose === 'staff') {
     P.staff.visible = true;
@@ -259,7 +259,7 @@ function poseFighter(P, t, pose) {
     P.elbowR.rotation.set(-0.18 - Math.max(0, Math.sin(ph + Math.PI)) * 0.42 * (0.4 + 0.6 * s), 0, 0);
     P.armL.rotation.set(-0.05 + hip * 0.18, 0, 0.10);
     P.elbowL.rotation.set(-0.30, 0, 0);
-    P.shield.position.set(0.112, -0.341, -0.154);
+    P.shield.position.set(0.042, -0.333, -0.152);
     P.shield.rotation.set(-1.221, 0.107, 3.137);
   }
 }
