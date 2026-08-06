@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## Phase 1a and 1b: the vertical layer groundwork
+
+worldY is now the single definition of an entity's true height, with fifteen call sites routed through it (placement, the network position, aim, damage anchors, remote players, every projectile muzzle), and surfaceY is the new surfaces query with bridge decks and terrain as its first two providers, bridges keeping their exact shipped maths. Both changes are verified zero behaviour change: the suite is green and every value is byte-identical to before. This is the safety groundwork for real elevation: when pos.y becomes a real height in 1d, these sites flip together in one switch instead of double counting the ground in twenty places. Camera, hitboxes, corpse slump and rail clamping are deliberately untouched, they are named 1e items. Also retired the shipped sfx patch 30 to applied so the build path works for anyone who pulls.
+
+
 ## Monsters move on the server's clock now, not on whenever the packet showed up
 
 The last of the choppiness. The game drew each monster by interpolating between
@@ -217,6 +222,7 @@ table, benches, bed and chest in every house, the woodpile, barrel, drying rail
 and vegetable beds in every garden, the garden fences (the gate is still the way
 in), the market crates, and every prop in and around the keep.
 
+
 ## You can go inside the houses now, and the barrow is a castle
 
 Kevin walked round the new town and sent back six screenshots. All of this is
@@ -265,6 +271,7 @@ through the gate and in the yard with him. The standing stones are still there,
 pushed out beyond the walls, older than the castle built among them.
 
 Nothing about fighting, skills or the quest line changed.
+
 
 ## Hollowrest has room to breathe, and the King has moved out
 
@@ -448,139 +455,3 @@ TESTING, HONESTLY
 The test harness here renders at about an eighth of real speed, which is now measured rather than guessed: five seconds of game time took forty four seconds of wall clock. That is what made me report a working boar charge as broken earlier this week, so tests now wait on the game's own clock instead of counting seconds on a stopwatch.
 
 The server brain has its own test suite now, ten checks, and it runs the real code rather than reading it.
-
-
-## August 5, 2026 (roam) - Monsters stay in their own fields
-
-A bug that has been in the game since the world got big, found while writing a test for something else.
-
-Wandering monsters pick a spot near home and walk to it. Before walking, the game checked that the spot was not too far away, and it measured that from the CENTRE OF THE WORLD rather than from the monster's home. Anything more than 162 metres out from the capital had its wander spot dragged back toward the capital. That was fine when the whole game was one arena about that size. In a world 4,800 metres across it meant almost every monster in it, everywhere, was slowly pulled inward instead of holding its own ground.
-
-So: monsters stay where they live now. A wolf in the Greenwood wanders the Greenwood.
-
-The same line was in the server simulation and got the same fix, so it holds whether the fight is running on your machine or ours.
-
-ALSO
-
-A monster walking home after giving up now keeps walking home even if nobody is watching it. The check for that sat below the code that picks a target, so the moment no player was nearby it fell through to ordinary wandering and ambled back at a third of the pace, sometimes never arriving.
-
-HOW IT WAS FOUND, AND WHAT IS NOW IN PLACE
-
-Yesterday's leash fix shipped a crash into the server simulation: it read the rules from a place they did not exist, threw on the first tick, and stopped every monster in the world from moving, attacking or respawning until it was hotfixed. The check that was supposed to catch that only read the file, it never ran it.
-
-There is now a test that actually runs the server brain: it builds the same world the relay builds, ticks ten different kinds of monster through sixty seconds of simulation, and fails if anything throws. It also checks the things that are easy to break silently. It found both bugs above within a minute of existing.
-
-
-## August 5, 2026 (zones-2d) - The Heartlands creatures fight like themselves
-
-Boar, giant rats and young goblins each have their own move now. Not a reskinned swing, an actual different problem.
-
-TUSK CHARGE, the boar. From five to twelve metres it plants, scuffs the ground in the line it is about to run, and then goes. It commits: once it starts it does not steer, so the answer is to be somewhere else by the time it arrives. Hits hard and knocks you off your feet. Nine second cooldown or so.
-
-TAIL WHIP, the giant rat. Up close only. Winds up, then sweeps all the way round, so there is no clever side to stand on. Modest damage and a shove that puts you at arm's length again. About six seconds.
-
-GOBLIN SHRIEK, the young goblin. Does no damage at all. It screams, and every goblin within twenty five metres that was not already interested comes running. Killing the one that shrieks is not the problem. Whatever answers it is.
-
-Each has a real wind-up you can see and read before it lands, and each declines politely if you are at the wrong distance, so a boar with its nose against you fights normally instead of trying to charge from two metres.
-
-ALSO FIXED, AND IT AFFECTED EXISTING FIGHTS
-
-Charges used a single point check to decide whether they connected: is the target within two metres, right now. Anything moving quickly steps clean over that between two frames, so a fast charge could run straight through you and register nothing. Charges now test against the whole path covered since the last frame. Mr. Sailers benefits from this too.
-
-WHAT IS NOT DONE
-
-Server-run monsters do not fire signature moves yet. These live in the client's fight logic and the server simulation has no equivalent, so you will see them in single player and when you are the host. That is stated plainly rather than half-built.
-
-
-## August 5, 2026 (hotfix) — the world had stopped moving
-
-The monster simulation was throwing on its very first tick and had been down on
-the live server: nothing walked, nothing attacked, nothing respawned, anywhere.
-
-The new leashing code called two helpers, `roamRadius` and `walkHome`, that read
-the rules through a variable called `R`. But `R` is a local inside `stepNpc`, not
-something the file has at the top level, so both threw ReferenceError the moment
-they were called, out of the middle of the simulation loop, taking every monster
-in the world with them.
-
-Both now take the rules as an argument, which is what every other helper in that
-file already did. The whole file was swept for the same mistake: no function
-reads a bare `R` any more.
-
-Caught it because the relay's health endpoint reports `simErr`, which is exactly
-what that field is for. Worth checking after any push that touches the sim.
-
-
-## August 5, 2026 (zones-2c) - The roster goes back to full, and GRAPHICS: LOW thins the world
-
-Content that was cut to fit a budget is back, and the budget is replaced by something that actually helps a slow machine.
-
-The Heartlands roster was trimmed from the design plan's thirty-odd head down to twenty five, purely to stay under a 7,000 mesh ceiling. That ceiling turned out not to measure anything the renderer charges for. It is now back at full: six boar, ten giant rats, nine young goblins, seven hares.
-
-Instead of everyone getting a thinner world so that slower machines cope, GRAPHICS: LOW now thins the world for the machines that need it. It already turned shadows and extra lights off. It now also:
-
-- halves the ground cover, 159 props a chunk down to 72 in the same field
-- dresses a smaller radius around you, nine chunks instead of eighteen
-
-That is the honest place to give ground. It costs you scenery, not monsters, not reach, not anything you have to fight.
-
-ONE THING WORTH KNOWING
-
-Harvestable nodes do NOT move between graphics settings. That sounds obvious and it very nearly was not: ground cover and nodes were drawn from the same seeded sequence, so generating less grass would have shifted every tree and ore vein after it, and two players on different settings would have been chopping at trees the other one could not see. Nodes now run on their own sequence. Checked across four chunks at both settings: identical, every time.
-
-Press F3 to watch what any of this costs on your own machine.
-
-
-## August 5, 2026 (ops) — the game tells you when it has been updated
-
-Shipping used to mean messaging whoever was online and asking them to log out,
-because a browser that is already running keeps the old copy of the game until
-it reloads, and the server will not swap the world over while people are still
-on the old one.
-
-Now the game handles it. Every client checks once a minute whether the build it
-is playing is still the build that is deployed. When a new one lands you get:
-
-  GAME UPDATE READY
-  SAVING AND LOGGING YOU OUT IN 30s. YOUR PROGRESS IS SAFE.
-  [ SAVE AND LOG OUT NOW ]
-
-Then it saves and drops you at the front door, where your name is already filled
-in and the password box is empty on purpose: press LOGIN & PLAY and you are back
-in. One click, not a retype.
-
-**It waits if you are fighting.** Getting yanked out at five percent of a boss
-would be the single most annoying thing a patch could do, so if you have landed
-or taken a hit in the last eight seconds the countdown holds and says so. It
-holds for up to two minutes, then goes anyway, because one person parked in
-combat must not be able to keep everyone else on an old build.
-
-Two things worth saying plainly. Your progress was never actually at risk from a
-push: saves already run every four seconds, every forty five seconds, and again
-when the page closes. The old warning would have been a lie. And this now flushes
-the save and WAITS for the server to confirm it before logging you out, which is
-something even the LOG OUT button did not do.
-
-There is no admin command and nothing to log into. Each client reads a static
-version file, so there is no endpoint to secure and no message another player
-could forge to kick everyone out. It also fires for any push at all, not only
-one that remembered to announce itself.
-
-For whoever is shipping: `python3 ship.py "what changed"` stamps the build,
-packs both bundles, syntax checks the game, the relay and the sim, commits,
-rebases, pushes, and then waits until GitHub Pages is really serving the new
-build before telling you how many players are about to see the notice. It
-refuses to run if PATCH-NOTES.md has no new entry.
-
-
-## August 5, 2026 (reach) - You get the thing you are standing on
-
-Interacting with the furnace when you meant the anvil, or Margaret when you meant Fenwick, is fixed.
-
-There were two things wrong. The prompt and the F key both ran a fixed list, in order: bank, then sack, then Ball Pellinger, then Margaret, then Fenwick, then the furnace, then the anvil, then sheep. Whoever came first in that list won, no matter which one you were actually standing on. And the reaches were long and uneven, four point two metres for two of the townsfolk down to two for a sheep, so in a town where the furnace, the anvil and the smith stand a few metres apart you had three overlapping bubbles and no say in which one answered.
-
-Now there is one list of what is in reach, both the prompt and the key read it, and it is sorted by distance. The nearest thing wins. The prompt can no longer name one thing while F does another, because they are the same lookup.
-
-Reach is a consistent 2.6 metres for people and workstations, 2.8 for the bank chest, 2 for a sheep. Close enough that two things have to be nearly inside each other to overlap, far enough that you are not hunting for the exact spot. For scale, your furnace and anvil sit three metres apart, so standing at either one now offers only that one.
-
-Also cleaned up while in there: the prompt used em dashes, which is against the brand rule. It reads F - SMELT IRON ORE now.
