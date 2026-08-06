@@ -1,10 +1,22 @@
 # Grim World — patch notes
 
+## 2026-08-06 (v15) - Fenwick is a real shop now
+
+REDONE - Fenwick's whole screen. Two inventory grids side by side: his stock on the left, your pack on the right, the same slots the pack and bank use. Click his stock to buy one, click your item to sell one, right-click either side for bulk with the total shown before you commit, hover anything for its price.
+NEW - he buys nearly ANYTHING with a value now, not just pelts and ore. Gold is the one thing he will not take.
+NEW - whatever players sell him goes on the shelf with a quantity, for anyone to buy. Stock is shared across every player and survives reload. The armour and the Tome stay unlimited so they can never be bought out.
+NEW - RuneScape pricing: the more he holds of something, the less he pays for the next one, floored at 35 percent. He works his surplus off at one unit per ten minutes, so prices recover. Day-one prices are unchanged when his shelf is empty.
+NEW - expensive purchases get a confirm screen. No more accidental second hollow plate.
+NEW - sold something by mistake? It is on his shelf now. Buy it straight back.
+CHANGED - the pack tooltip quotes what Fenwick actually pays right now, glut discount included.
+
+
 ## 2026-08-06 (v15) - Combat finally sounds like combat
 
 NEW - real sampled sounds for the six most heard combat events: light swing, heavy swing, hit, critical hit, shield block and parry. Until now every one of these was an oscillator beep; a blow landing was a sine thump and a parry was two triangle waves. Each sound was generated with ElevenLabs (three takes, best one picked on measurements and spectrogram), trimmed to the event and shipped in the bundle, about 46 KB for all six.
 CHANGED - every combat sound plays at a slightly different pitch each time, the same trick the anvil uses, so a fast fight never sounds like one sample being retriggered. The old synthesised sounds stay in as an instant fallback while the samples decode, so the first hit of a session is never silent.
 FIXED - harness/build.sh works again on a fresh pull. The shipped UI patches 38-40 were still sitting in harness/patches/ and broke the build for every track; they are now in applied/ where shipped patches belong.
+
 
 ## 2026-08-06 (v14) - UI pass: the world stops pausing, one panel system
 
@@ -340,74 +352,3 @@ THE BARROW. It needed all of this:
 Nothing about walking, fighting or the quest line changed. The town's safe zone
 grew to match the bigger town, so nothing can wander into somebody's back garden
 and start a fight.
-
-
-## Hollowrest looks like a town now
-
-Every building in Hollowrest was one box with one pyramid roof on top, a flat
-rectangle for a door and two flat squares for windows. It is the place you bank,
-shop, take quests and stand around between jobs, and it was the worst-looking
-spot in the game.
-
-Rebuilt from the ground up:
-
-- Real gabled roofs. Two slopes meeting at a ridge, running the length of the
-  building, with a ridge beam and eaves that overhang on every side. A pyramid
-  on a rectangular building was always wrong; cottages have a ridge.
-- Thatch is laid in courses. Slate gets a capping row.
-- Half-timbering on the plaster cottages: corner posts, a mid rail, a top plate,
-  vertical studs and corner braces that run from the post up to the plate.
-- Stone buildings get quoins at the corners, alternating which face they reach
-  around, the way real masonry is bonded.
-- Doors sit in a frame with a lintel and a stone step, with plank lines and a
-  handle.
-- Windows have a frame, a stone sill and a mullion cross, and they glow warm
-  from inside.
-- Chimneys on the inn, the trader's hall and two of the cottages.
-- A stone plinth under every building that runs below ground level, so a hut
-  built on a slope buries its footing instead of floating on one corner.
-
-The well got a pitched roof, a windlass with a crank, a rope and a bucket, and
-coping stones round the rim. The market stalls got striped awnings with a
-valance, posts with feet, and actual goods laid out on the bench.
-
-It runs FASTER than the old town, not slower. Each building is roughly ten times
-the geometry but merges into a single mesh, so the whole place draws in fewer
-calls than the boxes did. Nothing about where you can walk has changed.
-
-
-## You can tell your items apart now
-
-Two whole families of item art were placeholders, and between them they covered
-most of what you actually carry.
-
-THE MATERIALS. All 34 things you can gather rendered as the same small circle in
-one of three colours. Oak logs, coal, gold ore, mushrooms and black lotus were
-five identical dots. Every one of them is now drawn from what produced it:
-
-- Logs are cut logs with the end grain showing, in that tree's own wood colour,
-  so bog oak, icewood and emberbark are all obviously different wood.
-- Ore you dig out of rock (copper, iron, gold) is grey stone with coloured
-  flecks. Ore that IS the rock (coal, obsidian, salt, saltpeter, glass sand,
-  ember crystal) is a solid chunk of the stuff.
-- Every herb is a sprig of the plant you picked it off, so the icon and the
-  thing you walked up to look like each other.
-- Bird nests, gem shards and wild seeds got their own drawings.
-
-THE TOOLS. Sixteen tools shared two pictures between them, recoloured by tier, so
-a masterwork axe and a crude axe were the same axe in different paint. Tier is a
-shape now: crude tools are chipped stone lashed to a crooked stick, copper is a
-small cast head, iron is properly forged, steel is broader with a bevel,
-obsidian is angular and faceted, and masterwork is double-bitted with a gold
-ferrule and a set gem.
-
-Also cleaned up the nine oldest items that were still plain coloured boxes:
-logs, oak logs, iron ore, iron bar, wool, rat tail, deer hide, wolf pelt and
-venison. Iron ore now looks like the other ores, and the first logs you cut look
-like the fancy ones.
-
-Coal, obsidian and black lotus are nearly black and were disappearing into the
-inventory background. They keep their real colours in the world, but the icons
-now carry enough light to be visible in your pack.
-
-Nothing about stats, values, recipes or what anything is worth has changed.
