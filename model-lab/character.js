@@ -379,7 +379,12 @@ export function buildFighterRig(T, pal, opt) {
     // (y = -0.985, world 0.035) so the whole foot stands flat on the sole -
     // v5's first pass had the midfoot digging through it and the toe floating.
     const boot = sweep(T, [
-      { at: [0, -0.435, 0.004], w: 0.068, d: 0.073, p: 2.3 },   // cuff, OVER the trousers
+      // The cuff FLARES: its lip is clearly wider than the trouser leg above
+      // it (0.077 against 0.058), so the leg reads as going INTO the boot
+      // instead of the boot being painted on. Leg armor will cover this line
+      // later; the flare stays subtle for that reason.
+      { at: [0, -0.425, 0.006], w: 0.077, d: 0.082, p: 2.35 },  // flared lip
+      { at: [0, -0.455, 0.004], w: 0.070, d: 0.075, p: 2.3 },   // cuff settling in
       { at: [0, -0.56, -0.002], w: 0.063, d: 0.069, p: 2.3 },   // calf peak, upper third
       { at: [0, -0.72, -0.006], w: 0.046, d: 0.051, p: 2.2 },
       { at: [0, -0.845, -0.010], w: 0.040, d: 0.045, p: 2.2 },  // ankle
@@ -391,11 +396,30 @@ export function buildFighterRig(T, pal, opt) {
       { at: [0, -0.969, 0.185], w: 0.036, d: 0.015, p: 2.4 }    // toe
     ], 12, leather);
     leg.add(boot);
-    // sole: thin dark slab tucked UNDER the boot outline, bottom at world 0.015
-    const sole = box(0.086, 0.020, 0.240, dark);
-    sole.position.set(0, -0.995, 0.048); leg.add(sole);
-    const heelBlock = box(0.078, 0.024, 0.068, dark);
-    heelBlock.position.set(0, -0.993, -0.050); leg.add(heelBlock);
+    // Sole: ONE extruded outline that follows the foot - rounded heel,
+    // waist, wider at the ball, rounded toe - with a few millimetres of
+    // welt standing proud of the leather, the way a stitched medieval
+    // turnshoe sole actually reads. Kevin's note on the box version: "the
+    // sole right now is just a rectangular block". Plan view is drawn in
+    // XY (x width, y forward), extruded downward after the rotate.
+    {
+      const so = new T.Shape();
+      so.moveTo(0, -0.078);                                  // heel, centre back
+      so.quadraticCurveTo(0.044, -0.076, 0.046, -0.040);     // round heel corner
+      so.quadraticCurveTo(0.047, 0.010, 0.052, 0.075);       // waist into the ball
+      so.quadraticCurveTo(0.055, 0.120, 0.049, 0.160);       // ball to toe box
+      so.quadraticCurveTo(0.043, 0.196, 0, 0.200);           // rounded toe
+      so.quadraticCurveTo(-0.043, 0.196, -0.049, 0.160);
+      so.quadraticCurveTo(-0.055, 0.120, -0.052, 0.075);
+      so.quadraticCurveTo(-0.047, 0.010, -0.046, -0.040);
+      so.quadraticCurveTo(-0.044, -0.076, 0, -0.078);
+      const sg = new T.ExtrudeGeometry(so, { depth: 0.018, bevelEnabled: false });
+      sg.rotateX(Math.PI / 2);   // plan-y becomes forward z, thickness extrudes down
+      const sole = new T.Mesh(sg, dark);
+      sole.castShadow = true;
+      sole.position.set(0, -0.985, 0);
+      leg.add(sole);
+    }
     return leg;
   };
   const legR = legGeo(); legR.position.set(-0.122, 1.02, 0); body.add(legR);
@@ -570,8 +594,26 @@ export function buildWeaponSet(T, rig) {
   const bladeTip = new T.Object3D();
   { let bx = 0, by = 0.2, ba = 0; for (let i = 0; i < 6; i++) { bx += -Math.sin(ba) * 0.2; by += Math.cos(ba) * 0.2; ba += 0.13; } bladeTip.position.set(bx, by + 0.16, 0); }
   sword.add(bladeTip);
-  const guard = box(0.4, 0.07, 0.1, trim, 0.09); sword.add(guard);
-  for (const s of [-1, 1]) { const q = box(0.09, 0.09, 0.09, trim); q.position.set(s * 0.21, 0.13, 0); sword.add(q); }
+  // Crossguard: one swept bar that dips at the centre and curves UP into
+  // rounded knob ends - the classic upswept scimitar guard - plus a collar
+  // hugging the blade root. Kevin's note on the box-and-cubes version: the
+  // quillons "still look really blocky and don't match the high quality
+  // blade". Same sweep machinery as the blade, so they match by construction.
+  const guardBar = sweep(T, [
+    { at: [-0.215, 0.122, 0], w: 0.013, d: 0.013, p: 2.2 },   // knob end
+    { at: [-0.195, 0.104, 0], w: 0.024, d: 0.020, p: 2.2 },
+    { at: [-0.105, 0.072, 0], w: 0.027, d: 0.023, p: 2.3 },
+    { at: [0, 0.062, 0], w: 0.031, d: 0.027, p: 2.4 },        // dip at the centre
+    { at: [0.105, 0.072, 0], w: 0.027, d: 0.023, p: 2.3 },
+    { at: [0.195, 0.104, 0], w: 0.024, d: 0.020, p: 2.2 },
+    { at: [0.215, 0.122, 0], w: 0.013, d: 0.013, p: 2.2 }     // knob end
+  ], 10, trim);
+  sword.add(guardBar);
+  const ferrule = loftY(T, [
+    { y: 0.078, w: 0.094, d: 0.026, p: 2.0 },                 // seats over the blade root
+    { y: 0.130, w: 0.068, d: 0.019, p: 2.0 }
+  ], 10, trim);
+  sword.add(ferrule);
   sword.add(box(0.062, 0.24, 0.062, dark, -0.07));
   const wrap1 = box(0.07, 0.03, 0.07, trim, -0.02); sword.add(wrap1);
   const wrap2 = box(0.07, 0.03, 0.07, trim, -0.13); sword.add(wrap2);
@@ -646,21 +688,40 @@ export function buildWeaponSet(T, rig) {
   // the base transform here matches the game's rest pose so the lab and the
   // game show the same carry.
   const shield = new T.Group();
-  const back = box(0.05, 0.92, 0.68, dark); shield.add(back);
-  const sface = box(0.055, 0.84, 0.6, steel); sface.position.x = -0.025; shield.add(sface);
-  const point = box(0.055, 0.34, 0.34, steel); point.rotation.x = Math.PI / 4; point.position.set(-0.025, -0.48, 0); shield.add(point);
-  const pointBack = box(0.05, 0.38, 0.38, dark); pointBack.rotation.x = Math.PI / 4; pointBack.position.set(0, -0.48, 0); shield.add(pointBack);
-  const topRim = box(0.065, 0.09, 0.7, trim, 0.46); shield.add(topRim);
+  // The plate is ONE extruded heater outline: straight top, sides easing in
+  // through quadratic curves to a single point at the base. The old build
+  // butted a 45-degree diamond against a square and the join read exactly
+  // like that - "a diamond placed next to the square". One outline, no join.
+  const heater = (mat, scale, thick) => {
+    const w = 0.34 * scale, t = 0.46 * scale, tip = -0.64 * scale;
+    const sh = new T.Shape();
+    sh.moveTo(-w, t);
+    sh.lineTo(w, t);
+    sh.quadraticCurveTo(w * 1.03, t * 0.12, w * 0.85, -t * 0.38);
+    sh.quadraticCurveTo(w * 0.52, tip * 0.80, 0, tip);
+    sh.quadraticCurveTo(-w * 0.52, tip * 0.80, -w * 0.85, -t * 0.38);
+    sh.quadraticCurveTo(-w * 1.03, t * 0.12, -w, t);
+    const g2 = new T.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: false });
+    g2.rotateY(Math.PI / 2);   // face plane in y-z, thickness along +x
+    const m = new T.Mesh(g2, mat); m.castShadow = true;
+    return m;
+  };
+  const back = heater(dark, 1.0, 0.05); back.position.x = -0.025; shield.add(back);
+  const sface = heater(steel, 0.93, 0.032); sface.position.x = -0.032; shield.add(sface);
+  const topRim = box(0.065, 0.09, 0.7, trim, 0.44); shield.add(topRim);
   const crossV = box(0.05, 0.7, 0.11, cloth); crossV.position.x = -0.055; shield.add(crossV);
   const crossH = box(0.05, 0.11, 0.48, cloth); crossH.position.set(-0.055, 0.14, 0); shield.add(crossH);
   const boss = new T.Mesh(new T.SphereGeometry(0.12, 8, 6), trim); boss.position.set(-0.09, 0.14, 0); boss.castShadow = true; shield.add(boss);
   for (const [yy, zz] of [[0.38, 0.24], [0.38, -0.24], [-0.12, 0.24], [-0.12, -0.24]]) {
     const stud = box(0.06, 0.06, 0.06, trim); stud.position.set(-0.06, yy, zz); shield.add(stud);
   }
-  // Rest carry: local +Y (top rim) swings to world +Z so the point trails
-  // aft; the face (local -X after the y-flip) keeps facing out. Euler
-  // (x=-PI/2, y=PI, z=0) does exactly that: try it on the axes by hand.
-  shield.position.set(0.07, -0.55, -0.05); shield.rotation.set(-Math.PI / 2, Math.PI, 0); shield.scale.setScalar(0.86); armL.add(shield);
+  // Rest carry: flat along the side, point AFT. With euler order XYZ the
+  // rotation that puts the top rim forward and the point behind is
+  // x = +PI/2 (with y = PI keeping the face outward). The first attempt used
+  // -PI/2 and Kevin's review caught it immediately: point leading forward.
+  // "Try it on the axes by hand" is how that shipped - the lab render from
+  // the shield side is the check now.
+  shield.position.set(0.07, -0.55, -0.05); shield.rotation.set(Math.PI / 2, Math.PI, 0); shield.scale.setScalar(0.86); armL.add(shield);
 
   const ward = new T.Mesh(new T.SphereGeometry(1.15, 16, 12), new T.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: 0.16, side: T.DoubleSide }));
   ward.position.y = 1.1; ward.visible = false; g.add(ward);

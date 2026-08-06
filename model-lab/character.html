@@ -128,7 +128,7 @@ const kit = { tick: (t) => {
   model.body.rotation.z = 0.015 * Math.sin(t * (Math.PI * 2 / 7.3));
   P.upper.rotation.z = -0.012 * Math.sin(t * (Math.PI * 2 / 7.3) + 0.5);
   P.head.rotation.y = 0.06 * Math.sin(t * (Math.PI * 2 / 11));
-  P.shield.rotation.set(-Math.PI / 2, Math.PI, -P.armL.rotation.z);
+  P.shield.rotation.set(Math.PI / 2, Math.PI, -P.armL.rotation.z);
   P.shield.position.set(0.07, -0.55, -0.05);
 } };
 
