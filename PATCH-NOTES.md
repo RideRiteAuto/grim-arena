@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## Phase 1c: frames of reference, structure only
+
+A cargo pack on a boat deck has to stay on the deck while the boat sails, which needs positions that can be expressed relative to a moving thing. The structure for that exists now: a frame registry with world-frame identity converters, the player state message carries a frame id (0, the world), remotes store it the way they already store transmitted height, and the surfaces query accepts a frame argument it does not yet use. The world is the only frame, so nothing behaves differently. Phase 9 turns the rowboat into the first real frame and this structure makes that additive instead of a rewrite.
+
+
 ## Phase 1a and 1b: the vertical layer groundwork
 
 worldY is now the single definition of an entity's true height, with fifteen call sites routed through it (placement, the network position, aim, damage anchors, remote players, every projectile muzzle), and surfaceY is the new surfaces query with bridge decks and terrain as its first two providers, bridges keeping their exact shipped maths. Both changes are verified zero behaviour change: the suite is green and every value is byte-identical to before. This is the safety groundwork for real elevation: when pos.y becomes a real height in 1d, these sites flip together in one switch instead of double counting the ground in twenty places. Camera, hitboxes, corpse slump and rail clamping are deliberately untouched, they are named 1e items. Also retired the shipped sfx patch 30 to applied so the build path works for anyone who pulls.
@@ -436,22 +441,3 @@ rat already use. What that changes, to look at:
 
 Nothing about its damage, health, timing or reach changed. Standing height is
 identical to the millimetre. This is purely how it moves.
-
-
-## August 5, 2026 (sigs-server) - Signature moves work on the server too
-
-Boar, rat and goblin now throw their signature moves whether the fight is running on your machine or on ours.
-
-Doing it properly meant moving the numbers rather than copying the code. The server never deals damage: it announces a swing by name, and every player's game judges its own dodge against the shape stored under that name. A move that only existed as special client code could never be thrown by a server-run monster at all. So the tusk hit and the tail whip are now real entries in the shared move table, exactly like a sword swing, and both the game and the server read the same numbers. There is one set, not two that drift.
-
-The shriek needed no wire at all, since it does no damage. It just wakes goblins.
-
-Two things had to be carried across that were not: a server-run monster had no idea what species it was or what its signature was, because the world list the game sends to the server dropped those fields. It now sends species, signature and kin tags, which is also what lets a shriek tell which of its neighbours are goblins.
-
-The world generation number goes up as a result, so the server takes the new world list. Ground cover and node positions are seeded from that number, so trees, stones and ore veins will be in different places than they were yesterday. Nothing is lost, the world is just re-dressed.
-
-TESTING, HONESTLY
-
-The test harness here renders at about an eighth of real speed, which is now measured rather than guessed: five seconds of game time took forty four seconds of wall clock. That is what made me report a working boar charge as broken earlier this week, so tests now wait on the game's own clock instead of counting seconds on a stopwatch.
-
-The server brain has its own test suite now, ten checks, and it runs the real code rather than reading it.
