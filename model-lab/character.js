@@ -850,7 +850,7 @@ export function buildWeaponSet(T, rig) {
   // toward the hand, so the point trails aft of the elbow), face outboard.
   // Every angle here is reviewed on the lab's shieldside camera, not derived
   // on paper - deriving it on paper shipped the point facing forward once.
-  shield.position.set(0.075, -0.17, 0.14); shield.rotation.set(Math.PI, Math.PI, 0); shield.scale.setScalar(0.86); elbowL.add(shield);
+  shield.position.set(0.102, -0.351, -0.157); shield.rotation.set(-1.220, 0.207, 3.131); shield.scale.setScalar(0.86); elbowL.add(shield);
 
   const ward = new T.Mesh(new T.SphereGeometry(1.15, 16, 12), new T.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: 0.16, side: T.DoubleSide }));
   ward.position.y = 1.1; ward.visible = false; g.add(ward);

@@ -149,10 +149,10 @@ function poseFighter(P, t, pose) {
     // LOW at the side (point down, face out, a slight lean). The right-angle
     // elbow of the first cut put the shield chest-high, which Kevin caught
     // against the references.
-    P.armL.rotation.set(-0.05, 0, -0.10);
-    P.elbowL.rotation.set(-0.35, 0.05, 0);
-    P.shield.position.set(0.075, -0.34, 0.05);
-    P.shield.rotation.set(-0.06, Math.PI, 0.10);
+    P.armL.rotation.set(-0.05, 0, 0.20);
+    P.elbowL.rotation.set(-0.30, 0, 0);
+    P.shield.position.set(0.102, -0.351, -0.157);
+    P.shield.rotation.set(-1.220, 0.207, 3.131);
   } else if (pose === 'staff') {
     P.staff.visible = true;
     P.armR.rotation.set(-0.06, 0, 0.08);
@@ -162,11 +162,11 @@ function poseFighter(P, t, pose) {
     // Reference: the archer idles with the bow held across the FRONT at hip
     // height, roughly horizontal, string side toward the body. Hand comes in
     // front of the hip; the fist pitches the bow forward from vertical.
-    P.armL.rotation.set(-0.50, 0, 0.20);
-    P.elbowL.rotation.set(-0.32, 0, 0);
+    P.armL.rotation.set(-0.50, 0, 0.06);
+    P.elbowL.rotation.set(-0.30, 0, 0);
     // fixed fist euler, chosen against the reference: the bow lies in the
     // body's frontal plane, full curve showing, string toward the body
-    P.handL.rotation.set(0.35, 1.55, -0.55);
+    P.handL.rotation.set(0.799, -0.029, 1.227);
     P.bowSet.setDraw(0);
   } else if (pose === 'bowrun') {
     P.bow.visible = true;
@@ -182,7 +182,7 @@ function poseFighter(P, t, pose) {
     P.elbowR.rotation.set(-0.18 - Math.max(0, Math.sin(phB + Math.PI)) * 0.42, 0, 0);
     P.armL.rotation.set(hipB * 0.45, 0, -0.08);
     P.elbowL.rotation.set(-0.35, 0, 0);
-    P.handL.rotation.set(0.35, 1.55, -0.55);   // fixed fist: the bow rides the swing
+    P.handL.rotation.set(1.72, 0.083, 0.017);   // string UP, bow fore-aft at the side
     P.bowSet.setDraw(0);
   } else if (pose === 'bowdraw') {
     P.bow.visible = true;
@@ -191,17 +191,12 @@ function poseFighter(P, t, pose) {
     P.armL.rotation.set(-1.50, 0, -0.04);
     P.elbowL.rotation.set(-0.08, 0, 0);
     P.handL.rotation.x = -(P.armL.rotation.x + P.elbowL.rotation.x);
-    // The string arm is aimed with VECTORS, not hand-tuned eulers: the upper
-    // arm points at a high drawn-back elbow, the forearm folds forward so the
-    // fist anchors at the cheek. three derives the euler; __drawPose() prints
-    // the numbers the game patch bakes in.
-    const mY = new T.Vector3(0, -1, 0);
-    const vSE = new T.Vector3(0.72, 0.40, -0.56).normalize();   // shoulder -> elbow
-    const vEC = new T.Vector3(-0.10, -0.06, 1).normalize();     // elbow -> fist (to the cheek)
-    P.armR.quaternion.setFromUnitVectors(mY, vSE);
-    const qF = new T.Quaternion().setFromUnitVectors(mY, vEC);
-    P.elbowR.quaternion.copy(P.armR.quaternion).invert().multiply(qF);
-    P.upper.rotation.y = 0.35;
+    // The string arm comes from two-bone IK (harness/pose38-draw.js): the
+    // fist lands ON the nocking point, keys solved at setDraw 0.15 and 0.9.
+    // These are the FULL-draw eulers the game lerps to with the charge.
+    P.armR.rotation.set(0.72, 0.159, 1.363);
+    P.elbowR.rotation.set(-0.395, 0.393, 0.179);
+    P.upper.rotation.y = 0.45;
     P.bowSet.setDraw(0.9);
     window.__drawPose = () => ({
       armR: [P.armR.rotation.x, P.armR.rotation.y, P.armR.rotation.z].map(v => +v.toFixed(3)),
@@ -259,10 +254,10 @@ function poseFighter(P, t, pose) {
     // its carry and just tightens with pace
     P.armR.rotation.set(-hip * 0.55, 0, 0.05);
     P.elbowR.rotation.set(-0.18 - Math.max(0, Math.sin(ph + Math.PI)) * 0.42 * (0.4 + 0.6 * s), 0, 0);
-    P.armL.rotation.set(-0.05 + hip * 0.18, 0, -0.10);
-    P.elbowL.rotation.set(-0.35, 0.05, 0);
-    P.shield.position.set(0.075, -0.34, 0.05);
-    P.shield.rotation.set(-0.06, Math.PI, 0.10);
+    P.armL.rotation.set(-0.05 + hip * 0.18, 0, 0.20);
+    P.elbowL.rotation.set(-0.30, 0, 0);
+    P.shield.position.set(0.102, -0.351, -0.157);
+    P.shield.rotation.set(-1.220, 0.207, 3.131);
   }
 }
 const kit = { tick: (t) => { poseFighter(model.parts, t, POSE); } };
