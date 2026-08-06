@@ -1,5 +1,12 @@
 # Grim World — patch notes
 
+## 2026-08-06 (v16) - PVP
+
+NEW - PVP, strictly opt-in. Flip PVP: ON on the main menu and you can fight, and be fought by, anyone else who has done the same. A red sword marks pvp players on their nameplate and in the who-is-online list.
+NEW - dying to a player costs NOTHING. No item drops, no gold lost: you rise at the camp with your pack intact, the killer's name on the banner, and five seconds where nobody can touch you and you cannot touch them.
+NEW - your shield matters against players: blocks, perfect parries and armour all work exactly as they do against monsters, judged on your own machine.
+
+
 ## The world editor exists
 
 Phases 3 to 6 of the build plan, all four in one push. A private editor at the game URL plus ?edit=1: the real engine with a free camera (WASD, Q and E, right mouse look), so what it shows is exactly what players get. Paint any of the sixteen ground surfaces with a feathered brush, lay roads as smoothed splines that suppress grass down their middle, place objects from a 58-kind catalog (walls with doorways and windows, floors, stairs, a watchtower and platform with genuinely walkable decks, props, packing benches and trade posts for the coming economy, and every tree, ore and plant grown by the game's own builders so they match the world), select, move, rotate, scale, duplicate, copy and paste, delete placed objects or generated ones, save prefabs and stamp them, sculpt terrain with raise, lower, flatten and smooth, drop monster spawn markers, trace housing district boundaries, bookmark places and jump to coordinates, undo, redo, and revert everything. Edits save to the relay as a layer every client fetches at boot, so a change goes live without a deploy. The layer never blocks boot, an empty layer is proven byte-inert by the new 51-check harness, and the whole existing suite stays green including dressing determinism. Saving from the editor needs the EDIT_KEY secret set on the worker once; until then it runs read-only with file export.
@@ -74,67 +81,3 @@ A cargo pack on a boat deck has to stay on the deck while the boat sails, which 
 ## Phase 1a and 1b: the vertical layer groundwork
 
 worldY is now the single definition of an entity's true height, with fifteen call sites routed through it (placement, the network position, aim, damage anchors, remote players, every projectile muzzle), and surfaceY is the new surfaces query with bridge decks and terrain as its first two providers, bridges keeping their exact shipped maths. Both changes are verified zero behaviour change: the suite is green and every value is byte-identical to before. This is the safety groundwork for real elevation: when pos.y becomes a real height in 1d, these sites flip together in one switch instead of double counting the ground in twenty places. Camera, hitboxes, corpse slump and rail clamping are deliberately untouched, they are named 1e items. Also retired the shipped sfx patch 30 to applied so the build path works for anyone who pulls.
-
-
-## Monsters move on the server's clock now, not on whenever the packet showed up
-
-The last of the choppiness. The game drew each monster by interpolating between
-the last two positions it had received, and it timed that using the moment
-those packets ARRIVED. The packets carry the server's own timestamp and always
-have; it was being used for the swing animation but never for the position.
-
-So the network's jitter was being rendered as movement. Two packets arriving
-together made a monster cover a tenth of a second of ground in six hundredths
-and then hold still. A packet arriving late made it stop dead until the next
-one landed. On top of that a second smoother chased the first one, which added
-lag and rounded off the start and stop of every step, so the stalls read as
-sagging rather than being hidden.
-
-Monsters are now drawn where the server actually had them a fixed moment ago,
-two snapshot intervals back, with a short buffer of recent positions to read
-from. Jitter goes into the buffer instead of into the legs. Nothing guesses
-ahead of the newest position the server has sent, which was already the rule
-and still is.
-
-Measured, on a recording of a monster walking a dead straight line at a
-constant speed while the network misbehaves around it (arrivals early, late,
-out of order, one packet dropped entirely):
-
-    before      speed varied by 40 percent, 14 sprints, 2 dead stops
-    after       speed varied by 1.6 percent, no sprints, no dead stops
-
-Nothing moves backwards any more either, which it used to do when the feed
-hiccuped and the game replayed a stale position before crawling forward again.
-
-COMBAT TIMING IS UNTOUCHED, AND THIS WAS CHECKED RATHER THAN ASSUMED. Drawing a
-body a moment later is only safe if the blow still lands when the animation
-says it does. There is a new test, harness/combat.js, that announces a real
-swing and records the exact instant the damage resolves. Before this change:
-450ms after the swing began, which is the wind-up. After: 450ms. Identical. The
-swing rides its own clock and always did, and the blow is still judged against
-the body you can actually see, so what you dodge is still what is on screen.
-
-For the one case where it could cost anything, a monster still walking while it
-swings, the drawn body sits about a third of a metre further behind than it
-used to. That case does not happen in practice: the server plants an attacker
-the moment it commits, and with it planted the drawn body and the server's body
-are in exactly the same place, measured at zero difference.
-
-Two things tried and rejected on the way, written down so nobody spends the
-evening rediscovering them:
-
-ADAPTING THE DELAY to the worst gap the connection had recently shown. Reads
-well, measures badly. Moving the target moves the playback clock, and that gets
-rendered as a speed change, so it came out worse than doing nothing at all: 40
-percent speed variance against 12 for a fixed delay.
-
-THROWING THE BUFFER AWAY when a packet arrived out of order. That is exactly
-the case the buffer exists for, and discarding it left one stale position and
-froze the monster until the feed caught up. Late packets are inserted into the
-timeline where they belong instead.
-
-Still not done, and now the largest remaining source of roughness: positions go
-over the wire rounded to a tenth of a metre. At walking pace that rounding is
-about a fifth of the distance covered between updates, so it is worth roughly
-20 percent apparent speed variation on its own. Fixing it is a wire format
-change and wants its own patch.
