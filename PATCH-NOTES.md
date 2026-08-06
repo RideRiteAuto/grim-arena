@@ -23,11 +23,16 @@ everyone back to the login screen, every patch that shipped took another bite.
 Guests were never affected. The guest save writes its stamp somewhere that
 survives, which is why this only ever showed up on real accounts.
 
-Saves now carry a version number, and the converter only runs on a save written
-before the change. Anything written from today forward says so on its face and
-is never touched again. Genuinely old saves still convert, once, and now carry
-a backup of their original XP so the conversion can be undone if it is ever
-wrong again.
+Saves now carry a version number, and the converter is retired outright. Every
+save in the database has already been through it many times over, precisely
+because the old code ran it on every login, so letting it run one more time on
+the way past would have taken one more level off everybody. There is nothing
+left for it to convert. Saves also carry a backup of their XP from here on, so
+if a conversion is ever needed again it can be undone.
+
+The only account this does not help is one that has not logged in since before
+the zone update. That character will read a little high rather than a little
+low, which is the right side to be wrong on.
 
 Two more holes in the same path, closed while I was in there:
 

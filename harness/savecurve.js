@@ -7,7 +7,8 @@
 // next. Woodcutting 11 became 7, then 5, then 4. Every skill at once.
 //
 // The test drives the REAL charSave / applySaveBlob pair through ten
-// save-and-log-back-in cycles and asserts nothing moved after the first one.
+// save-and-log-back-in cycles and asserts nothing moved at all, and that a
+// v:1 row (every row in the live database is one) loads untouched.
 // Verified to FAIL on the bundle before this fix (WOODCUTTING 11 -> 7 on the
 // very first cycle), so it is a real regression test and not a tautology.
 const { chromium } = require('playwright');
@@ -52,7 +53,9 @@ const CYCLES = 10;
       trail.push(lvls());
     }
 
-    // A genuinely old save must still convert, exactly once.
+    // A v:1 row must NOT convert. Every row in the live database is v:1 and
+    // has already been through the migration many times, because the old code
+    // ran it on every login. Converting one more time would cost a level.
     g.skills = Object.assign({}, startXp);
     const legacy = JSON.parse(JSON.stringify(g.charSave()));
     legacy.v = 1; delete legacy.skillCurve; delete legacy.skillXpV1;
@@ -78,12 +81,14 @@ const CYCLES = 10;
   if (out.blobV !== 2) fails.push(`blob version is ${out.blobV}, expected 2`);
   if (out.blobStamp !== 2) fails.push(`blob skillCurve is ${out.blobStamp}, expected 2`);
 
-  // 3. A real pre-zone-update save still converts, and converts only once.
-  if (same(out.start, out.afterLegacy1)) fails.push('a v:1 save did NOT migrate, the migration is now dead');
-  if (!same(out.afterLegacy1, out.afterLegacy2)) {
-    fails.push(`migration re-ran: ${JSON.stringify(out.afterLegacy1)} -> ${JSON.stringify(out.afterLegacy2)}`);
+  // 3. A v:1 row loads untouched. This is the assertion that stops somebody
+  //    "restoring" the migration and quietly taking a level off everyone.
+  if (!same(out.start, out.afterLegacy1)) {
+    fails.push(`a v:1 save was migrated: ${JSON.stringify(out.start)} -> ${JSON.stringify(out.afterLegacy1)}`);
   }
-  if (!out.hasBackup) fails.push('skillXpV1 backup not persisted, the conversion is not undoable');
+  if (!same(out.afterLegacy1, out.afterLegacy2)) {
+    fails.push(`levels moved on the second load: ${JSON.stringify(out.afterLegacy1)} -> ${JSON.stringify(out.afterLegacy2)}`);
+  }
 
   console.log(JSON.stringify({
     startLevels: out.start,
