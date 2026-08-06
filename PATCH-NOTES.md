@@ -1,5 +1,39 @@
 # Grim World — patch notes
 
+## Hollowrest looks like a town now
+
+Every building in Hollowrest was one box with one pyramid roof on top, a flat
+rectangle for a door and two flat squares for windows. It is the place you bank,
+shop, take quests and stand around between jobs, and it was the worst-looking
+spot in the game.
+
+Rebuilt from the ground up:
+
+- Real gabled roofs. Two slopes meeting at a ridge, running the length of the
+  building, with a ridge beam and eaves that overhang on every side. A pyramid
+  on a rectangular building was always wrong; cottages have a ridge.
+- Thatch is laid in courses. Slate gets a capping row.
+- Half-timbering on the plaster cottages: corner posts, a mid rail, a top plate,
+  vertical studs and corner braces that run from the post up to the plate.
+- Stone buildings get quoins at the corners, alternating which face they reach
+  around, the way real masonry is bonded.
+- Doors sit in a frame with a lintel and a stone step, with plank lines and a
+  handle.
+- Windows have a frame, a stone sill and a mullion cross, and they glow warm
+  from inside.
+- Chimneys on the inn, the trader's hall and two of the cottages.
+- A stone plinth under every building that runs below ground level, so a hut
+  built on a slope buries its footing instead of floating on one corner.
+
+The well got a pitched roof, a windlass with a crank, a rope and a bucket, and
+coping stones round the rim. The market stalls got striped awnings with a
+valance, posts with feet, and actual goods laid out on the bench.
+
+It runs FASTER than the old town, not slower. Each building is roughly ten times
+the geometry but merges into a single mesh, so the whole place draws in fewer
+calls than the boxes did. Nothing about where you can walk has changed.
+
+
 ## You can tell your items apart now
 
 Two whole families of item art were placeholders, and between them they covered
@@ -274,32 +308,3 @@ Every creature in the world used the same wander radius, roughly 5 to 16 metres,
 The idea is the one RuneScape and WoW both use: a camp guards a spot, a beast owns a field, and a boss does not follow you home.
 
 The same fix is in the server simulation, so monsters behave identically whether the fight is running on your machine or the server. If those two ever disagree about who is chasing you, monsters teleport.
-
-
-## August 5, 2026 (perf) - A performance readout on F3, and three times the ground cover
-
-Press F3 in game for a live readout: frame time, frames per second, draw calls, triangles, mesh count, and how much headroom you have before the game drops the graphics on itself.
-
-WHY THIS EXISTS
-
-The zone update has been working to a budget of under 1,400 draw calls and under 7,000 meshes. That budget is a guess written down before the ground cover was merged into single meshes, and nobody could check it, so it was measured properly instead.
-
-Standing in the same field, with ground cover set four different ways:
-
-  cover per chunk   meshes   draws   triangles   ms to build a chunk
-  55 to 85           6,780   1,282        176k        7.0
-  150 to 220         6,807   1,289        213k        6.1
-  400 to 600         6,815   1,279        296k       21.3
-  900 to 1300        6,827   1,281        539k       32.0
-
-Sixteen times the grass, flowers and stones moves draw calls by ONE and mesh count by forty seven. It is all one merged mesh per chunk, so the count does not matter to the renderer. What actually grows is triangles, which are cheap, and the time to build a chunk, which is the small hitch when you walk into ground you have not seen yet. That is the real ceiling, and it is flat up to about 220 per chunk and triples past it.
-
-So the ground cover is now 150 to 220 per chunk, roughly triple what shipped yesterday, for no measurable cost.
-
-WHAT THE GAME ALREADY DOES
-
-None of this changes the safety net. The game watches its own frame time and turns shadows and extra lights off by itself if it sits above 27ms for four seconds, and does it harder above 55ms. That is a real measurement with a real consequence, which is more than a draw call count can say. The readout shows you the same number the game is watching.
-
-WHAT THIS DOES NOT TELL YOU
-
-Frame rate cannot be measured from the test harness, which renders in software and runs at about a fifth of real speed. Any number it produced would be made up. That is exactly why the readout is in the game: the only machine whose frame rate matters is yours.
