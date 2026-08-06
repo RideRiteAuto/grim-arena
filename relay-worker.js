@@ -69,6 +69,24 @@ const GRIM_RULES = {
   SPRINT: 8.4,
   DIFF: { squire: 0.62, veteran: 1.0, champion: 1.42 },
 
+  // ---- the vertical layer (phase 1d) --------------------------------------
+  // Every behaviour here has its own switch so any one can be turned off in
+  // production without reverting the others. ELEV is the master: with it off
+  // the player is glued to the ground exactly as the game always was.
+  VERT: {
+    ELEV: true,       // the player carries a real elevation (falling exists)
+    GRAVITY: 26,      // m/s^2
+    TERMINAL: 36,     // max fall speed; a long drop cannot tunnel a surface
+    STEP: 0.55,       // walk over anything shorter than this without jumping
+    SLOPE_FOLLOW: 2.2,// how steep a downslope the feet follow before it is a
+                      // fall: drop per frame up to travel * this (about 65
+                      // degrees) reads as ground, more reads as an edge
+    JUMP_H: 1.15,     // preserved from the old parametric jump arc
+    SLOPE_MAX: 0,     // climb limit in degrees; 0 = off until 1g's sweep
+    FALL_DMG: 0,      // hp per m/s over FALL_SAFE; 0 = wired but off
+    FALL_SAFE: 12,    // landing speed below which falling never hurts
+  },
+
   // ---- attacks ------------------------------------------------------------
   // wind = telegraph, act = damage frame, rec = recovery. range/arc define the
   // hit shape; a client judges only ITSELF against this shape, so these numbers

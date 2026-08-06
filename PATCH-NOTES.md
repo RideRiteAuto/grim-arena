@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## Phase 1d: falling exists
+
+The player carries a real elevation now, behind the new VERT switches in the shared rules (ELEV is the master and any switch can be turned off in production without reverting the rest). Walk off an edge and you fall, with terminal velocity and a landing; the jump is ballistic to the same height as before; the camera follows you off a cliff; bridges are real walkable decks and standing on one over the river does not read as swimming. Slopes still climb exactly as before (the slope limit waits for 1g and its reachability sweep), swimming and boating behave exactly as they always did, and standing anywhere on the ground is arithmetically identical to the old game, not just similar. Fall damage is wired and set to zero. Elevation deliberately lives beside the position rather than inside pos.y, so all 25 distance checks in the game (interactions, melee reach, aggro) and the save format are untouched. Proven by the new harness/vertical.js (fifteen checks including jump apex, monotone falls, deck over water, and the switch restoring the old formula exactly) plus the whole existing suite.
+
+
 ## Phase 1c: frames of reference, structure only
 
 A cargo pack on a boat deck has to stay on the deck while the boat sails, which needs positions that can be expressed relative to a moving thing. The structure for that exists now: a frame registry with world-frame identity converters, the player state message carries a frame id (0, the world), remotes store it the way they already store transmitted height, and the surfaces query accepts a frame argument it does not yet use. The world is the only frame, so nothing behaves differently. Phase 9 turns the rowboat into the first real frame and this structure makes that additive instead of a rewrite.
@@ -417,27 +422,3 @@ Everything else still leaves a tuft.
 Same cost to draw as before, so nothing gets slower. Each plant is still one
 merged mesh, and they still take their leaf and stalk colours from whichever
 zone they grew in.
-
-
-## The Plague Rat walks like a rat now
-
-The rat had the best-built boss model in the game and was being animated by
-the code that poses people. Two of its four legs were swinging like arms, so a
-giant rat stalked around the mere on what looked like hind legs, with a stiff
-tail, a jaw that never opened and ears that never moved.
-
-It is now on the same quadruped rig the wolf, the deer, the boar and the giant
-rat already use. What that changes, to look at:
-
-- It walks on a proper diagonal gait and switches to a gallop when it runs,
-  instead of paddling its front paws.
-- Its legs have knees. They bend and the paws lift and plant.
-- The jaw opens on the bite, and it opens EXACTLY on the frame the bite lands,
-  so what you see is what you have to dodge.
-- The tail is a real chain now, so it swings and trails instead of sitting
-  there in one shape.
-- The ears flick.
-- It rears back on its hind legs to strike.
-
-Nothing about its damage, health, timing or reach changed. Standing height is
-identical to the millimetre. This is purely how it moves.
