@@ -99,7 +99,7 @@ const OUT = process.env.OUT || '/tmp/char-ingame';
   if (pose.weapon === 0) {
     if (Math.abs(pose.armLz - (-0.06)) > 0.03) fail.push('armL.z not straight: ' + pose.armLz);
     if (Math.abs(pose.armLx) > 0.05) fail.push('armL.x tilted: ' + pose.armLx);
-    if (Math.abs(pose.shX - (-Math.PI / 2)) > 0.1) fail.push('shield not flat at rest: x=' + pose.shX);
+    if (Math.abs(pose.shX - Math.PI / 2) > 0.1) fail.push('shield not flat at rest (point aft): x=' + pose.shX);
   }
   if (errs.length) fail.push(errs.length + ' page error(s): ' + errs.slice(0, 2).join(' | '));
   console.log(JSON.stringify({ pose, fail, out: OUT }, null, 2));
