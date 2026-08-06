@@ -1,5 +1,46 @@
 # Grim World — patch notes
 
+## Hollowrest has room to breathe, and the King has moved out
+
+Four things, all from Kevin looking at the town and saying what was wrong.
+
+THE HOUSES WERE BUILT ON THE ROAD. Not near it, on it. Measured against the
+game's own road corridor, three of the six were inside it and one stood dead on
+the centreline. Every building has been moved to a surveyed pocket of clear
+ground, and each one is pushed clear of the road again at build time, so this
+cannot quietly come back the next time the roads are rebaked.
+
+THE TOWN WAS CRAMPED. Six buildings crammed into a twenty metre circle with
+their eaves nearly touching. They now sit twenty-two to forty-six metres out
+from the square, and every one has its own fenced plot: a front garden facing
+the square with vegetable beds, and a back yard with a woodpile, a rain barrel
+and washing on a line. The yards are what actually make it feel less cramped.
+Spacing on its own just reads as houses that drifted apart.
+
+THERE WERE NO PATHS. Townsfolk walked across open grass. There is a dirt path
+network now, a ring around the well and a spur out to every garden gate, worn
+into the ground and following the slope rather than sitting on top of it.
+
+THE BARROW. It needed all of this:
+
+- It had NO COLLISION AT ALL. Only the standing stones did, so anything could
+  walk straight through the hill. It is solid now, with a gap left exactly where
+  the doorway is.
+- You can go inside. The doorway is a real hole cut through the mound, not a
+  frame painted on the outside, with a stone passage leading into the dark.
+- It is five metres wide and over five metres tall, so the Hollow King walks out
+  of his own tomb without stooping.
+- The mound is nearly twice the size it was.
+- And the King has moved. He used to live twenty-eight metres from the town
+  well, which made him a neighbour rather than something you go and find. His
+  barrow is now a hundred and fifty metres north of town, out on its own. He
+  stands at the threshold of it.
+
+Nothing about walking, fighting or the quest line changed. The town's safe zone
+grew to match the bigger town, so nothing can wander into somebody's back garden
+and start a fight.
+
+
 ## Hollowrest looks like a town now
 
 Every building in Hollowrest was one box with one pyramid roof on top, a flat
@@ -277,34 +318,3 @@ Now there is one list of what is in reach, both the prompt and the key read it, 
 Reach is a consistent 2.6 metres for people and workstations, 2.8 for the bank chest, 2 for a sheep. Close enough that two things have to be nearly inside each other to overlap, far enough that you are not hunting for the exact spot. For scale, your furnace and anvil sit three metres apart, so standing at either one now offers only that one.
 
 Also cleaned up while in there: the prompt used em dashes, which is against the brand rule. It reads F - SMELT IRON ORE now.
-
-
-## August 5, 2026 (leash) - Monsters stop shaking at the edge of their ground
-
-The one where a monster you dragged to the edge of its patch would stand there vibrating and clicking at you. Fixed, and the reason was daft.
-
-Leashing was a distance check with nothing behind it. Hold a monster at its limit and stand next to it, and the code did this every single frame: too far from home, drop aggro, turn around; next frame, player is close, grab aggro, play the aggro sound, turn back; next frame, too far from home, drop aggro. Sixty times a second. That is the shake, and the aggro sound firing on every other frame is the noise.
-
-Now, when a monster gives up it actually GIVES UP:
-
-- It walks back to where it lives, and it cannot be pulled into a fight on the way. No amount of standing in front of it will restart the chase until it gets home.
-- It walks back noticeably faster than it wanders, so it reads as leaving rather than milling about.
-- It heals on arrival. You cannot wear something down by dragging it to the edge of its ground over and over.
-- The aggro sound only plays on a real transition into a fight, never twice within a second and a bit.
-- Nothing starts a fight from outside its own ground any more either, so a monster standing at the edge of its patch will not lunge at someone one step beyond it.
-
-ROAMING DISTANCES
-
-Every creature in the world used the same wander radius, roughly 5 to 16 metres, whether it was a townsperson or a boar. They now each have their own patch, and each will follow you 18 metres past it and no further:
-
-  townsfolk        6m patch, chases to 24m
-  workers          8m
-  camp humanoids  14m patch, chases to 32m
-  giant rats      14m, goblins 16m
-  hares           22m
-  roaming beasts  24m, wild boar 26m, chases to 44m
-  bosses          18m, they hold their lair
-
-The idea is the one RuneScape and WoW both use: a camp guards a spot, a beast owns a field, and a boss does not follow you home.
-
-The same fix is in the server simulation, so monsters behave identically whether the fight is running on your machine or the server. If those two ever disagree about who is chasing you, monsters teleport.
