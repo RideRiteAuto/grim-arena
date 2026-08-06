@@ -1,5 +1,17 @@
 # Grim World — patch notes
 
+## 2026-08-06 (v14) - UI pass: the world stops pausing, one panel system
+
+FIXED - opening your pack, the bank or the skills page no longer PAUSES the world. active() went false the moment a panel released the pointer lock, so the whole simulation held its breath: NPCs stopped, quests stopped, nothing moved until you closed the panel. The world now keeps running behind every window, and the keyboard is what gets held back instead.
+NEW - FRAME RATE in the corner readout, colour-coded against the same threshold the game uses to drop its own graphics. The coord stamp stays, now on three lines so it never clips the action bar.
+FIXED - the action bar no longer draws on top of the pack, the bank, the sack or the skills page. One z-index ladder replaces sixteen hand-picked numbers, and panels no longer reach down into the bar.
+NEW - every window dims the world behind it, the treatment only the world map had.
+FIXED - the duel-era round frame is gone from the open world. No more FREE ROAM over four empty win pips fighting the compass ribbon for the same strip of screen.
+CHANGED - one panel chrome everywhere: same border, fill, gold rule and typeface. Fourteen places were asking for generic monospace and rendering in the wrong font. Every window now carries a description of what it is for and a sticky legend of what each control does.
+CHANGED - the trader shows item icons, the bank shows your gold and lays the vault out beside your pack, and the skills page reads in two columns.
+FIXED - ESC closes the trader instead of opening the pause menu on top of it. Messages raised by a panel (pack full, wrong slot, key unbound) show above the dimmer instead of behind it.
+
+
 ## Phase 1d: falling exists
 
 The player carries a real elevation now, behind the new VERT switches in the shared rules (ELEV is the master and any switch can be turned off in production without reverting the rest). Walk off an edge and you fall, with terminal velocity and a landing; the jump is ballistic to the same height as before; the camera follows you off a cliff; bridges are real walkable decks and standing on one over the river does not read as swimming. Slopes still climb exactly as before (the slope limit waits for 1g and its reachability sweep), swimming and boating behave exactly as they always did, and standing anywhere on the ground is arithmetically identical to the old game, not just similar. Fall damage is wired and set to zero. Elevation deliberately lives beside the position rather than inside pos.y, so all 25 distance checks in the game (interactions, melee reach, aggro) and the save format are untouched. Proven by the new harness/vertical.js (fifteen checks including jump apex, monotone falls, deck over water, and the switch restoring the old formula exactly) plus the whole existing suite.
@@ -393,32 +405,3 @@ inventory background. They keep their real colours in the world, but the icons
 now carry enough light to be visible in your pack.
 
 Nothing about stats, values, recipes or what anything is worth has changed.
-
-
-## You can tell the plants apart now
-
-Every single thing you could forage was the same model. Berries, mushrooms,
-reeds, holly, fenroot, dye flowers, spice, fire lilies and black lotus were all
-one four-blob lump with a different colour on it. A level 90 lotus in the fen
-and a level 1 berry bush outside the capital looked the same. You had to click
-a thing to find out what it was.
-
-They all have their own shape now:
-
-- BERRIES     a low leafy mound with berries sitting on it
-- MUSHROOMS   a cluster of capped stalks, tall ones and short ones
-- REEDS       tall blades with brown cattail heads
-- HOLLY       a dense spiked shrub with bright red berries
-- FENROOT     a knuckled root arching up out of the ground
-- DYE FLOWERS slim stalks under wide flat flower heads
-- SPICE       a low woody shrub hung with pods
-- FIRE LILY   flared trumpet flowers on stems
-- BLACK LOTUS flat floating pads around a layered bloom
-
-Harvesting one now leaves behind something that makes sense: pick a lotus and
-the pads stay on the water, pick mushrooms and the cut stems are still standing.
-Everything else still leaves a tuft.
-
-Same cost to draw as before, so nothing gets slower. Each plant is still one
-merged mesh, and they still take their leaf and stalk colours from whichever
-zone they grew in.
