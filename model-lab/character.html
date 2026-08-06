@@ -70,8 +70,17 @@ scene.add(sun);
 // over and the fire is not sitting on a mirror.
 const gGeo = new T.PlaneGeometry(60, 60, 60, 60);
 gGeo.rotateX(-Math.PI / 2);
-const heightAt = (x, z) => Math.sin(x * 0.28) * 0.055 + Math.sin(z * 0.21 + 1.1) * 0.045
+// Relief everywhere EXCEPT a flattened pad under the character. v4's feet
+// were judged "cut off by the ground" and half of that was this page: the
+// model stood at heightAt(0,0) while each foot stood on its own different
+// height. A character is reviewed on flat ground, like a game spawn point.
+const rawHeight = (x, z) => Math.sin(x * 0.28) * 0.055 + Math.sin(z * 0.21 + 1.1) * 0.045
   + Math.sin((x + z) * 0.62) * 0.018;
+const heightAt = (x, z) => {
+  const d = Math.hypot(x, z);
+  const flat = Math.max(0, Math.min(1, (d - 0.55) / 0.9));   // 0 inside the pad
+  return rawHeight(0, 0) * (1 - flat) + rawHeight(x, z) * flat;
+};
 {
   const p = gGeo.attributes.position;
   for (let i = 0; i < p.count; i++) p.setY(i, heightAt(p.getX(i), p.getZ(i)));
@@ -107,19 +116,20 @@ window.__scene = scene;
 model.parts.sword.visible = true;
 model.parts.shield.visible = true;
 const kit = { tick: (t) => {
-  // the lab's stand-in for animate(): rest pose + the new idle motion so the
-  // turntable shows what the game will show
+  // the lab's stand-in for animate(): the NEW idle. Arms hang straight down
+  // at the sides (Kevin's Aug 6 direction), shield carried flat along the
+  // side, point aft. These are the exact values patch 33 writes game-side.
   const P = model.parts;
-  P.armR.rotation.set(0, 0, 0.10);
-  P.armL.rotation.set(-0.16, 0, -0.20);
+  P.armR.rotation.set(0, 0, 0.04);
+  P.armL.rotation.set(0, 0, -0.06);
   const br = Math.sin(t * (Math.PI * 2 / 3.9));
   P.chest.scale.set(1 + 0.010 * br, 1 + 0.006 * br, 1 + 0.016 * br);
   model.body.position.y = 0.012 * br;
   model.body.rotation.z = 0.015 * Math.sin(t * (Math.PI * 2 / 7.3));
   P.upper.rotation.z = -0.012 * Math.sin(t * (Math.PI * 2 / 7.3) + 0.5);
   P.head.rotation.y = 0.06 * Math.sin(t * (Math.PI * 2 / 11));
-  // shield rest fix: hang world-vertical against the arm tilt
-  P.shield.rotation.set(-P.armL.rotation.x * 0.8, Math.PI, -P.armL.rotation.z + 0.04);
+  P.shield.rotation.set(-Math.PI / 2, Math.PI, -P.armL.rotation.z);
+  P.shield.position.set(0.07, -0.55, -0.05);
 } };
 
 // Named cameras. Standing, seated, close, far and straight down: the five ways
@@ -132,6 +142,10 @@ const VIEWS = {
   face:    { pos: [0.25, 1.95, 1.05], look: [0, 1.86, 0] },
   hands:   { pos: [-0.85, 1.15, 0.95], look: [-0.33, 1.10, 0.03] },
   feet:    { pos: [0.7, 0.35, 1.5], look: [0, 0.18, 0] },
+  // low grazing angle from behind-left: the view that exposed v4's
+  // see-through shoulder and buried feet
+  under:   { pos: [1.3, 0.55, -1.2], look: [0.25, 1.55, 0] },
+  shieldside: { pos: [2.2, 1.15, 0.9], look: [0.32, 1.05, 0] },
   far:     { pos: [4.6, 2.6, 5.2], look: [0, 1.0, 0] },
   scale:   { pos: [2.6, 1.8, 3.0], look: [0.4, 1.1, 0.1] }
 };

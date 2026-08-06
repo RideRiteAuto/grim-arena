@@ -1,46 +1,63 @@
-// GRIM WORLD: the player character, v4.
+// GRIM WORLD: the player character, v5.
 //
-// A base body first, armor draped over it second. The v3 rig WAS its armor:
-// the torso was a breastplate, the arms were steel tubes, and there was no
-// person underneath. This build is a person - skin, padded tunic, trousers,
-// real boots with a heel and a toe box, hands with fingers - and every armor
-// piece is a separate mesh in a `gear` group fitted over that body, so armor
-// can come off (rig.setArmor(false)) and future pieces can drape per slot.
+// v4 built a person instead of a suit of armor, and its proportions are kept
+// here unchanged. What v5 fixes is CONSTRUCTION. Kevin's review of v4, in
+// full, because every decision below answers a line of it: the joints were
+// round balls and every limb looked like separate pieces glued together with
+// visible seams; the eyebrows and chin were ovals stuck onto the face; the
+// hair was blocky; the feet were bad and clipped into the ground; the lower
+// shoulder could be seen through into the model; the sword blade was
+// obviously stacked blocks; and the shield arm crossed the body when it
+// should hang straight down with the shield carried flat at the side.
 //
-// Numbers this body is built to (research pass, written down before modelling):
-//   total height 2.20, head height 0.30 (7.3 heads, stylised-heroic)
-//   chin 1.93  shoulder line 1.76 (0.80 H, was 0.70 - the single biggest fix)
-//   nipple 1.65  waist 1.32  crotch 1.10  knee 0.63  ankle 0.10
-//   bideltoid 0.72 (was 0.90+)  hip width 0.52  arm span ~= height
-//   the four distance-critical curves, in order: trapezius slope (20-30 deg,
-//   a horizontal shoulder shelf is the #1 blocky tell), waist pinch, calf
-//   taper (ankle ~50% of calf), neck-to-head transition
-//   limbs are NOT tubes: forearm widest below the elbow with the wrist at
-//   ~58%, thigh tapers ~30% to the knee, and 5-8 deg of elbow bend and 3-5
-//   deg of knee bend are BAKED into the shapes - dead-straight limbs read as
-//   pipes whatever the shading
+// The three construction rules that answer all of that:
 //
-// The rig contract is the game's, not mine, and it is frozen:
-//   parts: upper, torso, head, armR, armL, legR, legL, hand, handL, sword,
-//          staff, bow, backBow, shield, ward, orb, frostShell, crest,
-//          capePiv, bladeTip, pick, axe, great, greatTip
-//   animate() writes ROTATIONS on those pivots and never positions, except
-//   P.shield.position which it owns outright. mats.cloth is recoloured per
-//   player for multiplayer palettes, so everything identity-coloured (tunic,
-//   cape) shares that one material. New optional parts (chest, hair) are
-//   guarded with `if (P.x)` game-side so bosses built on the old rig survive.
+// 1. NO GLUED BLOBS. A bulge that belongs to a limb - deltoid, knee, chin,
+//    brow - is shaped in that limb's own section list, so it is part of one
+//    continuous surface. v4's separate spheres are gone.
 //
-// Underclothes convention: undyed-linen padded tunic (takes pal.cloth), dark
-// brown trousers, leather boots and belt. Low-saturation earth tones that
-// read under any armor colour. Sleeves stop above the bracer line so armor
-// layers cleanly.
+// 2. JOINTS ARE DOMES CENTERED ON THE PIVOT. The top of each limb loft
+//    converges to a rounded cap whose center IS the rotation pivot, tucked
+//    under the garment above it (tunic shoulder, pelvis). A sphere about the
+//    pivot looks identical at any rotation, so no gap can open mid-swing -
+//    which is exactly when v4's shoulder showed daylight. Where two surfaces
+//    must meet, the boundary sits on a real clothing line (sleeve hem, boot
+//    cuff, belt, collar) because clothing edges are the one place a seam is
+//    information instead of a defect.
+//
+// 3. ANYTHING THAT TURNS A CORNER IS ONE SWEEP. sweep() lofts superellipse
+//    sections along a curved spine with parallel-ish frames. The boot flows
+//    from the shin around the ankle into a real foot as a single surface,
+//    and the scimitar blade is one continuous curved body with a distal
+//    taper - not six boxes fanned around an arc.
+//
+// Numbers (unchanged from the v4 research pass):
+//   total height 2.20, head 0.30 (7.3 heads) | chin 1.93, shoulder line 1.76
+//   waist 1.32, crotch 1.10, knee 0.63, ankle 0.10 | bideltoid 0.72, hips 0.52
+//   trap slope 20-30 deg, wrist ~58% of forearm peak, ankle ~55% of calf,
+//   5-8 deg elbow and 3-5 deg knee bend baked in - straight limbs read as pipes
+//
+// The rig contract is the game's and is frozen: parts upper, torso, head,
+// armR, armL, legR, legL, hand, handL, sword, staff, bow, backBow, shield,
+// ward, orb, frostShell, crest, capePiv, bladeTip, pick, axe, great,
+// greatTip (+ optional chest, hair, helm guarded game-side). animate() writes
+// rotations only, except P.shield.position which it owns outright. mats.cloth
+// is the recolourable identity for multiplayer.
 import { rngFor, mergeParts } from './grim-kit.js';
 
 // An open loft along Y through elliptical superellipse sections, smooth
-// shaded. This is the whole body's construction method: silhouette lives in
-// the section list, and a part is one surface instead of stacked primitives.
+// shaded. Silhouette lives in the section list; a part is one surface.
 // secs: { y, w, d, x?, z?, p? }  half-width, half-depth, centre offset, power.
+//
+// WINDING, learned the hard way: v4's version assumed ascending sections and
+// still wound both end caps INWARD. Every loft authored top-down (sleeves,
+// thighs, palms) came out inside-out - the renderer was showing the interior
+// of the far wall through the culled near wall, which is where "I can see
+// through the lower shoulder into the model" came from. Sections are
+// normalised to ascending, and caps wound bottom -Y / top +Y. Measured with
+// a triangle-normal test, not assumed.
 function loftY(T, secs, n, mat) {
+  if (secs.length > 1 && secs[0].y > secs[secs.length - 1].y) secs = secs.slice().reverse();
   const pos = [], idx = [];
   const N = n;
   for (let s = 0; s < secs.length; s++) {
@@ -60,16 +77,76 @@ function loftY(T, secs, n, mat) {
       idx.push(a, c2, b, b, c2, d);
     }
   }
-  // end caps
   const cap = (s, up) => {
     const base = s * N, ctr = pos.length / 3;
     pos.push(secs[s].x || 0, secs[s].y, secs[s].z || 0);
     for (let i = 0; i < N; i++) {
       const j = (i + 1) % N;
-      if (up) idx.push(ctr, base + i, base + j); else idx.push(ctr, base + j, base + i);
+      // up: outward normal +Y is (ctr, j, i); down: -Y is (ctr, i, j)
+      if (up) idx.push(ctr, base + j, base + i); else idx.push(ctr, base + i, base + j);
     }
   };
   cap(0, false); cap(secs.length - 1, true);
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const m = new T.Mesh(g, mat); m.castShadow = true;
+  return m;
+}
+
+// A loft along a CURVED spine. Each section: { at:[x,y,z], w, d, p?, roll? }.
+// The section ring starts in the XZ plane (like loftY's) and is rotated so
+// its +Y points along the spine tangent at that station, so `w` stays the
+// half-width across the spine and `d` the half-thickness. Tangents come from
+// neighbouring stations; setFromUnitVectors from a fixed +Y reference keeps
+// frames consistent for the gentle curves this model needs (a boot ankle, a
+// scimitar's arc) - nothing here approaches the -Y antipode where that
+// shortcut would flip.
+function sweep(T, secs, n, mat) {
+  const pos = [], idx = [];
+  const N = n;
+  const P = secs.map(c => new T.Vector3(c.at[0], c.at[1], c.at[2]));
+  const up = new T.Vector3(0, 1, 0);
+  for (let s = 0; s < secs.length; s++) {
+    const c = secs[s], p = c.p || 2.2, e = 2 / p;
+    const tan = new T.Vector3();
+    if (s === 0) tan.subVectors(P[1], P[0]);
+    else if (s === secs.length - 1) tan.subVectors(P[s], P[s - 1]);
+    else tan.subVectors(P[s + 1], P[s - 1]);
+    tan.normalize();
+    const q = new T.Quaternion().setFromUnitVectors(up, tan);
+    if (c.roll) q.multiply(new T.Quaternion().setFromAxisAngle(up, c.roll));
+    const v = new T.Vector3();
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      v.set(
+        c.w * Math.sign(ca) * Math.pow(Math.abs(ca), e),
+        0,
+        c.d * Math.sign(sa) * Math.pow(Math.abs(sa), e));
+      v.applyQuaternion(q).add(P[s]);
+      pos.push(v.x, v.y, v.z);
+    }
+  }
+  for (let s = 0; s < secs.length - 1; s++) {
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N, a = s * N + i, b = s * N + j, c2 = (s + 1) * N + i, d = (s + 1) * N + j;
+      idx.push(a, c2, b, b, c2, d);
+    }
+  }
+  const cap = (s, first) => {
+    const base = s * N, ctr = pos.length / 3;
+    pos.push(P[s].x, P[s].y, P[s].z);
+    for (let i = 0; i < N; i++) {
+      const j = (i + 1) % N;
+      // rings advance along +tangent, so the first cap faces -tangent
+      // (ctr, i, j) and the last faces +tangent (ctr, j, i) - same fix as
+      // loftY's caps, same triangle-normal test
+      if (first) idx.push(ctr, base + i, base + j); else idx.push(ctr, base + j, base + i);
+    }
+  };
+  cap(0, true); cap(secs.length - 1, false);
   const g = new T.BufferGeometry();
   g.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
   g.setIndex(idx);
@@ -82,8 +159,8 @@ export function buildFighterRig(T, pal, opt) {
   opt = opt || {};
 
   // ---- materials ----------------------------------------------------------
-  // Skin and cloth are SMOOTH shaded - that is half the upgrade. Steel keeps
-  // flat shading: hard facets read as beaten metal and match the world.
+  // Skin and cloth smooth shaded; steel keeps flat shading - hard facets read
+  // as beaten metal and match the world.
   const skin  = new T.MeshStandardMaterial({ color: 0xc89b72, roughness: 0.92, metalness: 0 });
   const cloth = new T.MeshStandardMaterial({ color: pal.cloth, roughness: 0.95, metalness: 0 });          // tunic + cape: the recolourable identity
   const pants = new T.MeshStandardMaterial({ color: 0x6a563e, roughness: 0.97, metalness: 0 });
@@ -101,44 +178,44 @@ export function buildFighterRig(T, pal, opt) {
   const sph = (r, m, sx, sy, sz, seg) => { const x = new T.Mesh(new T.SphereGeometry(r, seg || 14, 10), m); x.castShadow = true; x.scale.set(sx || 1, sy || 1, sz || 1); return x; };
 
   // ---- torso --------------------------------------------------------------
-  // upper still sits at 0.98 (the game's waist-pivot convention). Everything
-  // in `upper` is expressed relative to that.
   const upper = new T.Group(); upper.position.y = 0.98; body.add(upper);
 
-  // Pelvis and seat, in trousers. World 1.00 to 1.22, so in body space.
+  // Pelvis and seat, in trousers. Runs a little higher than v4 so the leg
+  // domes (below) are born covered.
   const pelvis = loftY(T, [
-    { y: 0.955, w: 0.128, d: 0.100, p: 2.6 },
-    { y: 1.02, w: 0.172, d: 0.128, p: 2.5 },
-    { y: 1.10, w: 0.182, d: 0.132, p: 2.4 },
-    { y: 1.16, w: 0.180, d: 0.128, p: 2.3 },
-    { y: 1.22, w: 0.168, d: 0.120, p: 2.2 }
+    { y: 0.945, w: 0.126, d: 0.098, p: 2.6 },
+    { y: 1.02, w: 0.190, d: 0.130, p: 2.5 },   // flares over the thigh domes
+    { y: 1.10, w: 0.196, d: 0.134, p: 2.4 },
+    { y: 1.16, w: 0.184, d: 0.128, p: 2.3 },
+    { y: 1.23, w: 0.166, d: 0.118, p: 2.2 }
   ], 14, pants);
   body.add(pelvis);
-  const belt = cyl(0.178, 0.184, 0.06, leather, 1.245, 14); body.add(belt);
+  // belt: an elliptical loft that follows the body, not a round hoop
+  // floating off the front and back
+  const belt = loftY(T, [
+    { y: 1.215, w: 0.172, d: 0.124, p: 2.35 },
+    { y: 1.275, w: 0.170, d: 0.122, p: 2.35 }
+  ], 14, leather);
+  body.add(belt);
   const buckle = box(0.055, 0.048, 0.02, trim); buckle.position.set(0, 1.245, 0.132); body.add(buckle);
 
-  // The padded tunic: hips to shoulders in ONE loft so the waist pinch and
-  // the trapezius slope are a single silhouette. Sections in upper space
-  // (world y minus 0.98). Shoulder half-width peaks at 0.30 then the last
-  // sections pull IN and UP: that is the trap slope.
-  const chest = new T.Group(); upper.add(chest);   // breathing pivot, new optional part
+  // The padded tunic: hips to shoulders in ONE loft. The deltoid shelf now
+  // reaches further out (0.26) and stays soft, because it must meet the
+  // sleeve domes and read as one shoulder - v4 stopped at 0.24 and left the
+  // arm pivots stranded outside the silhouette.
+  const chest = new T.Group(); upper.add(chest);   // breathing pivot
   const torso = loftY(T, [
     { y: 0.245, w: 0.163, d: 0.115, p: 2.3 },  // tunic hem, tucked at the belt
     { y: 0.34, w: 0.152, d: 0.108, p: 2.3 },   // waist pinch (0.60 H)
     { y: 0.46, w: 0.168, d: 0.118, p: 2.3 },   // lower ribcage
     { y: 0.60, w: 0.190, d: 0.130, p: 2.4 },   // chest at the nipple line
-    { y: 0.70, w: 0.240, d: 0.134, p: 2.8 },   // deltoid shelf, wide and flat
-    { y: 0.775, w: 0.190, d: 0.120, p: 2.5 },  // trap slope, gentler
+    { y: 0.685, w: 0.240, d: 0.134, p: 2.7 },  // deltoid shelf rising
+    { y: 0.735, w: 0.260, d: 0.130, p: 2.8 },  // shelf peak: reaches the sleeve domes
+    { y: 0.775, w: 0.218, d: 0.122, p: 2.6 },  // shelf folding over the domes
+    { y: 0.805, w: 0.130, d: 0.104, p: 2.3 },  // trap slope
     { y: 0.83, w: 0.092, d: 0.088, p: 2.2 }    // neck root
   ], 16, cloth);
   chest.add(torso);
-  // quilting: three thin stitch lines across the tunic front
-  for (let qi = 0; qi < 3; qi++) {
-    const q = cyl(0.003, 0.003, 0.30, leather, 0, 5);
-    q.rotation.z = Math.PI / 2;
-    q.position.set(0, 0.36 + qi * 0.14, 0.128 - qi * 0.004);
-    chest.add(q);
-  }
 
   const neck = loftY(T, [
     { y: 0.80, w: 0.062, d: 0.062, p: 2.1 },
@@ -147,69 +224,101 @@ export function buildFighterRig(T, pal, opt) {
   upper.add(neck);
 
   // ---- head ---------------------------------------------------------------
-  // Pivot at the neck base, world 1.86. Skull is one loft: jaw taper, wide
-  // cranium, rounded crown. Chin at world ~1.93, crown ~2.20.
+  // Pivot at the neck base, world 1.86. The chin, jawline and brow ridge are
+  // SECTIONS OF THE SKULL LOFT now - the glued chin ball and brow ball are
+  // gone. The underside of the jaw slopes from the chin point back over the
+  // throat, so there is skin (not void) when seen from below.
   const head = new T.Group(); head.position.y = 0.88; upper.add(head);
-  const skull = loftY(T, [
-    { y: 0.035, w: 0.062, d: 0.070, p: 2.2 },   // jaw
-    { y: 0.085, w: 0.088, d: 0.100, p: 2.2 },   // cheekbones
-    { y: 0.150, w: 0.103, d: 0.113, p: 2.3 },   // temples
-    { y: 0.230, w: 0.108, d: 0.118, p: 2.4 },   // cranium
-    { y: 0.300, w: 0.088, d: 0.098, p: 2.2 },   // crown curve
-    { y: 0.340, w: 0.030, d: 0.036, p: 2.0 }    // crown
-  ], 14, skin);
-  head.add(skull);
-  // chin and jawline
-  const chin = sph(0.045, skin, 1.15, 0.8, 0.9); chin.position.set(0, 0.028, 0.055); head.add(chin);
-  // a real nose, small: bridge wedge + tip, smooth shaded so it blends
-  const nose = sph(0.016, skin, 0.78, 1.25, 1.0); nose.position.set(0, 0.106, 0.108); head.add(nose);
-  // brow ridge shades the eyes; eyes are shallow dark insets, deliberately
-  // simple - Kevin does not want a designed face yet, just not a blank dome
-  const brow = sph(0.055, skin, 1.55, 0.32, 0.62); brow.position.set(0, 0.152, 0.080); head.add(brow);
+  head.add(loftY(T, [
+    { y: 0.008, w: 0.026, d: 0.030, z: 0.052, p: 2.0 },  // chin point, forward
+    { y: 0.022, w: 0.048, d: 0.052, z: 0.030, p: 2.1 },  // jaw underside sloping back
+    { y: 0.045, w: 0.066, d: 0.078, z: 0.012, p: 2.1 },  // jawline
+    { y: 0.085, w: 0.088, d: 0.100, p: 2.2 },            // cheekbones
+    { y: 0.130, w: 0.098, d: 0.108, z: 0.004, p: 2.2 },  // under the brow
+    { y: 0.155, w: 0.104, d: 0.116, z: 0.010, p: 2.3 },  // BROW RIDGE, pushed forward
+    { y: 0.185, w: 0.106, d: 0.114, z: 0.004, p: 2.3 },  // forehead settling back
+    { y: 0.235, w: 0.108, d: 0.118, p: 2.4 },            // cranium
+    { y: 0.300, w: 0.088, d: 0.098, p: 2.2 },            // crown curve
+    { y: 0.340, w: 0.030, d: 0.036, p: 2.0 }             // crown
+  ], 14, skin));
+  // nose: a narrow bridge wedge swept OUT of the face, not a ball on it.
+  // Root buried between the eyes, tip small; same skin, smooth shaded.
+  const nose = sweep(T, [
+    { at: [0, 0.132, 0.086], w: 0.016, d: 0.010, p: 2.2 },
+    { at: [0, 0.116, 0.104], w: 0.014, d: 0.011, p: 2.2 },
+    { at: [0, 0.102, 0.113], w: 0.017, d: 0.012, p: 2.3 }
+  ], 8, skin);
+  head.add(nose);
   const eyeM = new T.MeshStandardMaterial({ color: 0x1c1713, roughness: 0.35, metalness: 0 });
   for (const sd of [-1, 1]) {
-    const eye = sph(0.014, eyeM, 1.35, 1, 0.6, 8);
-    eye.position.set(sd * 0.040, 0.128, 0.096); head.add(eye);
+    const eye = sph(0.013, eyeM, 1.3, 1, 0.55, 8);
+    eye.position.set(sd * 0.040, 0.128, 0.093); head.add(eye);
+    // eyebrow: a thin strip of hair lying flat against the brow ridge just
+    // over each eye, tilted with the forehead slope and angled a touch - a
+    // brow line, not an oval stuck on
+    const brow = box(0.036, 0.0065, 0.008, hairM);
+    brow.position.set(sd * 0.041, 0.141, 0.112);
+    brow.rotation.set(-0.30, 0, sd * 0.10);
+    head.add(brow);
     const ear = sph(0.020, skin, 0.6, 1.15, 0.85, 8);
-    ear.position.set(sd * 0.103, 0.115, -0.012); head.add(ear);
+    ear.position.set(sd * 0.100, 0.115, -0.012); head.add(ear);
   }
   const mouth = box(0.032, 0.004, 0.006, new T.MeshStandardMaterial({ color: 0xa5745c, roughness: 0.9 }));
-  mouth.position.set(0, 0.050, 0.100); head.add(mouth);
-  // short cropped hair: a cap loft slightly proud of the skull, with a
-  // straight fringe line; sits under the helm without clipping
+  mouth.position.set(0, 0.050, 0.094); head.add(mouth);
+  // hair: one shaped upright shell, 18 segments so the hairline reads as a
+  // line instead of a staircase, everywhere proud of the skull so the scalp
+  // can never poke through (pitching the loft back to fake a nape did
+  // exactly that - the crown showed through and read as mange). The low back
+  // taper comes from a separate nape wedge hugging the back of the skull.
   const hair = loftY(T, [
-    { y: 0.150, w: 0.111, d: 0.120, p: 2.4, z: -0.012 },
-    { y: 0.240, w: 0.114, d: 0.124, p: 2.4, z: -0.008 },
-    { y: 0.310, w: 0.092, d: 0.102, p: 2.2 },
-    { y: 0.355, w: 0.030, d: 0.036, p: 2.0 }
-  ], 14, hairM);
+    { y: 0.150, w: 0.108, d: 0.117, z: -0.012, p: 2.45 },  // hairline, brows clear below
+    { y: 0.185, w: 0.114, d: 0.125, z: -0.006, p: 2.5 },
+    { y: 0.230, w: 0.116, d: 0.126, z: -0.002, p: 2.45 },  // volume over the cranium
+    { y: 0.285, w: 0.103, d: 0.112, z: 0.002, p: 2.35 },
+    { y: 0.335, w: 0.068, d: 0.078, z: 0.004, p: 2.2 },
+    { y: 0.358, w: 0.024, d: 0.030, z: 0.005, p: 2.1 }     // rounded crown, no spike
+  ], 18, hairM);
   head.add(hair);
+  const nape = loftY(T, [
+    { y: 0.055, w: 0.062, d: 0.030, z: -0.078, p: 2.4 },   // tapers in above the collar
+    { y: 0.110, w: 0.084, d: 0.040, z: -0.070, p: 2.5 },
+    { y: 0.160, w: 0.100, d: 0.052, z: -0.058, p: 2.5 }    // disappears under the main mass
+  ], 12, hairM);
+  head.add(nape);
 
   // ---- arms ---------------------------------------------------------------
-  // Pivots raised and pulled in: (0.30, 0.78) in upper = world (0.30, 1.76),
-  // the 0.80 H shoulder line. One loft per arm along -Y with the elbow bend
-  // BAKED as a z drift: upper arm hangs, forearm angles slightly forward.
-  // Deltoid is the widest point; forearm peaks below the elbow; wrist is 58%
-  // of the forearm. Short tunic sleeve covers the deltoid.
+  // One sleeve surface per arm whose top is a DOME CENTERED ON THE PIVOT, so
+  // any swing angle shows the same rounded shoulder and no seam can open.
+  // The deltoid bulge is in the same loft. The dome tucks against the
+  // widened tunic shelf; the crease where they meet is a real garment line.
+  // Below the sleeve hem (cuff roll), one skin loft to the wrist with the
+  // elbow drift and forearm peak baked in, its top capped INSIDE the sleeve.
+  // The dome stays LOW: its top sits barely above the pivot and leans in
+  // toward the trap, so the shoulder line runs neck -> trap -> deltoid in one
+  // slope instead of humping up into a puffed sleeve. The widened tunic shelf
+  // folds over the dome's inner quarter and hides the meeting line.
   const armGeo = (mirror) => {
     const arm = new T.Group();
-    const delt = sph(0.082, cloth, 1.18, 1.05, 1.10); delt.position.set(mirror * -0.034, -0.048, 0); arm.add(delt);
     const sleeve = loftY(T, [
-      { y: -0.075, w: 0.068, d: 0.068, p: 2.3 },
-      { y: -0.120, w: 0.060, d: 0.060, p: 2.3 },
-      { y: -0.225, w: 0.053, d: 0.053, p: 2.3 }
-    ], 12, cloth);
+      { y: 0.034, w: 0.030, d: 0.036, x: mirror * -0.014, p: 2.3 },  // cap top, leaning into the trap
+      { y: 0.022, w: 0.056, d: 0.060, x: mirror * -0.008, p: 2.4 },
+      { y: 0.000, w: 0.074, d: 0.078, p: 2.4 },              // dome equator at the pivot
+      { y: -0.055, w: 0.082, d: 0.084, p: 2.4 },             // deltoid bulge, part of the SAME surface
+      { y: -0.120, w: 0.067, d: 0.068, p: 2.3 },
+      { y: -0.195, w: 0.056, d: 0.056, p: 2.3 },
+      { y: -0.225, w: 0.053, d: 0.053, p: 2.3 }              // hem
+    ], 14, cloth);
     arm.add(sleeve);
-    const cuffRoll = new T.Mesh(new T.TorusGeometry(0.052, 0.011, 6, 12), cloth);
+    const cuffRoll = new T.Mesh(new T.TorusGeometry(0.052, 0.010, 6, 12), cloth);
     cuffRoll.rotation.x = Math.PI / 2; cuffRoll.position.y = -0.225; cuffRoll.castShadow = true;
     arm.add(cuffRoll);
     const limbSkin = loftY(T, [
-      { y: -0.215, w: 0.050, d: 0.050, p: 2.2 },              // out from under the sleeve
+      { y: -0.170, w: 0.049, d: 0.049, p: 2.2 },              // capped inside the sleeve
       { y: -0.240, w: 0.047, d: 0.049, p: 2.2 },              // above the elbow
       { y: -0.300, w: 0.044, d: 0.048, p: 2.2, z: 0.012 },    // elbow, drifting forward
       { y: -0.360, w: 0.049, d: 0.051, p: 2.2, z: 0.022 },    // forearm peak: widest BELOW the elbow
       { y: -0.480, w: 0.036, d: 0.037, p: 2.2, z: 0.028 },
-      { y: -0.560, w: 0.028, d: 0.030, p: 2.1, z: 0.030 }     // wrist at ~58%
+      { y: -0.585, w: 0.028, d: 0.030, p: 2.1, z: 0.030 }     // wrist, reaching INTO the palm
     ], 12, skin);
     arm.add(limbSkin);
     return arm;
@@ -217,18 +326,16 @@ export function buildFighterRig(T, pal, opt) {
   const armR = armGeo(-1); armR.position.set(-0.295, 0.755, 0); upper.add(armR);
   const armL = armGeo(1);  armL.position.set(0.295, 0.755, 0); upper.add(armL);
 
-  // Hands: a palm loft and a merged curled-finger mass plus a thumb. The
-  // right hand curls tighter - it is the weapon fist - and the weapon grips
-  // pass through its origin exactly like v3, so every weapon sits right.
+  // Hands: unchanged from v4 - palm loft, curled finger mass, thumb. The
+  // right fist is the weapon grip origin, so every weapon still sits right.
   const handAt = (arm, curl) => {
     const hand = new T.Group(); hand.position.set(0, -0.60, 0.030); arm.add(hand);
     const palm = loftY(T, [
-      { y: 0.015, w: 0.030, d: 0.036, p: 2.4 },
+      { y: 0.032, w: 0.029, d: 0.034, p: 2.3 },   // overlaps up into the wrist: no gap ring
       { y: -0.045, w: 0.036, d: 0.040, p: 2.6 },
       { y: -0.075, w: 0.033, d: 0.036, p: 2.4 }
     ], 10, skin);
     hand.add(palm);
-    // four fingers as one shaped mass, curled by `curl`
     const fing = loftY(T, [
       { y: -0.070, w: 0.032, d: 0.030, p: 2.8 },
       { y: -0.105, w: 0.030, d: 0.026, p: 2.8, z: 0.012 * curl },
@@ -245,56 +352,68 @@ export function buildFighterRig(T, pal, opt) {
   const handL = handAt(armL, 0.45);     // relaxed
 
   // ---- legs ---------------------------------------------------------------
-  // Pivots at (0.145, 1.02): the crotch line. One loft per leg: thigh in
-  // trousers tapering 30% to the knee, knee bulge, calf peak in the upper
-  // third, ankle at half the calf, 4 deg of knee bend baked as z drift.
+  // Trouser loft: hip dome centered on the pivot (born inside the pelvis, so
+  // the hip can never open), thigh taper, KNEE SHAPED IN THE LOFT, tucked
+  // below the knee. Then the boot as ONE SWEEP: cuff over the trouser, calf,
+  // around the ankle corner and forward into a real foot with a heel and a
+  // rising toe box. Sole is a separate slab - a real boot's sole is - and
+  // the sole plane sits at world 0.015 so the foot STANDS ON the ground
+  // instead of reaching under it, which is what kept eating v4's feet.
   const legGeo = () => {
     const leg = new T.Group();
     const thigh = loftY(T, [
-      { y: 0.05, w: 0.110, d: 0.115, p: 2.4 },
-      { y: -0.14, w: 0.088, d: 0.094, p: 2.3, z: 0.006 },
+      { y: 0.085, w: 0.030, d: 0.034, p: 2.3 },              // dome top, inside the pelvis
+      { y: 0.055, w: 0.078, d: 0.086, p: 2.4 },
+      { y: 0.000, w: 0.098, d: 0.108, p: 2.4 },              // dome equator at the pivot
+      { y: -0.14, w: 0.086, d: 0.093, p: 2.3, z: 0.006 },
       { y: -0.30, w: 0.072, d: 0.078, p: 2.3, z: 0.010 },
-      { y: -0.39, w: 0.062, d: 0.068, p: 2.3, z: 0.006 }    // knee, 30% off the hip
+      { y: -0.375, w: 0.064, d: 0.070, p: 2.3, z: 0.010 },   // approaching the knee
+      { y: -0.415, w: 0.060, d: 0.066, p: 2.3, z: 0.014 },   // KNEE, in the same surface
+      { y: -0.465, w: 0.056, d: 0.061, p: 2.3, z: 0.006 }    // tucked into the boot
     ], 12, pants);
     leg.add(thigh);
-    const knee = sph(0.056, pants, 1, 0.85, 1); knee.position.set(0, -0.40, 0.012); leg.add(knee);
-    // boot from just under the knee: cuff, calf shell, ankle
-    const bootTop = loftY(T, [
-      { y: -0.44, w: 0.066, d: 0.070, p: 2.3 },
-      { y: -0.56, w: 0.062, d: 0.068, p: 2.3, z: -0.004 },   // calf peak upper third
-      { y: -0.74, w: 0.043, d: 0.047, p: 2.2 },
-      { y: -0.86, w: 0.036, d: 0.040, p: 2.2 }               // ankle ~55% of calf
+    // Boot: shin to toe as one surface. w is half-width throughout; d is
+    // half-depth on the shin and becomes half-HEIGHT as the spine turns
+    // forward at the ankle. Heel comes from the spine kinking back before the
+    // turn, and every foot section's UNDERSIDE sits on the same plane
+    // (y = -0.985, world 0.035) so the whole foot stands flat on the sole -
+    // v5's first pass had the midfoot digging through it and the toe floating.
+    const boot = sweep(T, [
+      { at: [0, -0.435, 0.004], w: 0.068, d: 0.073, p: 2.3 },   // cuff, OVER the trousers
+      { at: [0, -0.56, -0.002], w: 0.063, d: 0.069, p: 2.3 },   // calf peak, upper third
+      { at: [0, -0.72, -0.006], w: 0.046, d: 0.051, p: 2.2 },
+      { at: [0, -0.845, -0.010], w: 0.040, d: 0.045, p: 2.2 },  // ankle
+      { at: [0, -0.90, -0.018], w: 0.041, d: 0.047, p: 2.3 },   // front-of-ankle bridge
+      { at: [0, -0.923, -0.030], w: 0.044, d: 0.062, p: 2.4 },  // heel, kicked back behind the shin
+      { at: [0, -0.949, 0.020], w: 0.045, d: 0.036, p: 2.5 },   // instep
+      { at: [0, -0.955, 0.085], w: 0.048, d: 0.030, p: 2.6 },   // midfoot
+      { at: [0, -0.959, 0.145], w: 0.046, d: 0.026, p: 2.6 },   // toe box
+      { at: [0, -0.969, 0.185], w: 0.036, d: 0.015, p: 2.4 }    // toe
     ], 12, leather);
-    leg.add(bootTop);
-    // a real FOOT: heel behind the ankle, arch, toe box rising at the front.
-    // Lofted along Y but shaped by per-section z offsets and depths.
-    const foot = loftY(T, [
-      { y: -0.86, w: 0.038, d: 0.052, p: 2.4, z: 0.010 },
-      { y: -0.92, w: 0.043, d: 0.085, p: 2.6, z: 0.035 },    // instep, foot reaching forward
-      { y: -0.97, w: 0.047, d: 0.118, p: 2.8, z: 0.062 },    // sole: heel to toe box
-      { y: -0.995, w: 0.042, d: 0.110, p: 2.8, z: 0.062 }
-    ], 12, leather);
-    leg.add(foot);
-    const heel = box(0.070, 0.028, 0.055, dark); heel.position.set(0, -0.985, -0.030); leg.add(heel);
+    leg.add(boot);
+    // sole: thin dark slab tucked UNDER the boot outline, bottom at world 0.015
+    const sole = box(0.086, 0.020, 0.240, dark);
+    sole.position.set(0, -0.995, 0.048); leg.add(sole);
+    const heelBlock = box(0.078, 0.024, 0.068, dark);
+    heelBlock.position.set(0, -0.993, -0.050); leg.add(heelBlock);
     return leg;
   };
   const legR = legGeo(); legR.position.set(-0.122, 1.02, 0); body.add(legR);
   const legL = legGeo(); legL.position.set(0.122, 1.02, 0); body.add(legL);
 
   // ---- gear: every armor piece, fitted OVER the body ----------------------
-  // One group's visibility is the whole armor state. Pieces that must move
-  // with a limb are parented to that limb but registered here for toggling.
   const gear = { list: [] };
   const gearAdd = (parent, mesh) => { parent.add(mesh); gear.list.push(mesh); return mesh; };
 
-  // breastplate: follows the tunic loft 0.025 proud, chest to trap
+  // breastplate: follows the tunic loft 0.02 proud, chest to trap
   const plate = gearAdd(chest, loftY(T, [
-    { y: 0.30, w: 0.190, d: 0.140, p: 2.5 },
-    { y: 0.46, w: 0.192, d: 0.142, p: 2.5 },
-    { y: 0.60, w: 0.213, d: 0.152, p: 2.6 },
-    { y: 0.70, w: 0.228, d: 0.150, p: 2.8 },
-    { y: 0.76, w: 0.178, d: 0.132, p: 2.5 },
-    { y: 0.80, w: 0.108, d: 0.106, p: 2.2 }
+    { y: 0.30, w: 0.185, d: 0.138, p: 2.5 },
+    { y: 0.46, w: 0.190, d: 0.140, p: 2.5 },
+    { y: 0.60, w: 0.210, d: 0.150, p: 2.6 },
+    { y: 0.69, w: 0.248, d: 0.150, p: 2.7 },
+    { y: 0.745, w: 0.238, d: 0.140, p: 2.7 },
+    { y: 0.795, w: 0.150, d: 0.112, p: 2.4 },
+    { y: 0.825, w: 0.104, d: 0.100, p: 2.2 }
   ], 16, steel));
   const ridge = gearAdd(chest, box(0.035, 0.42, 0.03, trim)); ridge.position.set(0, 0.52, 0.148); ridge.rotation.x = 0.10;
   const collar = gearAdd(upper, cyl(0.115, 0.15, 0.075, trim, 0.815, 12));
@@ -307,11 +426,25 @@ export function buildFighterRig(T, pal, opt) {
     tassetTrim.position.set(sd * 0.135, 1.015, 0.135); tassetTrim.rotation.x = 0.22; tassetTrim.rotation.z = sd * -0.12;
   }
 
-  // pauldrons: two overlapping plates per shoulder, on the arm so they move
+  // pauldrons: curved plate CAPS that hug the new sleeve dome, not balls.
+  // Each is a shallow loft shell seated on the dome's curvature, tilted with
+  // the trap slope; a second smaller lame overlaps below on the outside.
   for (const [arm, sd] of [[armR, -1], [armL, 1]]) {
-    const p1 = gearAdd(arm, sph(0.098, steel, 1.10, 0.74, 1.10, 12)); p1.position.set(sd * 0.012, 0.030, 0); p1.rotation.z = sd * -0.20;
-    const p2 = gearAdd(arm, sph(0.082, steel, 1.02, 0.64, 1.02, 12)); p2.position.set(sd * 0.006, -0.045, 0); p2.rotation.z = sd * -0.16;
-    const pRim = gearAdd(arm, cyl(0.086, 0.094, 0.026, trim, -0.095, 12));
+    const p1 = gearAdd(arm, loftY(T, [
+      { y: 0.096, w: 0.030, d: 0.036, p: 2.2 },
+      { y: 0.070, w: 0.072, d: 0.080, p: 2.5 },
+      { y: 0.022, w: 0.096, d: 0.098, p: 2.6 },
+      { y: -0.030, w: 0.098, d: 0.096, p: 2.6 },
+      { y: -0.062, w: 0.090, d: 0.090, p: 2.4 }
+    ], 12, steel));
+    p1.rotation.z = sd * -0.10;
+    const p2 = gearAdd(arm, loftY(T, [
+      { y: -0.040, w: 0.088, d: 0.090, p: 2.5 },
+      { y: -0.085, w: 0.082, d: 0.084, p: 2.4 },
+      { y: -0.112, w: 0.070, d: 0.072, p: 2.3 }
+    ], 12, steel));
+    p2.rotation.z = sd * -0.06;
+    const pRim = gearAdd(arm, cyl(0.072, 0.078, 0.022, trim, -0.118, 12));
     // bracer wrapping the forearm peak down to the wrist
     const bracer = gearAdd(arm, loftY(T, [
       { y: -0.330, w: 0.058, d: 0.060, p: 2.4, z: 0.020 },
@@ -321,18 +454,20 @@ export function buildFighterRig(T, pal, opt) {
     const cuff = gearAdd(arm, cyl(0.043, 0.047, 0.030, trim, -0.552, 10)); cuff.position.z = 0.030;
   }
 
-  // greaves + sabaton caps on the boots
+  // greaves + sabaton caps hugging the new boot
   for (const leg of [legR, legL]) {
     gearAdd(leg, loftY(T, [
-      { y: -0.46, w: 0.070, d: 0.072, p: 2.4 },
-      { y: -0.60, w: 0.064, d: 0.069, p: 2.4, z: 0.006 },
-      { y: -0.76, w: 0.046, d: 0.050, p: 2.3 }
+      { y: -0.45, w: 0.072, d: 0.076, p: 2.4 },
+      { y: -0.60, w: 0.066, d: 0.072, p: 2.4 },
+      { y: -0.76, w: 0.048, d: 0.053, p: 2.3 }
     ], 12, steel));
-    const kneeCop = gearAdd(leg, sph(0.060, steel, 1, 0.8, 1, 10)); kneeCop.position.set(0, -0.40, 0.020);
-    const sab = gearAdd(leg, loftY(T, [
-      { y: -0.875, w: 0.042, d: 0.056, p: 2.5, z: 0.012 },
-      { y: -0.93, w: 0.047, d: 0.090, p: 2.7, z: 0.038 },
-      { y: -0.965, w: 0.049, d: 0.105, p: 2.8, z: 0.058 }
+    const sab = gearAdd(leg, sweep(T, [
+      // first ring hugs the boot tight so the open end's cap is a sliver -
+      // a loose ring left a bright steel disc gleaming at the ankle in low sun
+      { at: [0, -0.895, -0.012], w: 0.0435, d: 0.0475, p: 2.4 },
+      { at: [0, -0.945, 0.030], w: 0.052, d: 0.034, p: 2.6 },
+      { at: [0, -0.952, 0.100], w: 0.054, d: 0.028, p: 2.6 },
+      { at: [0, -0.960, 0.150], w: 0.046, d: 0.020, p: 2.5 }
     ], 12, steel));
   }
 
@@ -352,9 +487,7 @@ export function buildFighterRig(T, pal, opt) {
     cheekG.position.set(sd * 0.098, 0.045, 0.052); cheekG.rotation.y = sd * 0.30; helm.add(cheekG);
   }
   const neckGuard = cyl(0.095, 0.125, 0.062, steel, 0.010, 10); neckGuard.position.z = -0.045; helm.add(neckGuard);
-  // plume: stiff comb then a horsehair tail that sweeps back and droops.
-  // P.crest lives here - the part must exist even with armor off, so the
-  // group stays parented to head and only its meshes ride the gear toggle.
+  // plume: stiff comb then a horsehair tail. P.crest stays parented to head.
   const crest = new T.Group(); crest.position.set(0, 0.34, -0.01); head.add(crest);
   gear.list.push(crest);
   for (let i = 0; i < 4; i++) {
@@ -391,35 +524,52 @@ export function buildFighterRig(T, pal, opt) {
 
 
 // ---- weapons ---------------------------------------------------------------
-// TRANSPLANTED VERBATIM from the v3 makeFighter and generated from the live
-// bundle by a script, not retyped: every grip rotation and rest offset here is
-// tuned against animate()'s swing arcs, and none of it changed in v4. The only
-// edits are mechanical: the v3 hand-creation lines are stripped (the rig
-// builds real hands now) and the block is wrapped as a function.
+// Grip rotations and rest offsets are tuned against animate()'s swing arcs
+// and are unchanged from v3/v4. What changed in v5 is the scimitar BLADE:
+// one continuous swept body along the same curve the old stacked boxes
+// followed (len 0.2 per station, +0.13 rad each), so every swing arc and the
+// bladeTip trail anchor land exactly where they always did.
 export function buildWeaponSet(T, rig) {
   const { armR, armL, upper, hand, handL, box, cyl, sph, g } = rig;
   const steel = rig.mats.steel, cloth = rig.mats.cloth, trim = rig.mats.trim, dark = rig.mats.dark;
 
-
-  // Curved blade built from stacked segments — a scimitar silhouette reads far
-  // better in motion than a straight bar, and it's still six boxes.
-  // Scimitar: curve, blade width and edge highlight all in the SAME plane, a
-  // swept crossguard, wrapped grip and gem pommel.
-  const bladeMat = new T.MeshStandardMaterial({ color: 0xccd4dc, roughness: 0.4, metalness: 0.7, flatShading: true });
-  const edgeMat  = new T.MeshStandardMaterial({ color: 0xf2f6fa, roughness: 0.25, metalness: 0.85 });
+  const bladeMat = new T.MeshStandardMaterial({ color: 0xccd4dc, roughness: 0.34, metalness: 0.78 });
+  const edgeMat  = new T.MeshStandardMaterial({ color: 0xf2f6fa, roughness: 0.22, metalness: 0.85 });
   const sword = new T.Group();
-  let bx = 0, by = 0.2, ba = 0;
-  for (let i = 0; i < 6; i++) {
-    const len = 0.2, w = 0.17 - i * 0.014;
-    const seg = box(w, len, 0.045, bladeMat);
-    seg.position.set(bx, by, 0); seg.rotation.z = ba; sword.add(seg);
-    const edge = box(0.028, len, 0.05, edgeMat); edge.position.x = w / 2 - 0.01; seg.add(edge);
-    bx += -Math.sin(ba) * len; by += Math.cos(ba) * len; ba += 0.13;
+  // The spine: same march as the v4 boxes. Half-width tapers 0.085 -> point;
+  // cross-section is a flattened lens (low p) so the blade has a spine and
+  // two faces instead of four box walls.
+  const spine = [];
+  {
+    let bx = 0, by = 0.10, ba = 0;
+    for (let i = 0; i <= 6; i++) {
+      spine.push([bx, by, ba]);
+      bx += -Math.sin(ba) * 0.2; by += Math.cos(ba) * 0.2; ba += 0.13;
+    }
   }
-  const tip = new T.Mesh(new T.ConeGeometry(0.075, 0.26, 4), bladeMat);
-  tip.position.set(bx - Math.sin(ba) * 0.1, by + Math.cos(ba) * 0.1, 0);
-  tip.rotation.z = ba; tip.scale.z = 0.4; tip.castShadow = true; sword.add(tip);
-  const bladeTip = new T.Object3D(); bladeTip.position.set(bx, by + 0.16, 0); sword.add(bladeTip);
+  const bladeSecs = spine.map((s, i) => {
+    const t = i / 6;
+    return { at: [s[0], s[1], 0], w: 0.085 - t * 0.030, d: 0.0165 - t * 0.004, p: 1.55 };
+  });
+  // the point: carry the curve on and converge
+  const last = spine[6];
+  bladeSecs.push({ at: [last[0] - Math.sin(last[2]) * 0.14, last[1] + Math.cos(last[2]) * 0.14, 0], w: 0.030, d: 0.009, p: 1.6 });
+  bladeSecs.push({ at: [last[0] - Math.sin(last[2]) * 0.24, last[1] + Math.cos(last[2]) * 0.24, 0], w: 0.004, d: 0.003, p: 1.8 });
+  sword.add(sweep(T, bladeSecs, 12, bladeMat));
+  // edge highlight: a thin continuous sweep along the OUTER (convex, +x)
+  // edge of the curve, replacing v4's per-segment edge boxes
+  const edgeSecs = spine.map((s, i) => {
+    const t = i / 6;
+    const w = 0.085 - t * 0.030;
+    const off = w - 0.010;
+    return { at: [s[0] + Math.cos(s[2]) * off, s[1] + Math.sin(s[2]) * off, 0], w: 0.011, d: 0.011, p: 1.8 };
+  });
+  edgeSecs.push({ at: [last[0] - Math.sin(last[2]) * 0.13 + Math.cos(last[2]) * 0.018, last[1] + Math.cos(last[2]) * 0.13 + Math.sin(last[2]) * 0.018, 0], w: 0.005, d: 0.006, p: 1.8 });
+  sword.add(sweep(T, edgeSecs, 8, edgeMat));
+  // bladeTip: same anchor formula as v4 so trails don't move
+  const bladeTip = new T.Object3D();
+  { let bx = 0, by = 0.2, ba = 0; for (let i = 0; i < 6; i++) { bx += -Math.sin(ba) * 0.2; by += Math.cos(ba) * 0.2; ba += 0.13; } bladeTip.position.set(bx, by + 0.16, 0); }
+  sword.add(bladeTip);
   const guard = box(0.4, 0.07, 0.1, trim, 0.09); sword.add(guard);
   for (const s of [-1, 1]) { const q = box(0.09, 0.09, 0.09, trim); q.position.set(s * 0.21, 0.13, 0); sword.add(q); }
   sword.add(box(0.062, 0.24, 0.062, dark, -0.07));
@@ -490,7 +640,11 @@ export function buildWeaponSet(T, rig) {
   waxe.rotation.x = Math.PI / 2 - 0.3; waxe.visible = false; hand.add(waxe);   // handle forward, blade up
 
   // Heater shield: dark backing rim, bright face, pointed base, gold boss and
-  // cross, corner studs — reads as a real kite shield instead of a plank.
+  // cross, corner studs. Geometry unchanged; the CARRY changed. At rest it
+  // now rides flat along the character's side like a slung heater: long axis
+  // front-to-back, point aft, face out. animate() owns the live orientation;
+  // the base transform here matches the game's rest pose so the lab and the
+  // game show the same carry.
   const shield = new T.Group();
   const back = box(0.05, 0.92, 0.68, dark); shield.add(back);
   const sface = box(0.055, 0.84, 0.6, steel); sface.position.x = -0.025; shield.add(sface);
@@ -503,10 +657,10 @@ export function buildWeaponSet(T, rig) {
   for (const [yy, zz] of [[0.38, 0.24], [0.38, -0.24], [-0.12, 0.24], [-0.12, -0.24]]) {
     const stud = box(0.06, 0.06, 0.06, trim); stud.position.set(-0.06, yy, zz); shield.add(stud);
   }
-  // Slung face-OUT on the arm (rotation.y = PI). Blocking then swings it
-  // forward across the front the short way, instead of sweeping the face out
-  // through the body from the inside.
-  shield.position.set(0.09, -0.50, 0.06); shield.rotation.set(0, Math.PI, 0.12); shield.scale.setScalar(0.86); armL.add(shield);
+  // Rest carry: local +Y (top rim) swings to world +Z so the point trails
+  // aft; the face (local -X after the y-flip) keeps facing out. Euler
+  // (x=-PI/2, y=PI, z=0) does exactly that: try it on the axes by hand.
+  shield.position.set(0.07, -0.55, -0.05); shield.rotation.set(-Math.PI / 2, Math.PI, 0); shield.scale.setScalar(0.86); armL.add(shield);
 
   const ward = new T.Mesh(new T.SphereGeometry(1.15, 16, 12), new T.MeshBasicMaterial({ color: 0x6fb8ff, transparent: true, opacity: 0.16, side: T.DoubleSide }));
   ward.position.y = 1.1; ward.visible = false; g.add(ward);
