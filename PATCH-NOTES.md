@@ -1,5 +1,54 @@
 # Grim World — patch notes
 
+## You can go inside the houses now, and the barrow is a castle
+
+Kevin walked round the new town and sent back six screenshots. All of this is
+from those.
+
+THE HOUSES WERE TOO SMALL AND SEALED SHUT. Measured: the player stands about two
+and a half metres tall, and the door leaf was under two, sitting on a step you
+could not climb. So you were taller than your own front door. Behind it there
+was nothing at all: the cottage was a solid block with a door painted on it.
+
+Every house is now half again as large, and the doorway is a real hole at ground
+level with three and a bit metres of clearance. Walk up to one and the door
+swings open. Walk in and the roof lifts off and whichever wall is between you
+and the camera steps aside, so you can see the room you are standing in: a stone
+floor, a lit hearth, a table and benches, a bed, a chest, a rug, a shelf with
+pots on it. Walk out and the house puts itself back together. The walls are
+solid, so the doorway is the only way in.
+
+TWO HOUSES WERE FACING EACH OTHER over a fence with no way through. Every house
+now sits on a ring facing the square, so no two fronts stare at each other, and
+the closest pair is twenty-four metres apart.
+
+THE MARKET WAS IN SOMEBODY'S GARDEN. The stalls stood four metres from a front
+door. The well, the stalls, the notice board and the horse trough are now inside
+a walled market precinct on the square, with a gate on each side and a path out
+of every one of them. The nearest house is thirty-four metres away.
+
+THE BARROW IS GONE. In its place is THE HOLLOW KEEP.
+
+The old mound had three real faults and Kevin found all of them. It did not sit
+on the ground. You could walk into it and then straight out the other side. And
+once you were inside, the hill vanished around you, because a dome like that
+only has an outside.
+
+The keep is a castle: four curtain walls with buttresses, arrow loops and
+battlements, four corner towers, and a gatehouse with an arch and a raised
+portcullis. The walls are built in courses that each sit on their own ground, so
+the battlements run level across the slope and nothing hangs in the air. The
+courtyard is open to the sky, so you can see into it on the approach and it is
+lit when you are in it. The walls are solid: the gateway is the only way
+through, and it is wide enough to walk in without hunting for the gap.
+
+The Hollow King is inside it now, standing before his throne, with braziers
+burning and fallen pillars around him. He does not come at you until you are
+through the gate and in the yard with him. The standing stones are still there,
+pushed out beyond the walls, older than the castle built among them.
+
+Nothing about fighting, skills or the quest line changed.
+
 ## Hollowrest has room to breathe, and the King has moved out
 
 Four things, all from Kevin looking at the town and saying what was wrong.
