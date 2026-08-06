@@ -23,6 +23,15 @@ Tooling, not game code. None of this is served to players.
   ONE mesh carrying vertex colours (the draw-call and `_nodeMat` contract), holds
   a per-plant vertex budget, and checks the picked state. Writes a portrait of
   every kind and its picked state to `/tmp/plants/`.
+- `bridges.js` proves the deck ends where the ground is. Runs the real
+  worldgen here in node for terrain, walks each of the six crossings in 5cm
+  steps through the game's own `bridgeDeckY` to find where the deck really
+  stops, and asserts: it answers at the exact endpoints, both ends sit on the
+  ground to within 5cm, the deck is never buried, and the ribbon AS BUILT
+  descends monotonically to each end. Then checks the torches: one shared
+  lathed flame geometry, at least eight of them round the town square, and no
+  emissive lamp balls left behind. Verified to FAIL on the bundle before patch
+  27 with 23 assertions, so it is a real regression test and not a tautology.
 - `patches/` holds the exact scripts used to edit `/tmp/game-src.html`, one per
   shipped change, so every bundle edit is reproducible and reviewable.
 
@@ -33,6 +42,7 @@ Run:
     node harness/skills.js
     node harness/ratrig.js
     node harness/plants.js
+    node harness/bridges.js
 
 ## `dressing.js` determinism failures here are usually not real
 
