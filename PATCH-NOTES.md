@@ -1,5 +1,11 @@
 # Grim World — patch notes
 
+## 2026-08-06 (v15) - Combat finally sounds like combat
+
+NEW - real sampled sounds for the six most heard combat events: light swing, heavy swing, hit, critical hit, shield block and parry. Until now every one of these was an oscillator beep; a blow landing was a sine thump and a parry was two triangle waves. Each sound was generated with ElevenLabs (three takes, best one picked on measurements and spectrogram), trimmed to the event and shipped in the bundle, about 46 KB for all six.
+CHANGED - every combat sound plays at a slightly different pitch each time, the same trick the anvil uses, so a fast fight never sounds like one sample being retriggered. The old synthesised sounds stay in as an instant fallback while the samples decode, so the first hit of a session is never silent.
+FIXED - harness/build.sh works again on a fresh pull. The shipped UI patches 38-40 were still sitting in harness/patches/ and broke the build for every track; they are now in applied/ where shipped patches belong.
+
 ## 2026-08-06 (v14) - UI pass: the world stops pausing, one panel system
 
 FIXED - opening your pack, the bank or the skills page no longer PAUSES the world. active() went false the moment a panel released the pointer lock, so the whole simulation held its breath: NPCs stopped, quests stopped, nothing moved until you closed the panel. The world now keeps running behind every window, and the keyboard is what gets held back instead.
