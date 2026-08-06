@@ -32,6 +32,13 @@ Tooling, not game code. None of this is served to players.
   lathed flame geometry, at least eight of them round the town square, and no
   emissive lamp balls left behind. Verified to FAIL on the bundle before patch
   27 with 23 assertions, so it is a real regression test and not a tautology.
+- `savecurve.js` proves a login cannot eat your skill XP. Drives the real
+  `charSave` / `applySaveBlob` pair through ten save-and-log-back-in cycles and
+  asserts nothing moved, checks the blob carries `v: 2` and its curve stamp,
+  and checks a genuine `v: 1` save still converts exactly once and keeps a
+  `skillXpV1` backup. Verified to FAIL on the bundle before patch 29, where it
+  reproduced Kevin's exact numbers (woodcutting 11, 7, 5, 4, 3), so it is a
+  real regression test and not a tautology.
 - `patches/` holds the exact scripts used to edit `/tmp/game-src.html`, one per
   shipped change, so every bundle edit is reproducible and reviewable.
 
@@ -43,6 +50,7 @@ Run:
     node harness/ratrig.js
     node harness/plants.js
     node harness/bridges.js
+    node harness/savecurve.js
 
 ## `dressing.js` determinism failures here are usually not real
 

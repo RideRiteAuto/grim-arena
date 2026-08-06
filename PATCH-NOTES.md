@@ -1,5 +1,57 @@
 # Grim World — patch notes
 
+## Your levels stop falling every time you log in
+
+Kevin logged out at 11 woodcutting and came back at 7. This is why, and it was
+not a rollback, a lost save, or a bad connection. It was the game converting
+his XP to the new skill curve every single time he logged in.
+
+The zone update changed the XP curve, so old saves needed converting once. The
+converter did its job and then stamped the save so it would never run twice.
+The problem is where the stamp went: onto a temporary object the code threw
+away on the very next line. Nothing about the stamp ever reached the save file.
+
+So every login the game read the save, found no stamp, and decided this must be
+an old save that still needed converting. It read XP that was already on the
+new curve as if it were on the old one, which always lands lower, and wrote the
+result back four seconds later as the truth. Once. Then again. Then again.
+
+The ratchet, measured: woodcutting 11 becomes 7, then 5, then 4, then 3. Every
+skill at once, melee and hitpoints included. And because a deploy forces
+everyone back to the login screen, every patch that shipped took another bite.
+
+Guests were never affected. The guest save writes its stamp somewhere that
+survives, which is why this only ever showed up on real accounts.
+
+Saves now carry a version number, and the converter only runs on a save written
+before the change. Anything written from today forward says so on its face and
+is never touched again. Genuinely old saves still convert, once, and now carry
+a backup of their original XP so the conversion can be undone if it is ever
+wrong again.
+
+Two more holes in the same path, closed while I was in there:
+
+A SAVE THE SERVER REFUSED WAS COUNTED AS A SAVE. The database answers every
+save with yes or no, and says no if the password hash does not match or the
+save is too big. Both of those come back looking like a successful request, and
+only the request was being checked, never the answer. A refused save cleared
+the unsaved flag and was never retried. The answer is read now, and a refusal
+is logged and retried.
+
+NOTHING WAS WATCHING FOR XP GOING BACKWARDS. Nothing in this game lowers a
+skill, so a save about to write less XP than the last one is always a bug. That
+is now checked on the way out and shouted into the console. This one check
+would have caught the whole thing in a single login instead of over weeks.
+
+There is a new test, harness/savecurve.js, that logs a character in and out ten
+times and asserts nothing moved. It was written against the broken build first
+and reproduced Kevin's exact numbers, 11 to 7 on the first login, so it is a
+real guard and not a formality.
+
+Kevin's lost XP is not recoverable. The backup that would have made it
+recoverable was part of what was being thrown away.
+
+
 ## The keep, cleared out and lit green
 
 Kevin rode up to the new castle and sent back what was wrong with the inside.
