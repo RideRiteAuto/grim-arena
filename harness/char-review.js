@@ -29,7 +29,8 @@ const SHOTS = [
   { view: 'three4',  light: 'day',  opts: { armor: true, pose: 'run', t: 0.53 }, name: 'run-three4' },
   // the new bow
   { view: 'front',   light: 'day',  opts: { armor: true, pose: 'bow' }, name: 'bow-idle' },
-  { view: 'profile', light: 'day',  opts: { armor: true, pose: 'bow' }, name: 'bow-idle-side' },
+  { view: 'three4',  light: 'day',  opts: { armor: true, pose: 'bow' }, name: 'bow-idle-three4' },
+  { view: 'profile', light: 'day',  opts: { armor: true, pose: 'bowrun', t: 0.18 }, name: 'bow-run' },
   { view: 'three4',  light: 'day',  opts: { armor: true, pose: 'bowdraw' }, name: 'bow-draw' },
   { view: 'front',   light: 'day',  opts: { armor: true, pose: 'bowdraw' }, name: 'bow-draw-front' },
   { view: 'hands',   light: 'day',  opts: { armor: true, pose: 'bow' }, name: 'bow-hand' },
