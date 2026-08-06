@@ -19,6 +19,8 @@ const SHOTS = [
   ['keep-gate', -84, 2.6, 246 + 30, -84, 5.0, 246 - 6],
   ['keep-inside', -84 + 1, 4.2, 246 + 15, -84, 3.0, 246 - 12],
   ['keep-high', -84 + 4, 66, 246 + 52, -84, 4, 246],
+  ['brazier', -84 - 12.5 + 5.5, 3.4, 246 - 12.5 + 5.5, -84 - 12.5, 3.6, 246 - 12.5],
+  ['keep-throne', -84 + 2, 3.0, 246 - 2, -84, 3.2, 246 - 13],
 ];
 
 // ONLY=name,name runs a subset. SwiftShader falls over after a handful of

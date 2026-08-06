@@ -189,6 +189,52 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     out.outsideRestored = ht0.roof.visible === true && ht0.sides.front.visible === true && ht0.light.visible === false;
     if (!out.outsideRestored) fails.push('walking back out does not put the house back together');
 
+    // --- the keep grounds are the keep's, not the world's
+    // Kevin's "cluttered junk" was mostly the procedural dressing growing
+    // through the castle floor, so assert it is actually gone rather than
+    // trusting that the filter is wired up.
+    let nodesInKeep = 0;
+    for (const n of (g.zoneNodes || [])) {
+      if (!n.g) continue;
+      const p2 = n.g.position;
+      if (Math.abs(p2.x - KX) < 22 && Math.abs(p2.z - KZ) < 22) nodesInKeep++;
+    }
+    out.nodesInKeep = nodesInKeep;
+    if (nodesInKeep) fails.push(nodesInKeep + ' gather nodes are still growing inside the keep');
+    out.keepGroundInside = g.keepGround(KX, KZ) === true;
+    out.keepGroundOutside = g.keepGround(KX + 60, KZ) === false;
+    if (!out.keepGroundInside || !out.keepGroundOutside) fails.push('keepGround does not mark the right ground');
+
+    // --- fell fire: a real material, animating
+    out.fellFlame = !!g._fellMat;
+    if (!g._fellMat) fails.push('the braziers are not burning fell fire');
+    else {
+      const t0 = g._fellMat.userData.uTime.value;
+      g.tickTorches(t0 * 1000 + 900);
+      out.fellFlameAnimates = g._fellMat.userData.uTime.value > t0;
+      if (!out.fellFlameAnimates) fails.push('the fell flame is not animating');
+    }
+
+    // --- props are solid. Kevin: everything in the buildings needs collision.
+    // Walk into the hearth from the middle of the room and see if it stops.
+    {
+      const ht1 = huts[0];
+      const w3 = (lx, lz) => [ht1.x + lx * ht1.c + lz * ht1.s, ht1.z - lx * ht1.s + lz * ht1.c];
+      const hearth = w3(ht1.hw - 0.95, 0);
+      const mid = w3(0, 0);
+      const p3 = walk(mid[0], mid[1], hearth[0], hearth[1]);
+      const reach = Math.hypot(p3[0] - hearth[0], p3[1] - hearth[1]);
+      out.hearthBlocksAt = +reach.toFixed(2);
+      if (reach < 0.5) fails.push('you can stand inside the hearth');
+    }
+    // and a fruit stand outside the keep gate
+    {
+      const sx4 = KX - 10.5, sz4 = KZ + KH + 9;
+      const p4 = walk(sx4, sz4 - 8, sx4, sz4);
+      out.standBlocksAt = +Math.abs(p4[1] - sz4).toFixed(2);
+      if (Math.abs(p4[1] - sz4) < 0.5) fails.push('you can walk through the fruit stands');
+    }
+
     // --- budget
     let meshes = 0, tris = 0;
     g.scene.traverse(o => { if (o.isMesh) { meshes++; const p = o.geometry && o.geometry.attributes && o.geometry.attributes.position; if (p) tris += p.count / 3; } });
