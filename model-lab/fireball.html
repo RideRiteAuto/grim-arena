@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Model lab: fireball</title>
+<style>
+  body { margin:0; background:#12140f; }
+  #lbl { position:fixed; left:12px; top:12px; font:600 13px system-ui,sans-serif; color:#F3DC00; letter-spacing:.08em; }
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.1/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="lbl">FIREBALL</div>
+<script type="module">
+// Prop lab: the fire bolt.
+//
+// Airborne, not ground-sitting, so the rig here differs from the campfire's in
+// two ways: the object floats at chest height instead of resting on the dirt,
+// and one of the named cameras ("flight") looks along the direction of travel
+// from behind, because that is the angle raking the tongues backward is FOR -
+// from a plain 3/4 orbit a backward rake and a forward one look about the same.
+import * as T from 'three';
+import { makeFireballKit } from './fireball.js';
+
+const W = 960, H = 660;
+const renderer = new T.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = T.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new T.Scene();
+const cam = new T.PerspectiveCamera(42, W / H, 0.02, 200);
+
+const LIGHTS = {
+  dusk: { sky: 0x141a17, hemi: [0x3d4a58, 0x241f16, 0.55], sun: [0xffb779, 0.55, [6, 9, 4]], ground: 0x33402b, fog: [16, 62] },
+  day:  { sky: 0x8fa9b8, hemi: [0xcdd9e8, 0x3a3628, 0.95], sun: [0xffeecc, 1.7, [6, 10, 4]], ground: 0x53603c, fog: [30, 120] },
+  night:{ sky: 0x070a0d, hemi: [0x1b2430, 0x0b0d0a, 0.30], sun: [0x9fb6d8, 0.18, [-5, 8, -3]], ground: 0x1e2418, fog: [10, 46] }
+};
+let hemi, sun, ground;
+function applyLights(name) {
+  const L = LIGHTS[name] || LIGHTS.dusk;
+  scene.background = new T.Color(L.sky);
+  scene.fog = new T.Fog(L.sky, L.fog[0], L.fog[1]);
+  hemi.color.setHex(L.hemi[0]); hemi.groundColor.setHex(L.hemi[1]); hemi.intensity = L.hemi[2];
+  sun.color.setHex(L.sun[0]); sun.intensity = L.sun[1]; sun.position.set(...L.sun[2]);
+  ground.material.color.setHex(L.ground);
+  window.__light = name;
+}
+
+hemi = new T.HemisphereLight(0xffffff, 0x000000, 1); scene.add(hemi);
+sun = new T.DirectionalLight(0xffffff, 1);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -6; sun.shadow.camera.right = 6;
+sun.shadow.camera.top = 6; sun.shadow.camera.bottom = -6;
+sun.shadow.bias = -0.0012;
+scene.add(sun);
+
+const gGeo = new T.PlaneGeometry(60, 60, 60, 60);
+gGeo.rotateX(-Math.PI / 2);
+const heightAt = (x, z) => Math.sin(x * 0.28) * 0.055 + Math.sin(z * 0.21 + 1.1) * 0.045;
+{
+  const p = gGeo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, heightAt(p.getX(i), p.getZ(i)));
+  gGeo.computeVertexNormals();
+}
+ground = new T.Mesh(gGeo, new T.MeshStandardMaterial({ color: 0x53603c, roughness: 1 }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 1.8 m human stand-in, positioned as if the bolt just passed their shoulder -
+// this is the calibration shot: is it a fistful of fire or a beach ball.
+const manM = new T.MeshStandardMaterial({ color: 0x3b4250, roughness: 0.9, flatShading: true });
+const man = new T.Group();
+{
+  const legs = new T.Mesh(new T.CylinderGeometry(0.14, 0.17, 0.9, 8), manM); legs.position.y = 0.45;
+  const torso = new T.Mesh(new T.CylinderGeometry(0.20, 0.24, 0.62, 8), manM); torso.position.y = 1.16;
+  const head = new T.Mesh(new T.SphereGeometry(0.13, 10, 8), manM); head.position.y = 1.62;
+  [legs, torso, head].forEach(m => { m.castShadow = true; man.add(m); });
+  man.position.set(0.55, 0, 0);
+  man.visible = false;
+  scene.add(man);
+}
+
+const kit = makeFireballKit(T);
+const built = kit.build({ seed: 7 });
+const bolt = built.g;
+bolt.position.set(0, 1.5, 0);
+// Flying roughly away from camera-left and slightly upward, a typical cast
+// trajectory. orientAlong rakes the tongues backward along -dir once, at
+// cast time, exactly as fireFrost() will do it in the game.
+const DIR = new T.Vector3(1, 0.12, 0.35).normalize();
+kit.orientAlong(bolt, DIR);
+scene.add(bolt);
+window.__bolt = built;
+window.__kit = kit;
+window.__scene = scene;
+
+// Named cameras. "flight" looks along the direction of travel from behind, to
+// judge the backward rake and the ember trail from the angle a player chasing
+// their own shot would actually see it from - a 3/4 orbit cannot tell a
+// backward rake from a forward one.
+const VIEWS = {
+  close:  { pos: [0.75, 1.58, 0.55], look: [0, 1.50, 0] },
+  flight: { pos: [-0.85, 1.42, -0.30], look: [0.6, 1.55, 0.20] },
+  side:   { pos: [1.30, 1.50, -0.05], look: [0, 1.50, 0] },
+  top:    { pos: [0.02, 3.0, 0.02], look: [0, 1.5, 0] },
+  scale:  { pos: [1.90, 1.75, 1.55], look: [0.4, 1.1, 0.1] }
+};
+
+let RAF = 0;
+window.__shot = (view, t, light, opts) => {
+  opts = opts || {};
+  if (RAF) { cancelAnimationFrame(RAF); RAF = 0; }
+  if (light) applyLights(light);
+  man.visible = !!opts.man;
+  kit.tick(t === undefined ? 0.6 : t);
+  const v = VIEWS[view] || VIEWS.close;
+  cam.position.set(...v.pos);
+  cam.lookAt(...v.look);
+  renderer.render(scene, cam);
+  return true;
+};
+window.__views = Object.keys(VIEWS);
+window.__stats = () => {
+  let meshes = 0, tris = 0;
+  bolt.traverse(o => {
+    if (!o.isMesh) return;
+    meshes++;
+    const p = o.geometry.attributes.position;
+    tris += (o.geometry.index ? o.geometry.index.count : p.count) / 3;
+  });
+  renderer.render(scene, cam);
+  return { meshes, tris, calls: renderer.info.render.calls, radius: built.radius };
+};
+window.__ready = true;
+
+applyLights('dusk');
+const lbl = document.getElementById('lbl');
+const t0 = performance.now();
+(function loop() {
+  const t = (performance.now() - t0) / 1000;
+  kit.tick(t);
+  const a = t * 0.4;
+  cam.position.set(Math.sin(a) * 1.6, 1.55, Math.cos(a) * 1.6);
+  cam.lookAt(0, 1.5, 0);
+  lbl.textContent = 'FIREBALL  ' + (window.__light || 'dusk').toUpperCase();
+  renderer.render(scene, cam);
+  RAF = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
