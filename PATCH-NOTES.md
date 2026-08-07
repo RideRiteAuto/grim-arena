@@ -1,5 +1,11 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.9) - FIREBALL: NO MORE FREEZE, NEW LOOK
+
+FIXED - casting spells used to freeze and stutter the whole game for a beat, worse the more torches and lit props were in view. Every frost, fire and snare bolt built its own light and threw it away when the bolt died, and changing how many lights are in the scene forces every lit shader in view to recompile. Casts now share a fixed pool of five lights that never leave the scene, so nothing recompiles no matter how fast you cast.
+ADDED - the fireball spell now looks like actual fire instead of a glowing lump: a raked cluster of flame tongues built from the same shader the campfires use, with a trail of embers riding along behind it. Frost and snare are unchanged, and the cast sound is unchanged.
+
+
 ## 2026-08-07 (v17.8) - HOTFIX: ACTION BAR PATCH BROKE THE GAME
 
 FIXED - the previous patch (R/F hotkey fix, 6->8 action bar slots) shipped with a broken invLoad(): a deleted variable declaration and a duplicated if-line left the game unable to parse at all, so nothing loaded for anyone. Restored the missing declaration, kept the new bank-array line and the 8-slot bar, dropped the duplicate line. No gameplay change beyond un-breaking the game.
@@ -57,8 +63,3 @@ FIXED - the FPS/coords debug stamp sat directly under the new chat box; moved to
 ## 2026-08-07 (v16.9) - WHISPERS AND A FRIENDS LIST
 
 NEW - a WHISPERS chat tab. Type /w NAME your message (or /whisper, /tell, /msg) to send a private line to anyone online anywhere in the world, not just nearby, and /r replies to whoever last whispered you without retyping their name. NEW - a friends list. Type /friend NAME or /unfriend NAME, or use the ADD FRIEND and UNFRIEND buttons in the hold-O player list. Friends show in their own section of that list with ONLINE or OFFLINE status and a one-click WHISPER button, and you get a toast when a friend logs in. The list holds up to 50 and carries over between sessions, guests included. This one needed no server changes, so it is live the moment this patch ships, unlike the party system which is still waiting on a relay deploy.
-
-
-## 2026-08-07 (v16.8) - PARTY SYSTEM
-
-NEW - a party system. Invite from the hold-O player list (or type /invite NAME), the other player gets an accept/decline popup. Once formed, a PARTY tab appears in chat (party-only, no distance limit) and small HP frames show top-left for you and every party member, with a star on the leader and a sword if someone has PVP on. LEAVE is on your own frame, KICK (leader only) is on everyone else's. If the leader disconnects or leaves, the next-longest-standing member takes over automatically, and a party that drops to one person dissolves rather than sitting there empty. Cap is 5. Party membership lives on the relay server itself, the same way monster health does, so two players can never end up disagreeing about who is actually in the party.
