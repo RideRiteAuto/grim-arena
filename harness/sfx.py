@@ -328,6 +328,251 @@ MANIFEST = [
         'seconds': 1.0,
         'takes': [0.25, 0.45, 0.65],
     },
+
+    # LEGACY SOUND SWEEP, August 7 (patch 77.612). The remaining names still
+    # falling through to sfxVoice_'s raw tone()/hiss() synth switch, found by
+    # reading the live game source rather than trusting the docs (routing has
+    # moved around enough times that a couple of these are only reachable via
+    # a variable, e.g. the MSFX dispatch table, and don't show up in a plain
+    # string search). Full audit and reuse map in
+    # claude/LEGACY-SOUND-AUDIT.md. Explicitly OUT of this batch: the old
+    # arena/duel round system (tick-as-countdown, horn-as-FIGHT-call,
+    # win/lose-as-round-outcome) -- confirmed by reading stepRound() itself
+    # ("the open world has no rounds") to be gated off entirely whenever
+    # mode === 'ai', i.e. dead the moment the real MMO loads. Kevin's call,
+    # confirmed in the code.
+
+    # CREATURE-NOTICE-GENERIC. Every one of the 10 creatures currently shares
+    # 'tick', the duel countdown blip, for its aggro cue. This is a stopgap
+    # until the full per-creature roster (SFX-PROJECT-PLAN.md 3.3) lands --
+    # a single generic "something just noticed you" cue, not a specific
+    # animal, so it can't clash once real per-creature voices exist.
+    {
+        'id': 'creature-notice',
+        'text': 'A wild creature suddenly noticing a threat nearby. A quick '
+                'sharp alert grunt with a fast intake of breath, tense and '
+                'immediate. No human voice, no words, no reverb, no music.',
+        'seconds': 1.0,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # GOBLIN SHRIEK. The rally-the-kin signature move currently plays 'bray',
+    # a sawtooth honk with no creature character at all. HERO tier: this is
+    # one of the most distinct, most repeated monster sounds in the game.
+    {
+        'id': 'goblin-shriek',
+        'text': 'A small goblin creature shrieking a piercing rallying cry '
+                'to summon its kin. A harsh ragged screeching call, high and '
+                'carrying, monstrous and unpleasant. Not a human scream, no '
+                'words, no reverb, no music.',
+        'seconds': 2.0,
+        'takes': [0.2, 0.3, 0.4, 0.55, 0.7, 0.85],
+    },
+
+    # NPC-TAUNT-WARCRY. Mr. Sailers' taunt special also plays 'bray' today.
+    # A human NPC, not a monster, so this one gets a voice-adjacent but
+    # wordless roar rather than the goblin's screech.
+    {
+        'id': 'npc-taunt-warcry',
+        'text': 'A grizzled human warrior shouting a short defiant battle '
+                'roar with no words, raw and gravelly, aggressive and '
+                'forceful. No singing, no reverb, no music.',
+        'seconds': 1.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # BOW-DRAW / BOW-RELEASE. Every arrow fired, player or NPC, still plays
+    # two raw synth tones ('draw' and 'arrow'). These are two of the most
+    # frequently heard sounds left in the game. HERO tier both.
+    {
+        'id': 'bow-draw',
+        'text': 'Drawing a heavy wooden longbow. Creaking wood under strain '
+                'and the taut stretching of a bowstring, slow and increasing '
+                'in tension. No release, no twang at the end, no reverb, no '
+                'music.',
+        'seconds': 1.8,
+        'takes': [0.2, 0.3, 0.4, 0.55, 0.7, 0.85],
+    },
+    {
+        'id': 'bow-release',
+        'text': 'Loosing an arrow from a heavy wooden longbow. One sharp '
+                'deep bowstring thwack with a woody snap and a fast '
+                'departing whoosh. Powerful and immediate, no impact at the '
+                'end, no reverb, no music.',
+        'seconds': 1.2,
+        'takes': [0.2, 0.3, 0.4, 0.55, 0.7, 0.85],
+    },
+
+    # CREATURE-WINDUP-CHARGE. Every boss/NPC special-move windup that isn't
+    # the goblin shriek falls through to the bow-draw synth today (a boss
+    # charging up currently creaks like a longbow). One generic "a big
+    # creature is about to do something" cue.
+    {
+        'id': 'creature-windup-charge',
+        'text': 'A large creature gathering itself before a powerful move. '
+                'A deep straining grunt with tensing muscle and a scrape of '
+                'claws or hooves digging in for traction. No human voice, no '
+                'reverb, no music.',
+        'seconds': 1.2,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # PLAYER-DODGE / PLAYER-JUMP. Both currently play the identical 'dodge'
+    # synth tone -- an evasive roll and a jump sound the same today.
+    {
+        'id': 'player-dodge',
+        'text': 'A person doing a quick evasive roll on the ground. A fast '
+                'fabric and leather rustle with a light scuff of boots '
+                'pushing off. Athletic and brief. No voice, no reverb, no '
+                'music.',
+        'seconds': 0.6,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'player-jump',
+        'text': 'A person pushing off the ground into a jump. A quick '
+                'effortful push with a soft creak of leather gear and a '
+                'brief whoosh of movement. No voice, no grunt, no reverb, no '
+                'music.',
+        'seconds': 0.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # SPELL-FROST-FREEZE. Freezing a target solid is still a raw triangle-
+    # wave sweep. HERO: it's the payoff moment of a full crowd-control spell.
+    {
+        'id': 'spell-frost-freeze',
+        'text': 'A body freezing solid in an instant from magical cold. A '
+                'deep groaning crystalline creak spreading outward, then a '
+                'settling glassy shimmer as ice locks into place. Cold, '
+                'thick, final. No voice, no reverb tail, no music.',
+        'seconds': 2.5,
+        'takes': [0.2, 0.3, 0.4, 0.55, 0.7, 0.85],
+    },
+
+    # CREATURE-CLAW-SWIPE. Claw and bite player weapon-type windups route to
+    # 'slash' through the MSFX dispatch table -- easy to miss with a plain
+    # string search since nothing calls sfx('slash') literally, but it is
+    # live on every claw/bite swing.
+    {
+        'id': 'creature-claw-swipe',
+        'text': 'A clawed hand swiping fast through open air, striking '
+                'nothing. A quick sharp fleshy whoosh with a faint scrape of '
+                'claws parting air. No impact, no metal, no voice, no '
+                'reverb, no music.',
+        'seconds': 0.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # SPELL-SNARE-CAST. The snare spell windup routes to the generic 'cast'
+    # synth through the same MSFX table, also invisible to a literal search.
+    {
+        'id': 'spell-snare-cast',
+        'text': 'Casting a binding root spell. A low earthy rumble with '
+                'creaking twisting wood and rustling growth rushing '
+                'outward. Organic and grasping, no impact at the end, no '
+                'reverb, no music.',
+        'seconds': 1.4,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # BOSS-LEAP-TELEGRAPH. A boss leap attack currently plays 'crit' -- the
+    # player's own sword-critical-hit ring -- because of a state ternary that
+    # was never given its own name. HERO: heard on every boss leap.
+    {
+        'id': 'boss-leap-telegraph',
+        'text': 'A massive creature launching itself into a leap. A heavy '
+                'grunt of exertion with a deep gust of displaced air and a '
+                'brief rumble of coiling legs. Huge and weighty, no impact '
+                'at the end, no human voice, no reverb, no music.',
+        'seconds': 1.0,
+        'takes': [0.2, 0.3, 0.4, 0.55, 0.7, 0.85],
+    },
+
+    # LEVEL-UP / QUEST-COMPLETE / SPELL-LEARNED / BOSS-PHASE-SHIFT. All four
+    # of these currently fire the identical 'win' synth arpeggio: a skill
+    # level-up, a duel win (left alone, see note above), a quest milestone
+    # banner, the "TOME OF STORMS" spell-learned banner, and a boss crossing
+    # into m.phase >= 1. LEVEL-UP and BOSS-PHASE-SHIFT are HERO tier --
+    # they're the two most emotionally loaded of the four.
+    {
+        'id': 'level-up',
+        'text': 'A triumphant magical level up flourish. A warm rising '
+                'shimmer of bells and glowing tones resolving upward to a '
+                'bright satisfying peak. Rewarding and uplifting. No '
+                'voices, no choir, no orchestral fanfare, no reverb hall.',
+        'seconds': 3.0,
+        'takes': [0.2, 0.3, 0.4, 0.55, 0.7, 0.85],
+    },
+    {
+        'id': 'quest-complete',
+        'text': 'A quest objective completing. A warm confident two note '
+                'chime with a soft magical shimmer settling after it. '
+                'Satisfying and understated. No voices, no reverb hall, no '
+                'music.',
+        'seconds': 2.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'spell-learned',
+        'text': 'Ancient magical knowledge being absorbed into a person\'s '
+                'mind. A rising arcane shimmer of glassy tones with a soft '
+                'magical whoosh, blooming outward and settling into a low '
+                'resonant hum. Mystical and weighty. No voices, no reverb '
+                'hall, no music.',
+        'seconds': 2.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'boss-phase-shift',
+        'text': 'A powerful creature surging with a fresh burst of dark '
+                'elemental power mid-battle. A deep rising swell of '
+                'gathering energy with a heavy percussive boom at the peak '
+                'and a resonant trailing hum. Ominous and huge. No human '
+                'voice, no reverb hall, no music.',
+        'seconds': 3.0,
+        'takes': [0.2, 0.3, 0.4, 0.55, 0.7, 0.85],
+    },
+
+    # HEAVY-IMPACT-CRASH. The 'slam' special move (Wild Boar charge, Argent
+    # Warden slam) currently plays 'break', a sawtooth-and-hiss thud with no
+    # weight to it at all despite being one of the harder-hitting moves in
+    # the game.
+    {
+        'id': 'heavy-impact-crash',
+        'text': 'A massive weapon or body slamming into stone ground. A '
+                'deep bassy crash with cracking stone fragments and a heavy '
+                'dust-settling tail. Huge and percussive, no metal ring, no '
+                'voice, no reverb hall, no music.',
+        'seconds': 1.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # UI-SWITCH-CLICK. Loadout/paperdoll tab switching, four call sites,
+    # cosmetic and cheap -- included since it costs almost nothing next to
+    # everything above.
+    {
+        'id': 'ui-switch-click',
+        'text': 'A short clean digital UI click, a single crisp neutral '
+                'tone confirming a selection. Minimal and unobtrusive, no '
+                'reverb, no music.',
+        'seconds': 0.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+
+    # UPDATE-READY-CHIME. The "a new build is ready" banner also plays 'horn'
+    # today -- the same brassy synth triad as the (legacy, unused) duel
+    # ready-up call. This one IS current: it fires whenever a live deploy is
+    # detected while someone is playing. Deliberately calm and meta, not
+    # diegetic, so it never reads as "a fight is starting."
+    {
+        'id': 'update-ready-chime',
+        'text': 'A calm two tone UI notification chime, soft and '
+                'unobtrusive, letting someone know something is ready. '
+                'Clean digital tones, no shimmer, no reverb, no music.',
+        'seconds': 0.8,
+        'takes': [0.3, 0.5, 0.7],
+    },
 ]
 
 

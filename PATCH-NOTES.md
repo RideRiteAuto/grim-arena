@@ -1,5 +1,12 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.9) - LEGACY SOUND SWEEP: 16 NEW SOUNDS, 3 MISUSE BUGS FIXED
+
+ADDED - 16 new sound effects for spots that were either dead silent or borrowing a sound that didn't fit: creature notice/aggro, goblin shrieks, NPC warcries, the real bow draw and release, monster charge-up windups, player dodge and jump, a claw swipe, the snare spell cast, a boss leap telegraph, level up, a new spell learned, a boss phase shift, a heavy slam impact, and the UI switch click. Level up, quest complete, and the deploy-ready banner now also share a proper chime instead of the placeholder beep.
+FIXED - three sound-reuse bugs found while auditing every sfx() call site: a boss's leap attack was playing the sword-crit clang instead of a telegraph, a second boss's leap windup was playing the dodge-roll swoosh, and the donkey-mount-acquired banner was reusing the win jingle without any indication it was actually a mount, not a fight.
+REMOVED - nothing code-wise. The old 1v1 duel arena's win/lose/horn sounds were never built and are not being built now - that whole round-based system is provably dead in the open world (stepRound() bails out immediately whenever mode is 'ai'), but the underlying host/join code is shared with the still-live co-op-hosting feature and was left untouched.
+
+
 ## 2026-08-07 (v17.9) - FIREBALL: NO MORE FREEZE, NEW LOOK
 
 FIXED - casting spells used to freeze and stutter the whole game for a beat, worse the more torches and lit props were in view. Every frost, fire and snare bolt built its own light and threw it away when the bolt died, and changing how many lights are in the scene forces every lit shader in view to recompile. Casts now share a fixed pool of five lights that never leave the scene, so nothing recompiles no matter how fast you cast.
@@ -58,8 +65,3 @@ FIXED - hitting ESC used to dump you straight back onto the title screen, the sa
 ## 2026-08-07 (v17.0) - HUD LAYOUT CLEANUP
 
 FIXED - the FPS/coords debug stamp sat directly under the new chat box; moved to the bottom-right, clear of both chat and the PRESS H / boat-interact hints. FIXED - party frames were pinned over your own health bar and the quest helper box; they now sit directly under your health bar where they belong, the quest helper is pushed further down to stay clear even with a full 5-person party, and the quest box grew a matching gap. NEW - party frames show mana now, not just HP, for every member whose client has synced it.
-
-
-## 2026-08-07 (v16.9) - WHISPERS AND A FRIENDS LIST
-
-NEW - a WHISPERS chat tab. Type /w NAME your message (or /whisper, /tell, /msg) to send a private line to anyone online anywhere in the world, not just nearby, and /r replies to whoever last whispered you without retyping their name. NEW - a friends list. Type /friend NAME or /unfriend NAME, or use the ADD FRIEND and UNFRIEND buttons in the hold-O player list. Friends show in their own section of that list with ONLINE or OFFLINE status and a one-click WHISPER button, and you get a toast when a friend logs in. The list holds up to 50 and carries over between sessions, guests included. This one needed no server changes, so it is live the moment this patch ships, unlike the party system which is still waiting on a relay deploy.
