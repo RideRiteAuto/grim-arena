@@ -142,26 +142,48 @@ const GRIM_EDIT_UI = (() => {
   }
 
   // ---- tools ---------------------------------------------------------------
-  const CELL = CFG.CELL || 4;
+  const CELL = CFG.CELL || 4;              // terrain sculpt grid, metres
+  const PCELL = CFG.PCELL || 1;            // ground paint grid, metres
+  const BLEND_DEFAULT = CFG.BLEND_DEFAULT || 2;
+  const BLEND_MAX = CFG.BLEND_MAX || 4;
   function cellOf(v) { return Math.floor(v / CELL); }
   function chunkOfCell(cx, cz) {
     return Math.floor(cx * CELL / 64) + ',' + Math.floor(cz * CELL / 64);
+  }
+  function pcellOf(v) { return Math.floor(v / PCELL); }
+  function pChunkOfCell(cx, cz) {
+    return Math.floor(cx * PCELL / 64) + ',' + Math.floor(cz * PCELL / 64);
   }
 
   // Ground paint. Writes into the layer's per-chunk cell lists so the stored
   // shape is exactly what the runtime indexes, with no conversion step that
   // could drift.
+  //
+  // The touched set is a real circle in world metres, not a cell-radius: the
+  // brush slider used to round to whole cells with a floor of one, so every
+  // brush from about 2m to 6m painted the exact same 3x3-cell diamond and
+  // "small" never got any smaller. Testing every candidate cell's centre
+  // against the brush radius directly means the painted area actually
+  // shrinks and grows with the slider, down to a single cell.
   function paintAt(pt, erase) {
     const L = GRIM_EDIT.raw;
     if (!L) return;
-    const r = Math.max(1, Math.round(S.brush / CELL));
-    const c0 = cellOf(pt.x), z0 = cellOf(pt.z);
+    const rad = Math.max(0, S.brush);
+    const rc = Math.max(1, Math.ceil(rad / PCELL) + 1);
+    const c0 = pcellOf(pt.x), z0 = pcellOf(pt.z);
     let touched = 0;
-    for (let dz = -r; dz <= r; dz++) {
-      for (let dx = -r; dx <= r; dx++) {
-        if (dx * dx + dz * dz > r * r) continue;
+    for (let dz = -rc; dz <= rc; dz++) {
+      for (let dx = -rc; dx <= rc; dx++) {
         const cx = c0 + dx, cz = z0 + dz;
-        const key = chunkOfCell(cx, cz);
+        // The cell under the cursor always counts, so even the smallest
+        // brush setting still paints something; every other cell has to
+        // pass the real-distance test.
+        if (dx || dz) {
+          const wx = (cx + 0.5) * PCELL, wz = (cz + 0.5) * PCELL;
+          const ddx = wx - pt.x, ddz = wz - pt.z;
+          if (ddx * ddx + ddz * ddz > rad * rad) continue;
+        }
+        const key = pChunkOfCell(cx, cz);
         let list = L.paint[key];
         if (!list) { if (erase) continue; list = L.paint[key] = []; }
         let at = -1;
@@ -174,6 +196,21 @@ const GRIM_EDIT_UI = (() => {
     }
     if (touched) { GRIM_EDIT.reindex(); S.dirty = true; }
     return touched;
+  }
+
+  // The one blend-width knob, shared by paint-to-paint borders and by roads
+  // fading into the ground around them (GRIM_EDIT reads L.blend from both
+  // places). Debounced: it is a slider on a whole-world setting, and firing
+  // a full chunk rebuild on every drag tick would make dragging it feel like
+  // wading through mud.
+  let blendDebounce = null;
+  function setBlend(v) {
+    const L = GRIM_EDIT.raw;
+    if (!L) return;
+    L.blend = Math.max(0.5, Math.min(BLEND_MAX, v));
+    S.dirty = true;
+    clearTimeout(blendDebounce);
+    blendDebounce = setTimeout(() => { GRIM_EDIT.reindex(); rebuildWorld(); }, 150);
   }
 
   // Terrain sculpt. Deltas on the same 4m grid as paint, bilinear at runtime
@@ -679,9 +716,10 @@ const GRIM_EDIT_UI = (() => {
       b.appendChild(grid);
       if (S.tool === 'paint') {
         row(b, 'Brush');
-        slider(b, 'radius, metres', 2, 16, 1, S.brush, v => S.brush = v);
+        slider(b, 'radius, metres', 0.5, 24, 0.5, S.brush, v => S.brush = v);
         const er = el('div', 'color:#8f8f8f;font-size:10px;margin-top:6px',
-          'Alt click erases back to the generated ground. Alt right click picks the surface under the cursor.');
+          'Alt click erases back to the generated ground. Alt right click picks the surface under the cursor. ' +
+          'Ground paint is authored on a 1m grid, so this brush can now paint a single small patch.');
         b.appendChild(er);
       } else {
         row(b, 'Road');
@@ -697,6 +735,13 @@ const GRIM_EDIT_UI = (() => {
         };
         b.appendChild(undoR);
       }
+      row(b, 'Ground blend');
+      const bl = GRIM_EDIT.raw;
+      slider(b, 'edge softness, metres', 0.5, BLEND_MAX, 0.25,
+        (bl && bl.blend) || BLEND_DEFAULT, v => setBlend(v));
+      b.appendChild(el('div', 'color:#8f8f8f;font-size:10px;margin-top:6px',
+        'How far two ground textures fade into each other where they meet, and how far a road fades ' +
+        'into the ground around it. One setting for the whole world. Small is crisp, large is soft.'));
     } else if (S.tool === 'place') {
       row(b, 'Catalog');
       const tabs = el('div', 'margin-bottom:4px');
@@ -1052,7 +1097,7 @@ const GRIM_EDIT_UI = (() => {
     window.addEventListener('wheel', e => {
       if (!S.on || inUi(e.target)) return;
       e.preventDefault();
-      if (e.ctrlKey) { S.brush = Math.max(1, Math.min(60, S.brush + (e.deltaY > 0 ? -1 : 1))); paintPanel(); }
+      if (e.ctrlKey) { S.brush = Math.max(0.5, Math.min(60, S.brush + (e.deltaY > 0 ? -0.5 : 0.5))); paintPanel(); }
       else { S.rot = (S.rot + (e.deltaY > 0 ? -0.2618 : 0.2618)) % (Math.PI * 2); }
       e.stopImmediatePropagation();
     }, { passive: false, capture: true });
@@ -1124,7 +1169,10 @@ const GRIM_EDIT_UI = (() => {
   // that nothing had been recorded for undo.
   function applyTool(pt, first, alt) {
     if (S.tool === 'paint') {
-      const cellId = cellOf(pt.x) * 100000 + cellOf(pt.z);
+      // Throttled to the paint grid, not the sculpt grid: at CELL this only
+      // re-painted once every 4m of drag, which made a fine brush feel stuck
+      // even after the brush itself could go small.
+      const cellId = pcellOf(pt.x) * 1000000 + pcellOf(pt.z);
       if (!first && cellId === S.lastPaintCell) return;
       S.lastPaintCell = cellId;
       if (first) pushUndo();

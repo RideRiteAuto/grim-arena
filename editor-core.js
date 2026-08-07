@@ -41,14 +41,21 @@
 // ===========================================================================
 const GRIM_EDIT = (() => {
   const CFG = (typeof GRIM_RULES !== 'undefined' && GRIM_RULES.EDIT) || {
-    LAYER: true, UI: true, CELL: 4, SNAP: 0.5, FEATHER: 1, MAXH: 12, FLATMIN: 0.06, URL: ''
+    LAYER: true, UI: true, CELL: 4, PCELL: 1, BLEND_DEFAULT: 2, BLEND_MAX: 4,
+    SNAP: 0.5, FEATHER: 1, MAXH: 12, FLATMIN: 0.06, URL: ''
   };
-  const CELL = CFG.CELL || 4;
+  const CELL = CFG.CELL || 4;              // terrain sculpt grid, metres
+  const PCELL = CFG.PCELL || 1;            // ground paint grid, metres
+  const BLEND_DEFAULT = CFG.BLEND_DEFAULT || 2;
+  const BLEND_MAX = CFG.BLEND_MAX || 4;
   const HALF = 2048;                       // cell-key bias; world is 1200 cells either way
+  const PHALF = 8192;                      // paint cell-key bias; PCELL is finer than
+  const PMUL = 16384;                      // CELL so the ~4800m world needs a wider key
 
   function emptyLayer() {
     return {
-      v: 1, gen: 0, paint: {}, roads: [], objects: [], removed: [],
+      v: 1, gen: 0, pcell: PCELL, blend: BLEND_DEFAULT,
+      paint: {}, roads: [], objects: [], removed: [],
       height: {}, spawns: [], prefabs: {}, districts: [], bookmarks: []
     };
   }
@@ -76,6 +83,8 @@ const GRIM_EDIT = (() => {
   const RCELL = 64;
 
   function cellKey(cx, cz) { return (cx + HALF) * 4096 + (cz + HALF); }
+  function pCellKey(cx, cz) { return (cx + PHALF) * PMUL + (cz + PHALF); }
+  function pChunkKey(cx, cz) { return Math.floor(cx * PCELL / 64) + ',' + Math.floor(cz * PCELL / 64); }
   function chunkKey(cx, cz) { return cx + ',' + cz; }
   function num(v, d) { const n = +v; return isFinite(n) ? n : d; }
 
@@ -90,20 +99,50 @@ const GRIM_EDIT = (() => {
     out.v = num(raw.v, 1);
     out.gen = num(raw.gen, 0);
 
+    // Ground paint. A cell coordinate only means something together with the
+    // grid size it was authored at, which is why every layer stamps its own
+    // pcell. A layer saved before per-layer grids existed has no pcell field
+    // at all; CELL was the only grid there was back then, so that is the
+    // size to assume for it.
+    const oldPcell = num(raw.pcell, CELL);
     if (raw.paint && typeof raw.paint === 'object') {
+      const flat = [];
       for (const k in raw.paint) {
         const list = raw.paint[k];
         if (!Array.isArray(list)) continue;
-        const keep = [];
         for (const e of list) {
           if (!Array.isArray(e) || e.length < 3) continue;
           const cx = e[0] | 0, cz = e[1] | 0, s = e[2] | 0;
           if (s < 0 || s > 15) continue;              // 16 surfaces, fixed
-          keep.push([cx, cz, s]);
+          flat.push([cx, cz, s]);
         }
-        if (keep.length) out.paint[k] = keep;
+      }
+      if (flat.length) {
+        const put = (cx, cz, s) => {
+          const key = pChunkKey(cx, cz);
+          let list = out.paint[key]; if (!list) list = out.paint[key] = [];
+          list.push([cx, cz, s]);
+        };
+        if (oldPcell === PCELL) {
+          for (const e of flat) put(e[0], e[1], e[2]);
+        } else {
+          // The grid has resized since this layer was authored (or last
+          // migrated): expand each old cell into every new-grid cell that
+          // covers the exact same ground, so a repaint at the old cell size
+          // still looks identical and is simply editable at the new,
+          // finer size from here on. Nothing painted is lost or moved.
+          const n = Math.max(1, Math.round(oldPcell / PCELL));
+          for (const e of flat) {
+            const ncx0 = e[0] * n, ncz0 = e[1] * n;
+            for (let dz = 0; dz < n; dz++) for (let dx = 0; dx < n; dx++) {
+              put(ncx0 + dx, ncz0 + dz, e[2]);
+            }
+          }
+        }
       }
     }
+    out.pcell = PCELL;
+    out.blend = Math.max(0.5, Math.min(BLEND_MAX, num(raw.blend, BLEND_DEFAULT)));
     if (raw.height && typeof raw.height === 'object') {
       const MAXH = CFG.MAXH || 12;
       for (const k in raw.height) {
@@ -234,10 +273,11 @@ const GRIM_EDIT = (() => {
       if (z - pad < z0) z0 = z - pad; if (z + pad > z1) z1 = z + pad;
     };
 
+    const blendM = (L.blend || BLEND_DEFAULT);
     for (const k in L.paint) {
       for (const e of L.paint[k]) {
-        paintIdx.set(cellKey(e[0], e[1]), e[2]);
-        grow(e[0] * CELL + CELL / 2, e[1] * CELL + CELL / 2, CELL * 2);
+        paintIdx.set(pCellKey(e[0], e[1]), e[2]);
+        grow(e[0] * PCELL + PCELL / 2, e[1] * PCELL + PCELL / 2, PCELL * 2 + blendM);
       }
     }
     for (const k in L.height) {
@@ -294,7 +334,7 @@ const GRIM_EDIT = (() => {
       for (let i = 0; i < pts.length - 1; i++) {
         const seg = [pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], r.w / 2, r.s];
         const si = roadSegs.push(seg) - 1;
-        const pad = r.w / 2 + CELL;
+        const pad = r.w / 2 + blendM + 2;
         grow(seg[0], seg[1], pad); grow(seg[2], seg[3], pad);
         const gx0 = Math.floor((Math.min(seg[0], seg[2]) - pad) / RCELL);
         const gx1 = Math.floor((Math.max(seg[0], seg[2]) + pad) / RCELL);
@@ -443,50 +483,67 @@ const GRIM_EDIT = (() => {
     }
     if (bestS < 0) return null;
     const d = Math.sqrt(bestD);
-    // Solid to the edge, then a one-cell feather so the ribbon does not end
-    // on a hard line the way a stencil would.
-    const soft = CELL * (CFG.FEATHER || 1);
+    // Solid to the edge, then a soft edge so the ribbon does not end on a
+    // hard line the way a stencil would. Shares the paint layer's own blend
+    // width, so a road and the ground it crosses fade at the same rate.
+    const soft = Math.max(0.5, (L && L.blend) || BLEND_DEFAULT);
     if (d > bestW + soft) return null;
     const t = d <= bestW ? 1 : 1 - (d - bestW) / soft;
     return [bestS, t * t * (3 - 2 * t)];
   }
 
-  // Painted surface coverage, feathered. Returns [surface, coverage] or null.
-  // Coverage comes from how many of the four surrounding cells carry the SAME
-  // surface, bilinearly weighted, which gives soft edges for free and costs
-  // four Map lookups.
+  // Painted surface coverage, blended. Returns [surface, coverage] or null.
+  //
+  // The nearest painted cell to a deterministically jittered sample point
+  // wins as THE surface, so an interior is always exactly what was painted
+  // rather than an average of neighbours. Coverage then falls off smoothly
+  // with distance out to L.blend metres, weighing every painted cell within
+  // that radius rather than just the four immediate corners, so the border
+  // is a soft gradient at whatever width was dialled in rather than being
+  // stuck at exactly one paint cell wide.
+  //
+  // Jittering the sample point breaks up the cell grid itself: sampled
+  // straight, a boundary follows the grid and reads as stair-steps, and
+  // neighbouring vertices jittered together disagree in a noisy way that
+  // interlocks instead, the same trick the zone borders use. Pure function
+  // of position and the layer, so two machines paint the same border and
+  // the dressing determinism test cannot see it.
   function paintAt(x, z) {
     if (!paintIdx || !paintIdx.size) return null;
-    // Organic borders. Sampled straight, a boundary between two painted
-    // surfaces follows the 4m cell grid and reads as jagged stair-steps.
-    // Jittering the sample point with a deterministic hash makes
-    // neighbouring vertices disagree in a noisy way, so the change
-    // interlocks instead - the exact trick the zone borders already use.
-    // Deterministic (pure function of position), so two machines paint the
-    // same border and the dressing determinism test cannot see it.
-    const jx = Math.sin(x * 0.83 + z * 1.31) * 2.4;
-    const jz = Math.cos(x * 1.17 - z * 0.71) * 2.4;
-    x += jx; z += jz;
-    const fx = x / CELL - 0.5, fz = z / CELL - 0.5;
-    const ix = Math.floor(fx), iz = Math.floor(fz);
-    const tx = fx - ix, tz = fz - iz;
-    const k00 = paintIdx.get(cellKey(ix, iz));
-    const k10 = paintIdx.get(cellKey(ix + 1, iz));
-    const k01 = paintIdx.get(cellKey(ix, iz + 1));
-    const k11 = paintIdx.get(cellKey(ix + 1, iz + 1));
-    if (k00 === undefined && k10 === undefined && k01 === undefined && k11 === undefined) return null;
-    // Dominant surface: the nearest painted cell wins, so an interior is
-    // always exactly what was painted rather than an average of neighbours.
-    const near = (tx < 0.5 ? (tz < 0.5 ? k00 : k01) : (tz < 0.5 ? k10 : k11));
-    const surf = near !== undefined ? near
-      : (k00 !== undefined ? k00 : k10 !== undefined ? k10 : k01 !== undefined ? k01 : k11);
-    const w = (v) => (v === surf ? 1 : 0);
-    const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
-    const top = w(k00) + (w(k10) - w(k00)) * sx;
-    const bot = w(k01) + (w(k11) - w(k01)) * sx;
-    const cov = top + (bot - top) * sz;
-    if (cov <= 0.002) return null;
-    return [surf, cov];
+    const jAmp = PCELL * 0.6;
+    const jx = Math.sin(x * 0.83 + z * 1.31) * jAmp;
+    const jz = Math.cos(x * 1.17 - z * 0.71) * jAmp;
+    const sx = x + jx, sz = z + jz;
+    const blend = Math.max(PCELL * 0.5, (L && L.blend) || BLEND_DEFAULT);
+    const rc = Math.max(1, Math.ceil(blend / PCELL) + 1);
+    const c0 = Math.floor(sx / PCELL), z0 = Math.floor(sz / PCELL);
+    let nearSurf, nearD = Infinity;
+    const hits = [];                       // flattened [d, surf, d, surf, ...]
+    for (let dz = -rc; dz <= rc; dz++) {
+      for (let dx = -rc; dx <= rc; dx++) {
+        const cx = c0 + dx, cz = z0 + dz;
+        const s = paintIdx.get(pCellKey(cx, cz));
+        if (s === undefined) continue;
+        const wx = (cx + 0.5) * PCELL, wz = (cz + 0.5) * PCELL;
+        const ddx = wx - sx, ddz = wz - sz;
+        const d = Math.sqrt(ddx * ddx + ddz * ddz);
+        if (d > blend + PCELL) continue;
+        hits.push(d, s);
+        if (d < nearD) { nearD = d; nearSurf = s; }
+      }
+    }
+    if (nearSurf === undefined) return null;
+    let wSum = 0, wMatch = 0;
+    for (let i = 0; i < hits.length; i += 2) {
+      const d = hits[i], s = hits[i + 1];
+      const t = Math.min(1, d / blend);
+      const w = 1 - t * t * (3 - 2 * t);   // smoothstep falloff, 1 at d=0
+      wSum += w;
+      if (s === nearSurf) wMatch += w;
+    }
+    const cov = wSum > 0 ? wMatch / wSum : 1;
+    if (cov <= 0.02) return null;
+    return [nearSurf, cov];
   }
 
   // Rewrite a groundSurface() result in place. Roads sit on top of paint, so

@@ -102,9 +102,16 @@ const GRIM_RULES = {
   EDIT: {
     LAYER: true,      // fetch and apply the authored edit layer at boot
     UI: true,         // ?edit=1 can open the editor at all (master kill switch)
-    CELL: 4,          // ground paint cell size in metres, per the plan
+    CELL: 4,          // terrain sculpt grid size in metres (height only)
+    PCELL: 1,         // ground paint grid size in metres. Finer than CELL on
+                      // purpose: a brush and a blend width only mean anything
+                      // small if the underlying cells are small too.
+    BLEND_DEFAULT: 2, // default paint/road edge softness, in metres
+    BLEND_MAX: 4,     // clamp on the per-layer blend value, so a huge blend
+                      // cannot make groundSurface scan an unreasonable
+                      // neighbourhood on every vertex
     SNAP: 0.5,        // object placement snap in metres; Alt places free
-    FEATHER: 1,       // paint edge feather, in cells
+    FEATHER: 1,       // legacy, unused now that paint carries its own blend
     MAXH: 12,         // biggest terrain delta the sculpt tools may author (m)
     FLATMIN: 0.06,    // never flatten perfectly level: the walk-out-of-water
                       // routine marches things to the world origin on dead
