@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v16.4) - HOTFIX: THE WORLD NO LONGER FREEZES AFTER SMELT OR SMITH
+
+FIXED - hitting SMELT or SMITH froze the whole game solid until you clicked. The world simulation paused the moment the crafting window closed because your mouse was not locked back into the game, so the furnace never produced a single bar and everything looked crashed. Now the world always keeps running while the furnace or anvil is working, and the SMELT and SMITH buttons hand your mouse straight back to the game.
+
+
 ## 2026-08-07 (v16.3) - SMELT AND SMITH: REAL CRAFTING UIS
 
 REDONE - the furnace. F now opens a menu listing every ore you can smelt with pictures, how many you carry, and what each bar needs. Pick one, set how many with + and - or just type the number, hit MAX for everything, then SMELT and watch the furnace work - one bar at a time with the pour, the sparks and the XP, straight into your pack. Stopping early keeps your leftover ore.
@@ -79,10 +84,3 @@ NEW - RuneScape pricing: the more he holds of something, the less he pays for th
 NEW - expensive purchases get a confirm screen. No more accidental second hollow plate.
 NEW - sold something by mistake? It is on his shelf now. Buy it straight back.
 CHANGED - the pack tooltip quotes what Fenwick actually pays right now, glut discount included.
-
-
-## 2026-08-06 (v15) - Combat finally sounds like combat
-
-NEW - real sampled sounds for the six most heard combat events: light swing, heavy swing, hit, critical hit, shield block and parry. Until now every one of these was an oscillator beep; a blow landing was a sine thump and a parry was two triangle waves. Each sound was generated with ElevenLabs (three takes, best one picked on measurements and spectrogram), trimmed to the event and shipped in the bundle, about 46 KB for all six.
-CHANGED - every combat sound plays at a slightly different pitch each time, the same trick the anvil uses, so a fast fight never sounds like one sample being retriggered. The old synthesised sounds stay in as an instant fallback while the samples decode, so the first hit of a session is never silent.
-FIXED - harness/build.sh works again on a fresh pull. The shipped UI patches 38-40 were still sitting in harness/patches/ and broke the build for every track; they are now in applied/ where shipped patches belong.
