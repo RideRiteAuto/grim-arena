@@ -91,7 +91,7 @@ export function makeOreNodeKit(T, opt) {
   // o: { kind, sc, seed, stone: [r,g,b] zone rock tint (optional) }
   kit.build = function (o) {
     o = o || {};
-    const O = ORES[o.kind || 'iron'] || ORES.stone;
+    const O = ORES[{ ironore: 'iron', rock: 'iron' }[o.kind] || o.kind || 'iron'] || ORES.stone;
     const sc = o.sc || 1;
     const rnd = rngFor((o.seed || 5) * 3 + 11);
     const seed = (o.seed || 5) % 97;
