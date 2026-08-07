@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.0) - HUD LAYOUT CLEANUP
+
+FIXED - the FPS/coords debug stamp sat directly under the new chat box; moved to the bottom-right, clear of both chat and the PRESS H / boat-interact hints. FIXED - party frames were pinned over your own health bar and the quest helper box; they now sit directly under your health bar where they belong, the quest helper is pushed further down to stay clear even with a full 5-person party, and the quest box grew a matching gap. NEW - party frames show mana now, not just HP, for every member whose client has synced it.
+
+
 ## 2026-08-07 (v16.9) - WHISPERS AND A FRIENDS LIST
 
 NEW - a WHISPERS chat tab. Type /w NAME your message (or /whisper, /tell, /msg) to send a private line to anyone online anywhere in the world, not just nearby, and /r replies to whoever last whispered you without retyping their name. NEW - a friends list. Type /friend NAME or /unfriend NAME, or use the ADD FRIEND and UNFRIEND buttons in the hold-O player list. Friends show in their own section of that list with ONLINE or OFFLINE status and a one-click WHISPER button, and you get a toast when a friend logs in. The list holds up to 50 and carries over between sessions, guests included. This one needed no server changes, so it is live the moment this patch ships, unlike the party system which is still waiting on a relay deploy.
@@ -67,8 +72,3 @@ FAIR PLAY - the victim's machine is always the judge: your armour, shield and pa
 NEW - PVP, strictly opt-in. Flip PVP: ON on the main menu and you can fight, and be fought by, anyone else who has done the same. A red sword marks pvp players on their nameplate and in the who-is-online list.
 NEW - dying to a player costs NOTHING. No item drops, no gold lost: you rise at the camp with your pack intact, the killer's name on the banner, and five seconds where nobody can touch you and you cannot touch them.
 NEW - your shield matters against players: blocks, perfect parries and armour all work exactly as they do against monsters, judged on your own machine.
-
-
-## The world editor exists
-
-Phases 3 to 6 of the build plan, all four in one push. A private editor at the game URL plus ?edit=1: the real engine with a free camera (WASD, Q and E, right mouse look), so what it shows is exactly what players get. Paint any of the sixteen ground surfaces with a feathered brush, lay roads as smoothed splines that suppress grass down their middle, place objects from a 58-kind catalog (walls with doorways and windows, floors, stairs, a watchtower and platform with genuinely walkable decks, props, packing benches and trade posts for the coming economy, and every tree, ore and plant grown by the game's own builders so they match the world), select, move, rotate, scale, duplicate, copy and paste, delete placed objects or generated ones, save prefabs and stamp them, sculpt terrain with raise, lower, flatten and smooth, drop monster spawn markers, trace housing district boundaries, bookmark places and jump to coordinates, undo, redo, and revert everything. Edits save to the relay as a layer every client fetches at boot, so a change goes live without a deploy. The layer never blocks boot, an empty layer is proven byte-inert by the new 51-check harness, and the whole existing suite stays green including dressing determinism. Saving from the editor needs the EDIT_KEY secret set on the worker once; until then it runs read-only with file export.
