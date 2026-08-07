@@ -50,6 +50,23 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     const drive = fn => { log = []; try { fn(); } catch (e) { log.push({ n: 'THREW:' + e.message }); } return log.slice(); };
     const names = l => l.map(x => x.n);
 
+    // Some checks are about the NAME the voice was asked for (voice stubbed),
+    // and some are about what the voice then DID with it (voice real). Keep
+    // both available rather than ordering the file around which is installed.
+    const withRealVoice = fn => {
+      const stub = G.sfxVoice_;
+      G.sfxVoice_ = realVoice;
+      try { return fn(); } finally { G.sfxVoice_ = stub; }
+    };
+    // What sample a name actually reaches, and at what gain.
+    const gainOfName = (n, t) => withRealVoice(() => {
+      let seen = null;
+      const realPlay = G._samples.play;
+      G._samples.play = function (nm, o) { seen = { nm: nm, g: (o || {}).gain, when: (o || {}).when }; return null; };
+      try { G.sfx(n, t); } finally { G._samples.play = realPlay; }
+      return seen;
+    });
+
     const T = G.T;
     G.me = G.me || {};
     G.me.pos = new T.Vector3(0, 0, 0);
@@ -193,9 +210,130 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     if (marks !== 0) fail.push('F: a hit you could hear also fired the marker');
     G.hitMark_ = realMark;
 
+    // ---- G2. chain lightning -----------------------------------------------
+    // It was the last spell still resolving as a sword: every link went through
+    // applyDamage as a 'crit', and a second explicit sfx('crit') sat on top.
+    const storm = names(drive(() => G.startMove(G.me, 'storm')));
+    note.stormCast = storm;
+    if (storm[0] !== 'sp-storm-cast') fail.push('G2: casting storm asked for ' + storm.join(','));
+    for (const n of storm) if (SWORD.test(n)) fail.push('G2: storm cast asked for the sword sound ' + n);
+
+    // a chain link, which keeps kind 'crit' for the splat and flags opt.storm
+    const link = hitAs('crit', { magic: true, style: 'MAGIC', storm: true });
+    note.stormLink = link;
+    landed(link, 'sp-storm-hit', 'a chain lightning link');
+    for (const n of link) if (SWORD.test(n)) fail.push('G2: a storm link landed with the sword sound ' + n);
+    // and a plain melee crit must NOT have been dragged along with it
+    if (note.impacts.swordCrit.indexOf('sp-storm-hit') >= 0) fail.push('G2: a sword crit now sounds like lightning');
+
+    // the three links must not stack on one instant, or the chain reads as one
+    // loud crack instead of as a chain
+    {
+      const whens = [];
+      withRealVoice(() => {
+        const realPlay = G._samples.play;
+        G._samples.play = function (nm, o) { if (nm === 'sp-storm-hit') whens.push((o || {}).when); return null; };
+        try { for (let k = 0; k < 3; k++) G.sfx('sp-storm-hit', near); } finally { G._samples.play = realPlay; }
+      });
+      note.stormStagger = whens.map(w => (w === undefined ? null : +w.toFixed(3)));
+      const spread = (whens[2] || 0) - (whens[0] || 0);
+      note.stormSpreadMs = Math.round(spread * 1000);
+      if (!(spread > 0.05 && spread < 0.30)) {
+        fail.push('G2: three chain links spread over ' + Math.round(spread * 1000) + ' ms');
+      }
+    }
+
+    // ---- G3. an arrow meeting the world ------------------------------------
+    // Kevin asked for the arrow sticking into a wooden wall. Before this there
+    // was no hook at all: arrows only ever resolved against creatures.
+    if (typeof G.shotSurface_ !== 'function') fail.push('G3: no shotSurface_');
+    else {
+      G.colliders = [{ x: 10, z: 0, r: 1.5 }, { x: 0, z: 10, hw: 2, hd: 0.5, mat: 'stone' }];
+      const at = (x, y, z) => G.shotSurface_(new T.Vector3(x, y, z));
+      note.surface = {
+        insideCircle: !!at(10, 1, 0),
+        insideBox: !!at(0, 1, 10),
+        clearAir: !!at(30, 1, 30),
+        overTheRoof: !!at(10, 9, 0),
+        matReadBack: (at(0, 1, 10) || {}).mat || null
+      };
+      if (!note.surface.insideCircle) fail.push('G3: an arrow inside a round collider hit nothing');
+      if (!note.surface.insideBox) fail.push('G3: an arrow inside a box collider hit nothing');
+      if (note.surface.clearAir) fail.push('G3: an arrow in open air hit something');
+      // the height gate: collider records are infinite columns in XZ, so
+      // without it a shot lobbed over a building buries itself in thin air
+      if (note.surface.overTheRoof) fail.push('G3: an arrow 9m up struck a ground-level collider');
+      if (note.surface.matReadBack !== 'stone') fail.push('G3: collider mat did not read back');
+
+      // and the sounds those resolve to
+      const wood = gainOfName('arrow-wood', near);
+      const dirt = gainOfName('arrow-dirt', near);
+      note.surfaceSounds = { wood: wood, dirt: dirt };
+      if (!wood || wood.nm !== 'arrow-wood') fail.push('G3: arrow-wood did not reach its sample');
+      if (!dirt || dirt.nm !== 'arrow-dirt') fail.push('G3: arrow-dirt did not reach its sample');
+      if (wood && dirt && !(dirt.g < wood.g)) fail.push('G3: soil is not quieter than a wooden wall');
+    }
+
+    // ---- G3b. the arrow really stops, sticks, and stops being dangerous ----
+    // shotSurface_ answering correctly is not the same as an arrow behaving.
+    // This is the gameplay half of the change and it needs its own assertion.
+    withRealVoice(() => {
+      G.colliders = [{ x: 10, z: 0, r: 1.5 }];
+      G.projectiles = [];
+      G.worldOn = false;                       // flat ground, so groundY is 0
+      const mesh = new T.Object3D();
+      mesh.position.set(0, 1, 0);
+      G.scene.add(mesh);
+      G.projectiles.push({ mesh: mesh, vel: new T.Vector3(40, 0, 0), owner: G.me,
+                           dmg: 20, kind: 'arrow', life: 3, style: 'RANGED' });
+      let steps = 0;
+      while (G.projectiles.length && G.projectiles[0] && !G.projectiles[0].stuck && steps < 40) {
+        G.stepProjectiles(1 / 60); steps++;
+      }
+      const p = G.projectiles[0];
+      note.arrowStick = p ? {
+        stuck: !!p.stuck,
+        x: +p.mesh.position.x.toFixed(2),
+        speed: +p.vel.length().toFixed(3),
+        steps: steps
+      } : { gone: true };
+      if (!p || !p.stuck) { fail.push('G3b: the arrow flew through the wall'); return; }
+      if (p.vel.length() > 0.001) fail.push('G3b: a stuck arrow is still moving');
+      if (p.mesh.position.x > 10.6) fail.push('G3b: the arrow buried itself past the surface, x=' + p.mesh.position.x.toFixed(2));
+
+      // a stuck arrow must not keep hurting whatever walks past it
+      const victim = { pos: new T.Vector3(p.mesh.position.x, 0, 0), hp: 100, max: 100,
+                       iframe: 0, frozen: 0, freezeCd: 0, stagger: 0 };
+      G.npcs = [victim];
+      for (let k = 0; k < 20; k++) G.stepProjectiles(1 / 60);
+      note.stuckArrowDamage = 100 - victim.hp;
+      if (victim.hp !== 100) fail.push('G3b: a stuck arrow dealt ' + (100 - victim.hp) + ' damage to a passer-by');
+      G.npcs = [];
+      G.projectiles = [];
+    });
+
+    // ---- G4. the two tracks' sfx() signatures cannot collide ---------------
+    // 55.283 made arg 2 the source entity; the gathering track shipped
+    // sfx('oredeplete', 0.22) using it as a delay. Both must survive.
+    {
+      const seen = withRealVoice(() => {
+        let got = null;
+        const realPlay = G._samples.play;
+        G._samples.play = function (nm, o) { got = { nm: nm, when: (o || {}).when }; return null; };
+        try { G.sfx('oredeplete', null, 0.22); } finally { G._samples.play = realPlay; }
+        return got;
+      });
+      note.delayForm = seen;
+      if (!seen) fail.push('G4: the delayed gathering form played nothing');
+      else if (!(seen.when > 0)) fail.push('G4: the explicit delay was dropped');
+      // a bare number in the entity slot must not be read as a place
+      if (G.sfxAtten_(0.22) !== 1) fail.push('G4: a number was treated as a source position');
+    }
+
     // ---- G. the samples the routing now depends on actually exist ---------
     const need = ['arrow-flesh', 'arrow-plate', 'sp-fire-cast', 'sp-fire-hit',
-                  'sp-frost-cast', 'sp-frost-hit', 'sp-heal-cast', 'sp-heal-apply'];
+                  'sp-frost-cast', 'sp-frost-hit', 'sp-heal-cast', 'sp-heal-apply',
+                  'sp-storm-cast', 'sp-storm-hit', 'arrow-wood', 'arrow-dirt'];
     const missing = need.filter(n => !G._samples.has(n));
     if (missing.length) fail.push('G: routed to samples that did not decode: ' + missing.join(','));
 
@@ -204,17 +342,8 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     // close. Read the gain the voice actually applied rather than trusting the
     // constant in the source.
     G.sfxVoice_ = realVoice;
-    const gainOf = (n, t) => {
-      const b = G._samples.play(n, { gain: 0 });
-      if (b) try { b.src.stop(); } catch (e) {}
-      let seen = null;
-      const realPlay = G._samples.play;
-      G._samples.play = function (nm, o) { seen = { nm: nm, g: (o || {}).gain }; return null; };
-      try { G.sfx(n, t); } finally { G._samples.play = realPlay; }
-      return seen;
-    };
-    const ga = gainOf('arrow-hit', near);
-    const gh = gainOf('hit', near);
+    const ga = gainOfName('arrow-hit', near);
+    const gh = gainOfName('hit', near);
     note.gains = { arrow: ga, sword: gh };
     if (!ga || !/^arrow-/.test(ga.nm)) fail.push('H: arrow-hit did not reach an arrow sample: ' + JSON.stringify(ga));
     if (ga && gh && !(ga.g < gh.g)) fail.push('H: an arrow lands at ' + ga.g + ', no quieter than the sword at ' + gh.g);

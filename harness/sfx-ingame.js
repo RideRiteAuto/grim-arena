@@ -40,7 +40,8 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
                   'forage', 'timber',
                   'arrow-flesh', 'arrow-plate',
                   'sp-fire-cast', 'sp-fire-hit', 'sp-frost-cast', 'sp-frost-hit',
-                  'sp-heal-cast', 'sp-heal-apply'];
+                  'sp-heal-cast', 'sp-heal-apply',
+                  'sp-storm-cast', 'sp-storm-hit', 'arrow-wood', 'arrow-dirt'];
     const got = {};
     for (const n of want) got[n] = G._samples.has(n);
 
