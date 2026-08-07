@@ -97,12 +97,28 @@ const man = new T.Group();
 }
 
 const kit = makeTreeKit(T);
+// zone shapes preview in the tints of the zone they actually spawn in
+// (values lifted from the game's ZONE_LOOK)
+const ZONE_TINT = {
+  broad:  { trunk: 0x6e4f2e, leaf: 0x4e7a38, leaf2: 0x3f6a30 },   // HEARTLANDS
+  poplar: { trunk: 0x6e4f2e, leaf: 0x4e7a38, leaf2: 0x3f6a30 },   // HEARTLANDS
+  acacia: { trunk: 0x6a5734, leaf: 0x7c8a46, leaf2: 0x68763c },   // WINDSCAR
+  palm:   { trunk: 0x8a6a40, leaf: 0x6f9a4a, leaf2: 0x5c8a3e },   // SUNCOAST
+  willow: { trunk: 0x4a4030, leaf: 0x466a44, leaf2: 0x3a5c3a },   // MISTFEN
+  snag:   { trunk: 0x4a4030, leaf: 0x466a44, leaf2: 0x3a5c3a },   // MISTFEN bogoak
+  emberbark: { trunk: 0x2e2622, leaf: 0x53342a, leaf2: 0x6a3a26 },// EMBER
+  pine:   { trunk: 0x4a3524, leaf: 0x9fc2c8, leaf2: 0x7fa8b2 },   // FROSTWILD icewood
+  elder:  { trunk: 0x4a3a24, leaf: 0x2f5a2a, leaf2: 0x3d6b30 }    // GREENWOOD
+};
 let prop = kit.build({ kind: 'tree', seed: 11, x: 0, y: heightAt(0, 0), z: 0 });
 scene.add(prop.g);
 let PKIND = 'tree';
-const rebuild = (kind, seed) => {
+const rebuild = (kind, seed, sc) => {
   scene.remove(prop.g);
-  prop = kit.build({ kind, seed: seed || (kind === 'oak' ? 23 : 11), x: 0, y: heightAt(0, 0), z: 0 });
+  prop = kit.build({
+    kind, seed: seed || (kind === 'oak' ? 23 : 11), sc: sc || 1,
+    tint: ZONE_TINT[kind] || null, x: 0, y: heightAt(0, 0), z: 0
+  });
   scene.add(prop.g);
   PKIND = kind;
   window.__prop = prop;
