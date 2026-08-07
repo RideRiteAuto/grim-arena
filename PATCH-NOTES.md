@@ -1,11 +1,8 @@
 # Grim World — patch notes
 
-## 2026-08-07 (v18.0) - HOW EVERYONE MOVES: WALKING, RUNNING, TURNING AND GALLOPING ALL REWORKED
+## 2026-08-07 (v17.9) - MONSTERS DON'T TELEPORT ON YOU ANYMORE
 
-REDONE - walking, running and sprinting are now genuinely different gaits instead of one animation sped up. Stride length, knee snap, arm swing, lean and body bob all shift as you speed up, and sprinting pulls the torso forward and quiets the bounce the way an actual sprint does.
-NEW - feet roll at the ankle now instead of pivoting stiffly from the knee like a peg leg. Most noticeable up close or on a slow walk.
-REDONE - turning in place while standing still steps more naturally: a quick flick of the view gets a fast, punchy step, a slow deliberate look-around gets a longer, more measured one, and the foot that steps matches the direction you're actually turning instead of just alternating. Also fixed a bug from testing this where standing still right after a turn could throw in one extra phantom footstep.
-REDONE - wolves, deer, boars, rats and hares now genuinely change gait between a walk and a full gallop (legs, body bounce, ears and tail all shift together), instead of just cycling the same walk faster. Wolves and boars gallop rotary (diagonal pairs), deer gallop transverse (a proper bounding leap), matching how each animal actually moves.
+FIXED - monsters used to visibly jump to a different spot as you ran up on them, worse the faster you were moving even with FPS fine. The game was drawing monsters farther away than it was willing to tell you their real position, so they'd freeze in place out past a certain range and then snap to the truth the instant you got close. Draw range for monsters is a little shorter now to match, and reacquiring one after a gap eases in instead of popping.
 
 
 ## 2026-08-07 (v17.9) - FIREBALL: NO MORE FREEZE, NEW LOOK
