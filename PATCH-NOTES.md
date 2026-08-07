@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.7) - TRADE BUTTON (COMING SOON)
+
+ADDED - a TRADE button next to WHISPER on every other player's row in the Who's Online list (press O), including your online friends. It is not a real trade window yet, tapping it just tells you trading is coming soon and to whisper them for now, but the target-a-player groundwork is in place so a real offer-and-accept trade system can drop in later without changing how you pick who to trade with.
+
+
 ## 2026-08-07 (v17.6) - WHO'S ONLINE
 
 ADDED - the players list (press O) now shows where everyone is and how tough they are: a Zone · Level line under every name, yours included. Two new filters at the top narrow it down by zone or by a minimum combat level, so a big server reads as a short list of exactly who you're looking for. Friends and your own row are never filtered out.
@@ -55,8 +60,3 @@ NEW - a chat box in the bottom left, press Enter to open it. LOCAL is only seen 
 ## 2026-08-07 (v16.6) - CATCHPHRASES NOW SHOW ABOVE THE RIGHT HEAD
 
 FIXED - a talking NPC's line only ever showed up while that NPC happened to be your current target, and it was positioned there too, so Mr. Sailers' catchphrases were invisible or in the wrong place most of the time. Every NPC that talks now gets its own floating line above its own head, independent of who you have targeted. NEW - a max distance on how far away chat and catchphrases are visible, and the text shrinks the further away it is, so you are never reading dialogue from across the map.
-
-
-## 2026-08-07 (v16.5) - HOTFIX: TYPE A NUMBER INTO THE CRAFTING WINDOWS
-
-FIXED - typing a quantity into the furnace or anvil window fired the game's hotkeys instead: pressing 3 closed the window under your cursor, and other keys could swap weapons or open the map mid-type. Any text box you click into now owns the keyboard until you leave it. BONUS - pressing Enter in a quantity box starts the smelt or smith right away, and Escape steps out of the box and closes the window.
