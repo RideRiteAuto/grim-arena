@@ -340,6 +340,74 @@ async function open(browser) {
   ok(ed.lockNeutered, 'pointer lock is neutered so right-drag look always answers');
   ok(/^(\d+)\/\1$/.test(ed.npcsParked), 'every NPC stands at its authored home, not the origin', ed.npcsParked);
   ok(ed.moved > 3, 'the free camera moves under WASD', ed.moved.toFixed(1) + 'm in a second');
+
+  // movement axes: the fix for W climbing while looking down
+  const mv = await page.evaluate(() => {
+    const g = window.__grim, U = g.EDIT_UI(), S = U.state;
+    const run = (key, yaw, pit, frames) => {
+      S.cam.yaw = yaw; S.cam.pit = pit;
+      S.vel.x = S.vel.y = S.vel.z = 0;
+      const b = { x: S.cam.x, y: S.cam.y, z: S.cam.z };
+      S.keys[key] = true;
+      for (let i = 0; i < frames; i++) U.tick(1 / 60);
+      S.keys[key] = false;
+      return { dx: S.cam.x - b.x, dy: S.cam.y - b.y, dz: S.cam.z - b.z };
+    };
+    S.cam.y = 200;                     // well clear of the ground clamp
+    const level = run('w', 0, 0, 40);
+    S.cam.y = 200;
+    const down = run('w', 0, -0.7, 40);
+    S.cam.y = 200;
+    const up = run('e', 0, 0, 30);
+    S.cam.y = 200;
+    const sink = run('q', 0, 0, 30);
+    S.cam.y = 200;
+    const strafe = run('d', 0, 0, 30);
+    return { level, down, up, sink, strafe };
+  });
+  ok(mv.level.dz < -2 && Math.abs(mv.level.dy) < 0.5,
+    'W flies level when looking level', 'dy ' + mv.level.dy.toFixed(2));
+  ok(mv.down.dy < -1 && mv.down.dz < -1,
+    'W descends when looking down', 'dy ' + mv.down.dy.toFixed(1));
+  ok(mv.up.dy > 1 && Math.abs(mv.up.dz) < 0.5, 'E rises straight up');
+  ok(mv.sink.dy < -1, 'Q sinks straight down');
+  ok(mv.strafe.dx > 1 && Math.abs(mv.strafe.dz) < 0.5, 'D strafes right at yaw zero');
+
+  // fly mode toggling and the editing chrome
+  const fly = await page.evaluate(() => {
+    const g = window.__grim, U = g.EDIT_UI(), S = U.state;
+    const before = !!S.fly;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    const after = !!S.fly;
+    const crossOn = S.cross && S.cross.style.display === 'block';
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    const back = !!S.fly;
+    const btns = [...document.querySelectorAll('button')].map(b => b.textContent);
+    return { before, after, crossOn, back,
+      hasUndo: btns.includes('Undo'), hasRedo: btns.includes('Redo'), hasSave: btns.includes('Save') };
+  });
+  ok(!fly.before && fly.after && !fly.back, 'TAB toggles fly mode', fly.before + '>' + fly.after + '>' + fly.back);
+  ok(fly.crossOn, 'the crosshair shows while flying');
+  ok(fly.hasUndo && fly.hasRedo && fly.hasSave, 'Undo, Redo and Save have visible buttons');
+
+  // the game cannot hear editor keys: Q must not open the spell wheel
+  const keyLeak = await page.evaluate(() => {
+    const g = window.__grim;
+    const before = !!g.wheelOpen;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', bubbles: true, cancelable: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'q', bubbles: true, cancelable: true }));
+    return { before, after: !!g.wheelOpen };
+  });
+  ok(!keyLeak.after, 'editor keys do not leak into the game (Q stays out of the spell wheel)');
+
+  // painted borders are jittered but deterministic
+  const jit = await page.evaluate(() => {
+    const g = window.__grim, E = g.EDIT();
+    const a = JSON.stringify(E.paintAt(12.7, 34.1));
+    const b = JSON.stringify(E.paintAt(12.7, 34.1));
+    return { same: a === b };
+  });
+  ok(jit.same, 'jittered paint sampling is deterministic');
   ok(ed.camFollowsPlayer, 'the terrain streamer follows the camera');
   ok(ed.bodyHidden, 'the player body is hidden in the editor');
   ok(ed.aboveGround, 'the camera never sinks under the world');

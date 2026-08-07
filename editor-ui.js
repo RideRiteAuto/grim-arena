@@ -436,22 +436,28 @@ const GRIM_EDIT_UI = (() => {
     // flight near the ground stays precise for actual editing.
     const alt = Math.max(1, Math.min(5, 1 + (c.y - surfAt(c.x, c.z)) / 60));
     const acc = 90 * fast * (S.speed || 1) * alt;
-    const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
-    let ax = 0, az = 0, ay = 0;
-    if (k['w']) { ax -= fx; az -= fz; }
-    if (k['s']) { ax += fx; az += fz; }
-    if (k['a']) { ax -= fz; az += fx; }
-    if (k['d']) { ax += fz; az -= fx; }
+    // Movement is CAMERA-RELATIVE, derived from the same yaw and pitch the
+    // camera actually renders with: W flies exactly where you are looking
+    // (including down a hillside if you are looking down), S flies straight
+    // back out of it, A and D strafe level, E and Space rise, Q sinks. The
+    // first build fed pitch in with the sign inverted, which is why W
+    // climbed while looking down and S burrowed.
+    const cp = Math.cos(c.pit), sp = Math.sin(c.pit);
+    const sy = Math.sin(c.yaw), cy = Math.cos(c.yaw);
+    const fwdX = -sy * cp, fwdY = sp, fwdZ = -cy * cp;   // the camera's look direction
+    const rightX = cy, rightZ = -sy;
+    let ax = 0, ay = 0, az = 0;
+    if (k['w']) { ax += fwdX; ay += fwdY; az += fwdZ; }
+    if (k['s']) { ax -= fwdX; ay -= fwdY; az -= fwdZ; }
+    if (k['d']) { ax += rightX; az += rightZ; }
+    if (k['a']) { ax -= rightX; az -= rightZ; }
     if (k['e'] || k[' ']) ay += 1;
     if (k['q']) ay -= 1;
-    const len = Math.hypot(ax, az);
-    if (len > 0) { ax /= len; az /= len; }
-    // Pitch feeds the forward vector so looking down and pressing W descends,
-    // which is what every editor camera in the world does.
-    const pitchDrop = Math.sin(c.pit);
+    const len = Math.hypot(ax, ay, az);
+    if (len > 1) { ax /= len; ay /= len; az /= len; }
     S.vel.x += ax * acc * dt;
+    S.vel.y += ay * acc * dt;
     S.vel.z += az * acc * dt;
-    S.vel.y += (ay * acc + (len > 0 ? -pitchDrop * acc * (k['w'] ? 1 : k['s'] ? -1 : 0) : 0)) * dt;
     const damp = Math.exp(-9 * dt);
     S.vel.x *= damp; S.vel.y *= damp; S.vel.z *= damp;
     c.x += S.vel.x * dt; c.y += S.vel.y * dt; c.z += S.vel.z * dt;
@@ -504,20 +510,34 @@ const GRIM_EDIT_UI = (() => {
       'color:#8f8f8f;font:11px system-ui;padding:8px 10px;line-height:1.5');
     help.innerHTML =
       '<b style="color:' + GOLD + '">Camera</b><br>' +
-      'WASD move, Q and E down and up<br>Shift fast, Ctrl slow, fly high to go faster<br>Speed slider is under the tools<br>Right mouse drag to look<br>' +
+      'TAB toggles fly mode: mouse looks, click edits at the crosshair<br>W flies where you look, S backs out, A and D strafe<br>Q down, E or Space up<br>Shift fast, Ctrl slow, fly high to go faster<br>Speed slider is under the tools<br>In cursor mode, right mouse drag looks<br>' +
       '<b style="color:' + GOLD + '">Editing</b><br>' +
       'Left click uses the tool<br>Alt click erases or picks<br>' +
       'Wheel rotates, Ctrl wheel resizes the brush<br>' +
       'Ctrl Z undo, Ctrl Y redo, Ctrl S save<br>Ctrl C copy, Ctrl V paste<br>' +
       'Alt right click picks the surface<br>Delete removes the selection<br>' +
       'Enter lays a road, Escape cancels';
+    // crosshair for fly mode
+    const cross = el('div',
+      'position:fixed;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;' +
+      'z-index:9001;pointer-events:none;display:none');
+    cross.innerHTML = '<svg width="18" height="18"><path d="M9 0v6M9 12v6M0 9h6M12 9h6" stroke="#F3DC00" stroke-width="2"/></svg>';
+    document.body.appendChild(cross);
+    S.cross = cross;
+    // undo, redo and save deserve buttons, not just key chords
+    const ur = el('div', 'display:flex;gap:4px;margin:0 0 6px');
+    const bU = el('button', BTN + 'flex:1;margin:0', 'Undo');
+    const bR = el('button', BTN + 'flex:1;margin:0', 'Redo');
+    const bS = el('button', BTN_ON + 'flex:1;margin:0', 'Save');
+    bU.onclick = undo; bR.onclick = redo; bS.onclick = save;
+    ur.appendChild(bU); ur.appendChild(bR); ur.appendChild(bS);
     const spd = el('div', 'margin:2px 0 8px;padding:6px 8px;background:#232323;border:1px solid #383838;border-radius:8px');
     const spdT = el('div', 'color:#8f8f8f;font-size:10px;margin-bottom:2px', 'camera speed: 2x (Shift sprints, height adds more)');
     const spdI = el('input', 'width:100%');
     spdI.type = 'range'; spdI.min = 0.5; spdI.max = 10; spdI.step = 0.5; spdI.value = 2;
     spdI.oninput = () => { S.speed = +spdI.value; spdT.textContent = 'camera speed: ' + S.speed + 'x (Shift sprints, height adds more)'; };
     spd.appendChild(spdT); spd.appendChild(spdI);
-    wrap.appendChild(h); wrap.appendChild(sub); wrap.appendChild(tools); wrap.appendChild(spd); wrap.appendChild(body);
+    wrap.appendChild(h); wrap.appendChild(sub); wrap.appendChild(tools); wrap.appendChild(ur); wrap.appendChild(spd); wrap.appendChild(body);
     document.body.appendChild(wrap);
     document.body.appendChild(status);
     document.body.appendChild(help);
@@ -806,6 +826,7 @@ const GRIM_EDIT_UI = (() => {
     const p = S.hoverPt;
     const st = GRIM_EDIT.stats();
     const bits = [
+      S.fly ? 'FLYING (TAB frees the cursor)' : 'cursor (TAB to fly)',
       'cam ' + S.cam.x.toFixed(0) + ', ' + S.cam.y.toFixed(0) + ', ' + S.cam.z.toFixed(0),
       p ? ('cursor ' + p.x.toFixed(1) + ', ' + p.z.toFixed(1) + '  ground ' + p.y.toFixed(1) + 'm') : 'cursor off world',
       'tool ' + S.tool,
@@ -817,15 +838,48 @@ const GRIM_EDIT_UI = (() => {
   }
 
   // ---- input ---------------------------------------------------------------
+  // ---- fly mode -----------------------------------------------------------
+  // Tab toggles between two ways of holding the mouse. FLY: the pointer is
+  // captured, moving the mouse looks around with no button held, a crosshair
+  // marks the centre, and clicking uses the tool at the crosshair. CURSOR:
+  // the pointer is free for the panel and precise clicks, and right-drag
+  // still looks. This is the split Kevin asked for, and it is also what
+  // makes real travel possible: fly across the map, Tab out, pick a tool.
+  function setFly(on) {
+    S.fly = !!on;
+    const c = G.renderer.domElement;
+    if (S.fly) {
+      try { c.requestPointerLock && c.requestPointerLock(); } catch (e) {}
+      say('flying. TAB frees the cursor');
+    } else {
+      try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
+      S.drag = false;
+      say('cursor free. TAB to fly');
+    }
+    if (S.cross) S.cross.style.display = S.fly ? 'block' : 'none';
+    paintStatus();
+  }
+
+  function inUi(t) {
+    if (!t || !t.tagName) return false;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return true;
+    return !!(dom && (dom.wrap.contains(t) || dom.status.contains(t) || dom.help.contains(t)));
+  }
+
   function bind() {
     const c = G.renderer.domElement;
+    // CAPTURE-phase listeners, and the editor eats what it handles. The
+    // game's own key handlers are still registered underneath, and letting
+    // keys fall through to them is exactly why Q opened the spell wheel and
+    // TAB opened the pack while Kevin was trying to edit.
     window.addEventListener('keydown', e => {
       if (!S.on) return;
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
       const k = e.key.toLowerCase();
       S.keys[k] = true;
-      if (e.ctrlKey && k === 'z') { e.preventDefault(); undo(); }
+      if (k === 'tab') { e.preventDefault(); setFly(!S.fly); }
+      else if (e.ctrlKey && k === 'z') { e.preventDefault(); undo(); }
       else if (e.ctrlKey && k === 'y') { e.preventDefault(); redo(); }
       else if (e.ctrlKey && k === 's') { e.preventDefault(); save(); }
       else if (e.ctrlKey && k === 'c') { if (S.sel) { S.clipboard = Object.assign({}, S.sel); say('copied'); } }
@@ -839,32 +893,56 @@ const GRIM_EDIT_UI = (() => {
         S.road = null; S.sel = null; S.stamp = null; S.districtPts = null;
         drawOverlay(); say('cancelled'); paintPanel();
       }
-    });
-    window.addEventListener('keyup', e => { S.keys[e.key.toLowerCase()] = false; });
+      e.stopImmediatePropagation();
+    }, true);
+    window.addEventListener('keyup', e => {
+      if (!S.on) return;
+      S.keys[e.key.toLowerCase()] = false;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      e.stopImmediatePropagation();
+    }, true);
     window.addEventListener('blur', () => { S.keys = {}; });
 
-    c.addEventListener('contextmenu', e => { if (S.on) e.preventDefault(); });
-    c.addEventListener('mousedown', e => {
+    // The browser drops pointer lock on its own Escape; keep the editor's
+    // idea of the mode honest rather than stuck flying with a visible cursor.
+    document.addEventListener('pointerlockchange', () => {
       if (!S.on) return;
+      const locked = document.pointerLockElement === c;
+      if (S.fly && !locked) { S.fly = false; if (S.cross) S.cross.style.display = 'none'; say('cursor free. TAB to fly'); paintStatus(); }
+    });
+
+    window.addEventListener('contextmenu', e => { if (S.on && !inUi(e.target)) e.preventDefault(); }, true);
+    window.addEventListener('mousedown', e => {
+      if (!S.on || inUi(e.target)) return;
+      if (S.fly) {
+        // Crosshair editing: the click lands where the crosshair points.
+        if (e.button === 0) { S.drag = true; S.dragAlt = e.altKey; useCentre(true, e.altKey); }
+        else if (e.button === 2 && e.altKey) { const pt = rayGround(0, 0); if (pt) { S.surf = eyedropAt(pt); paintPanel(); say('picked ' + S.surf); } }
+        e.stopImmediatePropagation(); e.preventDefault();
+        return;
+      }
       if (e.button === 2) {
         // Alt right click is the eyedropper: take the surface under the
         // cursor as the current brush, which is how you match ground you
         // painted an hour ago without remembering its number.
-        if (e.altKey) { eyedrop(e); return; }
-        S.look = true; S.lastX = e.clientX; S.lastY = e.clientY; return;
+        if (e.altKey) { eyedrop(e); e.stopImmediatePropagation(); return; }
+        S.look = true; S.lastX = e.clientX; S.lastY = e.clientY;
+        e.stopImmediatePropagation();
+        return;
       }
-      if (e.button === 0) { S.drag = true; useTool(e, true); }
-    });
+      if (e.button === 0) { S.drag = true; S.dragAlt = e.altKey; useTool(e, true); e.stopImmediatePropagation(); }
+    }, true);
     window.addEventListener('mouseup', e => {
       if (e.button === 2) S.look = false;
       if (e.button === 0) { S.drag = false; S.lastPaintCell = -1; }
-    });
+    }, true);
     window.addEventListener('mousemove', e => {
       if (!S.on) return;
-      if (S.look) {
-        // movementX/Y instead of clientX deltas: they keep answering even if
-        // something engages pointer lock, under which clientX freezes and a
-        // drag silently does nothing.
+      if (S.fly || S.look) {
+        // movementX/Y instead of clientX deltas: they keep answering under
+        // pointer lock, where clientX freezes and a drag silently does
+        // nothing.
         const dx = (typeof e.movementX === 'number') ? e.movementX : (e.clientX - S.lastX);
         const dy = (typeof e.movementY === 'number') ? e.movementY : (e.clientY - S.lastY);
         S.cam.yaw -= dx * 0.0032;
@@ -873,18 +951,28 @@ const GRIM_EDIT_UI = (() => {
         S.lastX = e.clientX; S.lastY = e.clientY;
       }
       S.mouse = e;
-      if (S.drag) useTool(e, false);
-    });
-    c.addEventListener('wheel', e => {
-      if (!S.on) return;
+      if (S.drag && !S.fly) useTool(e, false);
+    }, true);
+    window.addEventListener('wheel', e => {
+      if (!S.on || inUi(e.target)) return;
       e.preventDefault();
       if (e.ctrlKey) { S.brush = Math.max(1, Math.min(60, S.brush + (e.deltaY > 0 ? -1 : 1))); paintPanel(); }
       else { S.rot = (S.rot + (e.deltaY > 0 ? -0.2618 : 0.2618)) % (Math.PI * 2); }
-    }, { passive: false });
+      e.stopImmediatePropagation();
+    }, { passive: false, capture: true });
 
     window.addEventListener('beforeunload', e => {
       if (S.on && S.dirty) { e.preventDefault(); e.returnValue = ''; }
     });
+  }
+
+  // The tool, applied at the crosshair. In fly mode this is the only aim
+  // there is, and painting while flying works because the tick below keeps
+  // applying the held tool as the camera moves.
+  function useCentre(first, alt) {
+    const pt = rayGround(0, 0);
+    if (!pt) return;
+    return applyTool(pt, first, !!alt);
   }
 
   // Reads the surface actually in effect at the cursor: an authored road
@@ -1241,7 +1329,12 @@ const GRIM_EDIT_UI = (() => {
     if (dt > 0.05) dt = 0.05;
     camTick(dt);
     applyCam();
-    if (S.mouse) {
+    if (S.fly) {
+      S.hoverPt = rayGround(0, 0);
+      // holding the button while flying keeps painting under the crosshair,
+      // so a stroke can be flown rather than dragged
+      if (S.drag && (S.tool === 'paint' || S.tool === 'sculpt')) useCentre(false, S.dragAlt);
+    } else if (S.mouse) {
       const [nx, ny] = ndc(S.mouse);
       S.hoverPt = rayGround(nx, ny);
     }
@@ -1262,7 +1355,7 @@ const GRIM_EDIT_UI = (() => {
     get state() { return S; },
     // Tool entry points, exported so the harness exercises the real
     // ones. Everything here is inert until enter() has run.
-    applyTool, paintAt, sculptAt, placeAt, paste, eyedropAt, eyedrop,
+    applyTool, setFly, useCentre, paintAt, sculptAt, placeAt, paste, eyedropAt, eyedrop,
     addSpawn, removeSpawn, districtCommit, roadClick, roadCommit,
     prefabSave, prefabStamp, pickObject, deleteSel, deleteProcedural,
     undo, redo, save, exportFile, importFile, rebuildWorld, drawOverlay

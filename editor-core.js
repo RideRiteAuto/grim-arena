@@ -457,6 +457,16 @@ const GRIM_EDIT = (() => {
   // four Map lookups.
   function paintAt(x, z) {
     if (!paintIdx || !paintIdx.size) return null;
+    // Organic borders. Sampled straight, a boundary between two painted
+    // surfaces follows the 4m cell grid and reads as jagged stair-steps.
+    // Jittering the sample point with a deterministic hash makes
+    // neighbouring vertices disagree in a noisy way, so the change
+    // interlocks instead - the exact trick the zone borders already use.
+    // Deterministic (pure function of position), so two machines paint the
+    // same border and the dressing determinism test cannot see it.
+    const jx = Math.sin(x * 0.83 + z * 1.31) * 2.4;
+    const jz = Math.cos(x * 1.17 - z * 0.71) * 2.4;
+    x += jx; z += jz;
     const fx = x / CELL - 0.5, fz = z / CELL - 0.5;
     const ix = Math.floor(fx), iz = Math.floor(fz);
     const tx = fx - ix, tz = fz - iz;
