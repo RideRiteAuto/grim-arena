@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v16.9) - WHISPERS AND A FRIENDS LIST
+
+NEW - a WHISPERS chat tab. Type /w NAME your message (or /whisper, /tell, /msg) to send a private line to anyone online anywhere in the world, not just nearby, and /r replies to whoever last whispered you without retyping their name. NEW - a friends list. Type /friend NAME or /unfriend NAME, or use the ADD FRIEND and UNFRIEND buttons in the hold-O player list. Friends show in their own section of that list with ONLINE or OFFLINE status and a one-click WHISPER button, and you get a toast when a friend logs in. The list holds up to 50 and carries over between sessions, guests included. This one needed no server changes, so it is live the moment this patch ships, unlike the party system which is still waiting on a relay deploy.
+
+
 ## 2026-08-07 (v16.8) - PARTY SYSTEM
 
 NEW - a party system. Invite from the hold-O player list (or type /invite NAME), the other player gets an accept/decline popup. Once formed, a PARTY tab appears in chat (party-only, no distance limit) and small HP frames show top-left for you and every party member, with a star on the leader and a sword if someone has PVP on. LEAVE is on your own frame, KICK (leader only) is on everyone else's. If the leader disconnects or leaves, the next-longest-standing member takes over automatically, and a party that drops to one person dissolves rather than sitting there empty. Cap is 5. Party membership lives on the relay server itself, the same way monster health does, so two players can never end up disagreeing about who is actually in the party.
@@ -67,11 +72,3 @@ NEW - your shield matters against players: blocks, perfect parries and armour al
 ## The world editor exists
 
 Phases 3 to 6 of the build plan, all four in one push. A private editor at the game URL plus ?edit=1: the real engine with a free camera (WASD, Q and E, right mouse look), so what it shows is exactly what players get. Paint any of the sixteen ground surfaces with a feathered brush, lay roads as smoothed splines that suppress grass down their middle, place objects from a 58-kind catalog (walls with doorways and windows, floors, stairs, a watchtower and platform with genuinely walkable decks, props, packing benches and trade posts for the coming economy, and every tree, ore and plant grown by the game's own builders so they match the world), select, move, rotate, scale, duplicate, copy and paste, delete placed objects or generated ones, save prefabs and stamp them, sculpt terrain with raise, lower, flatten and smooth, drop monster spawn markers, trace housing district boundaries, bookmark places and jump to coordinates, undo, redo, and revert everything. Edits save to the relay as a layer every client fetches at boot, so a change goes live without a deploy. The layer never blocks boot, an empty layer is proven byte-inert by the new 51-check harness, and the whole existing suite stays green including dressing determinism. Saving from the editor needs the EDIT_KEY secret set on the worker once; until then it runs read-only with file export.
-
-
-## 2026-08-06 (v18) - Every zone has its own music
-
-NEW - twelve original themes, one for each region of the world, generated as a single cohesive set: the Heartlands, Greenwood, Frostwild, Ironspire, Sun Coast, Windscar, Ember, Mistfen, Sunscorch, Eastridge, the Shattered Isles, and the open sea. All instrumental, all built from the same small acoustic ensemble so the world sounds like one place rather than twelve stock tracks, and all matched to the same loudness so no region is suddenly louder than its neighbour.
-CHANGED - the music follows the real map now. It used to pick between two tracks using two hardcoded circles left over from before the world was generated; it now asks the world which zone you are standing in, so it stays right wherever the map goes.
-NEW - zone changes crossfade over about five seconds instead of cutting, and the track will not change until you have been in the new zone for a couple of seconds. Step over a border and step back and the music never reacts at all. Stand on a border and it stays put instead of flapping between two songs.
-NEW - each theme loops seamlessly, and the next zone's music starts loading the moment you look like you are heading there, so the fade lands on music instead of silence.
