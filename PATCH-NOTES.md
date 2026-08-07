@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.3) - ITEM TOOLTIPS STOP GETTING STUCK ON SCREEN
+
+FIXED - hovering an item in your pack or the bank, then hitting Tab or Escape to close the window, used to leave the little item info box floating on screen with no window under it. The pack and the bank now both hide their tooltip the instant the window closes, so nothing gets left behind. The bank's item hover also got upgraded from plain text to the same stats box the pack and Fenwick's shop already show.
+
+
 ## 2026-08-07 (v17.2) - THE SOCIAL PANEL WORKS LIKE A REAL WINDOW NOW
 
 FIXED - O had to be held down to see who is online, and none of its buttons (INVITE, WHISPER, ADD FRIEND) could actually be clicked, since holding O never released your mouse from the camera. O now toggles the panel open and closed like every other window, hitting O again (or ESC, or the new close button) shuts it, and your cursor is freed the moment it opens so the buttons genuinely work. Chrome (title bar, close button, footer legend) now matches every other window instead of a bare unstyled box.
@@ -61,9 +66,3 @@ FAIR PLAY - bars are only spent as each piece is finished, everything happens in
 CHANGED - the axe now bites into wood with a real woody crack instead of a synthesised blip, and mining is a proper bright pickaxe ring off stone, the sound you expect from a game. Both got three different samples rather than one, and each swing is pitch-shifted, so felling a whole tree never repeats the same noise twice.
 FIXED - foraging used to play the axe sound, so picking a herb sounded like chopping down a tree. It has its own sound now: stems snapping, leaves rustling, soil shaking off the roots.
 CHANGED - a falling tree is a real recording of a trunk splitting and crashing through branches instead of a sawtooth sweep.
-
-
-## 2026-08-07 (v16.2) - THE MENU PATCH NOTES ARE ALIVE
-
-FIXED - the PATCH NOTES box on the main menu was frozen at V13 while the real notes kept being written to a file nobody displayed. The menu now loads the live notes file every time it opens, so everything above this line, and every future update, shows up there automatically.
-NEW - the notes box scrolls, headlines get their version tag, and the NEW/FIXED/CHANGED labels keep their gold highlight. If the game is opened offline the old built-in notes still show as a fallback.
