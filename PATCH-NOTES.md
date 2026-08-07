@@ -1,10 +1,20 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v16.3) - SMELT AND SMITH: REAL CRAFTING UIS
+
+REDONE - the furnace. F now opens a menu listing every ore you can smelt with pictures, how many you carry, and what each bar needs. Pick one, set how many with + and - or just type the number, hit MAX for everything, then SMELT and watch the furnace work - one bar at a time with the pour, the sparks and the XP, straight into your pack. Stopping early keeps your leftover ore.
+NEW - BRONZE and STEEL. Copper ore now smelts into BRONZE BARS (old copper bars melt over 1 for 1 at the furnace), and at SMITHING 40 iron ore plus 2 coal makes a STEEL BAR.
+REDONE - the anvil. F opens a smithy with three metal tabs - BRONZE, IRON, STEEL - each listing the full set you can make: helm, platebody, platelegs, kite shield, scimitar, a two-handed CLAYMORE, pickaxe, axe, sickle, and a skinning knife (craftable now, skinning comes later). Same pick-a-number-and-go controls, then the anvil rings while your order is hammered out piece by piece with XP on every one.
+NEW - sixteen new pieces of gear with their own thumbnails. Steel plate is the best armour in the game now, and every metal has its own claymore - the Grim Cleaver you may already own is the iron claymore's famous older brother and is no longer craftable.
+FAIR PLAY - bars are only spent as each piece is finished, everything happens in one no-dupe inventory step, and walking away from the furnace or anvil stops the work with your materials safe.
+
+
 ## 2026-08-06 (v19) - Chopping and mining sound like chopping and mining
 
 CHANGED - the axe now bites into wood with a real woody crack instead of a synthesised blip, and mining is a proper bright pickaxe ring off stone, the sound you expect from a game. Both got three different samples rather than one, and each swing is pitch-shifted, so felling a whole tree never repeats the same noise twice.
 FIXED - foraging used to play the axe sound, so picking a herb sounded like chopping down a tree. It has its own sound now: stems snapping, leaves rustling, soil shaking off the roots.
 CHANGED - a falling tree is a real recording of a trunk splitting and crashing through branches instead of a sawtooth sweep.
+
 
 ## 2026-08-07 (v16.2) - THE MENU PATCH NOTES ARE ALIVE
 
@@ -76,20 +86,3 @@ CHANGED - the pack tooltip quotes what Fenwick actually pays right now, glut dis
 NEW - real sampled sounds for the six most heard combat events: light swing, heavy swing, hit, critical hit, shield block and parry. Until now every one of these was an oscillator beep; a blow landing was a sine thump and a parry was two triangle waves. Each sound was generated with ElevenLabs (three takes, best one picked on measurements and spectrogram), trimmed to the event and shipped in the bundle, about 46 KB for all six.
 CHANGED - every combat sound plays at a slightly different pitch each time, the same trick the anvil uses, so a fast fight never sounds like one sample being retriggered. The old synthesised sounds stay in as an instant fallback while the samples decode, so the first hit of a session is never silent.
 FIXED - harness/build.sh works again on a fresh pull. The shipped UI patches 38-40 were still sitting in harness/patches/ and broke the build for every track; they are now in applied/ where shipped patches belong.
-
-
-## 2026-08-06 (v14) - UI pass: the world stops pausing, one panel system
-
-FIXED - opening your pack, the bank or the skills page no longer PAUSES the world. active() went false the moment a panel released the pointer lock, so the whole simulation held its breath: NPCs stopped, quests stopped, nothing moved until you closed the panel. The world now keeps running behind every window, and the keyboard is what gets held back instead.
-NEW - FRAME RATE in the corner readout, colour-coded against the same threshold the game uses to drop its own graphics. The coord stamp stays, now on three lines so it never clips the action bar.
-FIXED - the action bar no longer draws on top of the pack, the bank, the sack or the skills page. One z-index ladder replaces sixteen hand-picked numbers, and panels no longer reach down into the bar.
-NEW - every window dims the world behind it, the treatment only the world map had.
-FIXED - the duel-era round frame is gone from the open world. No more FREE ROAM over four empty win pips fighting the compass ribbon for the same strip of screen.
-CHANGED - one panel chrome everywhere: same border, fill, gold rule and typeface. Fourteen places were asking for generic monospace and rendering in the wrong font. Every window now carries a description of what it is for and a sticky legend of what each control does.
-CHANGED - the trader shows item icons, the bank shows your gold and lays the vault out beside your pack, and the skills page reads in two columns.
-FIXED - ESC closes the trader instead of opening the pause menu on top of it. Messages raised by a panel (pack full, wrong slot, key unbound) show above the dimmer instead of behind it.
-
-
-## Phase 1d: falling exists
-
-The player carries a real elevation now, behind the new VERT switches in the shared rules (ELEV is the master and any switch can be turned off in production without reverting the rest). Walk off an edge and you fall, with terminal velocity and a landing; the jump is ballistic to the same height as before; the camera follows you off a cliff; bridges are real walkable decks and standing on one over the river does not read as swimming. Slopes still climb exactly as before (the slope limit waits for 1g and its reachability sweep), swimming and boating behave exactly as they always did, and standing anywhere on the ground is arithmetically identical to the old game, not just similar. Fall damage is wired and set to zero. Elevation deliberately lives beside the position rather than inside pos.y, so all 25 distance checks in the game (interactions, melee reach, aggro) and the save format are untouched. Proven by the new harness/vertical.js (fifteen checks including jump apex, monotone falls, deck over water, and the switch restoring the old formula exactly) plus the whole existing suite.

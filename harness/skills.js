@@ -98,7 +98,7 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
 
     // ---- 5. tool tier detection off the pack
     const tiers = {};
-    for (const id of ['CRUDE AXE', 'COPPER AXE', 'IRON AXE', 'STEEL AXE', 'OBSIDIAN AXE', 'MASTERWORK AXE']) {
+    for (const id of ['CRUDE AXE', 'BRONZE AXE', 'IRON AXE', 'STEEL AXE', 'OBSIDIAN AXE', 'MASTERWORK AXE']) {
       g.inv[27] = { item: id, qty: 1 };
       tiers[id] = g.toolTierFor('WOODCUTTING');
     }

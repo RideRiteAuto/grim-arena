@@ -440,7 +440,7 @@ const GRIM_RULES = {
     // plan. Foraging tier 1 is bare hands, so it has no item.
     TOOLS: [
       { tier: 1, name: 'CRUDE',      axe: 'CRUDE AXE',      pick: 'CRUDE PICK',          sickle: null },
-      { tier: 2, name: 'COPPER',     axe: 'COPPER AXE',     pick: 'COPPER PICKAXE',      sickle: 'COPPER SICKLE' },
+      { tier: 2, name: 'BRONZE',     axe: 'BRONZE AXE',     pick: 'BRONZE PICKAXE',      sickle: 'BRONZE SICKLE' },
       { tier: 3, name: 'IRON',       axe: 'IRON AXE',       pick: 'IRON PICKAXE',        sickle: 'IRON SICKLE' },
       { tier: 4, name: 'STEEL',      axe: 'STEEL AXE',      pick: 'STEEL PICKAXE',       sickle: 'STEEL SICKLE' },
       { tier: 5, name: 'OBSIDIAN',   axe: 'OBSIDIAN AXE',   pick: 'OBSIDIAN PICKAXE',    sickle: 'OBSIDIAN SICKLE' },
