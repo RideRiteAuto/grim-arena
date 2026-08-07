@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v16.7) - IN-GAME CHAT: LOCAL AND GLOBAL
+
+NEW - a chat box in the bottom left, press Enter to open it. LOCAL is only seen by players within about 45m of you and your message floats above your head just like an NPC catchphrase, using the same fading distance system. GLOBAL reaches everyone in the world. Tabs show a little marker when a channel gets a new message you have not read yet. Chat never pauses or dims the game, so you can keep fighting and walking while it is open.
+
+
 ## 2026-08-07 (v16.6) - CATCHPHRASES NOW SHOW ABOVE THE RIGHT HEAD
 
 FIXED - a talking NPC's line only ever showed up while that NPC happened to be your current target, and it was positioned there too, so Mr. Sailers' catchphrases were invisible or in the wrong place most of the time. Every NPC that talks now gets its own floating line above its own head, independent of who you have targeted. NEW - a max distance on how far away chat and catchphrases are visible, and the text shrinks the further away it is, so you are never reading dialogue from across the map.
@@ -71,10 +76,3 @@ NEW - each theme loops seamlessly, and the next zone's music starts loading the 
 
 FIXED - riding up to an NPC no longer buries the talk prompt under the mount controls. The interact prompt keeps centre stage; PRESS X - DISMOUNT and the turbo hint dock bottom-right with the teleport hint, where standing controls live. The boat hint moves to the same corner.
 CHANGED - every floating key hint now says PRESS, and the turbo hint names the action Z will take rather than the state it is in.
-
-
-## 2026-08-06 (v17) - Hits know what they are hitting
-
-CHANGED - the swing is a swing again. It is a genuine miss now: air and a blade whistle, nothing struck. The v2 attempt had an impact buried in it, which is why it stopped sounding like a swing.
-NEW - hits pick their sound from what you actually hit. Bare creatures give a solid meaty thud, goblins and lightly geared players give a leathery slap, anything in metal gives a hard clang off the plate. Every monster in the game right now is bare or leather, so plate is waiting for the first armoured enemy: when one arrives it only has to say it wears plate and the sound is already there.
-CHANGED - a critical hit is no longer just a louder hit. It plays the impact and then lays a bright ringing blade over the top of it, so a crit sounds like a reward instead of a heavier thud, and it reads the same whatever you land it on.
