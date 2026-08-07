@@ -99,13 +99,18 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     const dry = drive(() => G.sfx('hit', null));
     if (dry.length && dry[0].att !== 1) fail.push('A: attenuation leaked, next dry sound played at ' + dry[0].att);
 
-    // ---- B. the metallic swoosh on a gathering swing ----------------------
-    // "when you're moving an axe or a pickaxe through the air, it doesn't
-    //  really make any sound"
+    // ---- B. the tool swing, twice over ------------------------------------
+    // Patch 44/55.283: "when you're moving an axe or a pickaxe through the
+    //  air, it doesn't really make any sound" - the metallic-ring bug was
+    //  fixed by going silent on a miss.
+    // Patch 67.452: Kevin's next round asked for the opposite of silence -
+    //  a tool swung at nothing should whoosh exactly like a sword does, not
+    //  say nothing at all. So this now asserts the CURRENT contract: a tool
+    //  swing asks for 'swing', same logical name as a sword's light attack.
     G.me.stam = 999; G.me.mana = 999; G.me.combo = 0; G.me.yaw = 0;
     const chop = drive(() => G.startMove(G.me, 'chop'));
     note.chopSwing = names(chop);
-    if (chop.length) fail.push('B: swinging a tool still makes a sound: ' + names(chop).join(','));
+    if (names(chop)[0] !== 'swing') fail.push('B: a tool swing asked for ' + names(chop).join(',') + ', not swing');
 
     // ---- C. sword swings reach the RECORDED samples, not the synth --------
     const light = drive(() => G.startMove(G.me, 'light'));
@@ -114,6 +119,23 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     if (names(light)[0] !== 'swing') fail.push('C: a light attack asked for ' + names(light).join(',') + ', not swing');
     if (names(heavy)[0] !== 'heavy') fail.push('C: a heavy attack asked for ' + names(heavy).join(',') + ', not heavy');
     if (!G._samples.has('combat-swing')) fail.push('C: swing has no sample to reach');
+
+    // ---- C2. patch 67.452: 'swing' and 'heavy' reach the SAME sample ------
+    // Kevin: two different takes played across one 3-swing combo and only the
+    // heavy finisher's take ("combat-heavy") was the whoosh he wanted. Fixed
+    // by rerouting 'swing' onto 'combat-heavy' too, so every miss - light,
+    // heavy, or a tool - sounds like that one good take. Assert the ACTUAL
+    // resolved sample, not just the logical name, since B and C above only
+    // prove what was ASKED for for and CSAMP could still point it anywhere.
+    const swingSample = gainOfName('swing');
+    const heavySample = gainOfName('heavy');
+    note.airSwingSample = { swing: swingSample && swingSample.nm, heavy: heavySample && heavySample.nm };
+    if (!swingSample || swingSample.nm !== 'combat-heavy') {
+      fail.push('C2: swing resolved to ' + (swingSample && swingSample.nm) + ', not combat-heavy');
+    }
+    if (!heavySample || heavySample.nm !== 'combat-heavy') {
+      fail.push('C2: heavy resolved to ' + (heavySample && heavySample.nm) + ', not combat-heavy');
+    }
 
     // ---- D. no spell may ask for a sword sound ----------------------------
     // "some of the sounds for magic actually still sound like sword swings
