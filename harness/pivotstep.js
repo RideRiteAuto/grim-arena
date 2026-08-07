@@ -73,6 +73,7 @@ const OUT = process.env.OUT || '/tmp/pivotstep';
         kneeTrace.push({
           active: !!me._pivActive,
           t: me._pivT || 0,
+          ampK: me._pivAmpK || 1,
           kneeR: +me.parts.kneeR.rotation.x.toFixed(4),
           kneeL: +me.parts.kneeL.rotation.x.toFixed(4)
         });
@@ -144,11 +145,20 @@ const OUT = process.env.OUT || '/tmp/pivotstep';
     // block above the pivot block (present at spd=0 regardless of pivot
     // state), which the pivot's own lift term is added on TOP of - include
     // that base rather than assuming a zero rest pose.
+    //
+    // Patch 73.260 item A (turn-rate blended step size/duration) scales the
+    // lift by e._pivAmpK (1.0-1.4, set once at the moment a step fires, from
+    // the low-pass-filtered turn rate) - a fast flick-turn gets a punchier
+    // step. That is a deliberate, intentional per-step amplitude, not noise
+    // coupling, so the expected curve must include it: recorded per frame
+    // above as fr.ampK (the step's own fixed ampK for its whole duration,
+    // not recomputed from that frame's input), so a real per-frame noise
+    // leak would still show up as drift here exactly as before.
     const KNEE_IDLE_BASE = 0.06;
     let worstDrift = 0;
     for (const fr of noisy.kneeTrace) {
       if (!fr.active) continue;
-      const expectedLift = KNEE_IDLE_BASE + Math.sin(Math.PI * fr.t) * 0.34;
+      const expectedLift = KNEE_IDLE_BASE + Math.sin(Math.PI * fr.t) * 0.34 * (fr.ampK || 1);
       const gotLift = Math.max(fr.kneeR, fr.kneeL); // whichever leg is stepping is the elevated one
       const drift = Math.abs(gotLift - expectedLift);
       if (drift > worstDrift) worstDrift = drift;
