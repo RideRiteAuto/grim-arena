@@ -1,5 +1,17 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.2) - THE SOCIAL PANEL WORKS LIKE A REAL WINDOW NOW
+
+FIXED - O had to be held down to see who is online, and none of its buttons (INVITE, WHISPER, ADD FRIEND) could actually be clicked, since holding O never released your mouse from the camera. O now toggles the panel open and closed like every other window, hitting O again (or ESC, or the new close button) shuts it, and your cursor is freed the moment it opens so the buttons genuinely work. Chrome (title bar, close button, footer legend) now matches every other window instead of a bare unstyled box.
+FIXED - KICK and LEAVE on your party frames looked clickable but were not, any time another window was open (bank, pack, the social panel, all of them) - the screen dimmer behind that window was silently sitting in front of the party frames and eating every click. Party frames now render above the dimmer, so KICK and LEAVE stay reachable no matter what else you have open.
+
+
+## 2026-08-07 (v17.1) - NO MORE GUEST, A REAL PAUSE MENU
+
+REMOVED - the PLAY AS GUEST button. Accounts are mandatory now, so LOGIN & PLAY is the only door in, and the front-door copy and login-box status line that mentioned guest play are gone too.
+FIXED - hitting ESC used to dump you straight back onto the title screen, the same login/patch-notes overlay with the message swapped to PAUSED. ESC now opens a proper in-game pause menu: RESUME, SETTINGS (aim assist, music, volume, graphics quality, PVP, all the same controls, just relocated), and LOG OUT, which is now the only button that actually takes you back to the real title screen. Click outside the panel or hit ESC again to resume.
+
+
 ## 2026-08-07 (v17.0) - HUD LAYOUT CLEANUP
 
 FIXED - the FPS/coords debug stamp sat directly under the new chat box; moved to the bottom-right, clear of both chat and the PRESS H / boat-interact hints. FIXED - party frames were pinned over your own health bar and the quest helper box; they now sit directly under your health bar where they belong, the quest helper is pushed further down to stay clear even with a full 5-person party, and the quest box grew a matching gap. NEW - party frames show mana now, not just HP, for every member whose client has synced it.
@@ -55,20 +67,3 @@ CHANGED - a falling tree is a real recording of a trunk splitting and crashing t
 
 FIXED - the PATCH NOTES box on the main menu was frozen at V13 while the real notes kept being written to a file nobody displayed. The menu now loads the live notes file every time it opens, so everything above this line, and every future update, shows up there automatically.
 NEW - the notes box scrolls, headlines get their version tag, and the NEW/FIXED/CHANGED labels keep their gold highlight. If the game is opened offline the old built-in notes still show as a fallback.
-
-
-## 2026-08-06 (v16.1) - PVP ACTUALLY WORKS, DOG TAGS, K/D RECORD
-
-FIXED - pvp hits now really land. The live game talks through the relay server, and the relay was silently dropping every pvp message - you saw the hitsplat, they never took the damage. The relay now carries player combat, delivered only to the player it is addressed to.
-FIXED - the player currently hosting the simulation could not be hurt even with pvp on. Now every seat takes hits the same way.
-NEW - dog tags. Kill a player and their dog tag (with their name on it) appears in your pack. Bank it, keep it, hand it in for future quests: it is proof of the kill. One tag per victim per 10 minutes, so trading kills back and forth cannot mint a pile of them. Fenwick will not buy them - proof is not for sale.
-NEW - your PVP record. Kills and deaths are counted, saved with your character, and shown at the bottom of the skills page (K).
-WORKS NOW - spells in pvp: fireball sets players burning (burn ticks never land the killing blow), frost freezes them solid for 2 seconds with a 6 second immunity after, so nobody can be chain-frozen forever.
-FAIR PLAY - the victim's machine is always the judge: your armour, shield and parries decide what a hit does to you. Incoming damage claims are capped at the biggest hit the game can legitimately produce, kill credit is only honoured if the killer really damaged you in the last 30 seconds, and player kills award no combat XP - so kill trading earns nothing.
-
-
-## 2026-08-06 (v16) - PVP
-
-NEW - PVP, strictly opt-in. Flip PVP: ON on the main menu and you can fight, and be fought by, anyone else who has done the same. A red sword marks pvp players on their nameplate and in the who-is-online list.
-NEW - dying to a player costs NOTHING. No item drops, no gold lost: you rise at the camp with your pack intact, the killer's name on the banner, and five seconds where nobody can touch you and you cannot touch them.
-NEW - your shield matters against players: blocks, perfect parries and armour all work exactly as they do against monsters, judged on your own machine.
