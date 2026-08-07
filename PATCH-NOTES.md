@@ -1,5 +1,11 @@
 # Grim World — patch notes
 
+## 2026-08-06 (v19) - Chopping and mining sound like chopping and mining
+
+CHANGED - the axe now bites into wood with a real woody crack instead of a synthesised blip, and mining is a proper bright pickaxe ring off stone, the sound you expect from a game. Both got three different samples rather than one, and each swing is pitch-shifted, so felling a whole tree never repeats the same noise twice.
+FIXED - foraging used to play the axe sound, so picking a herb sounded like chopping down a tree. It has its own sound now: stems snapping, leaves rustling, soil shaking off the roots.
+CHANGED - a falling tree is a real recording of a trunk splitting and crashing through branches instead of a sawtooth sweep.
+
 ## 2026-08-07 (v16.2) - THE MENU PATCH NOTES ARE ALIVE
 
 FIXED - the PATCH NOTES box on the main menu was frozen at V13 while the real notes kept being written to a file nobody displayed. The menu now loads the live notes file every time it opens, so everything above this line, and every future update, shows up there automatically.
