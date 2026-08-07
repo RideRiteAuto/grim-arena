@@ -377,6 +377,9 @@ const GRIM_EDIT_CATALOG = (() => {
     tree_broad: { label: 'Broadleaf tree', tab: 'nature', clear: 2.6, build: treeOf('broad') },
     tree_pine:  { label: 'Pine tree',      tab: 'nature', clear: 2.4, build: treeOf('pine') },
     tree_dead:  { label: 'Dead tree',      tab: 'nature', clear: 2.2, build: treeOf('dead') },
+    // the biggest tree in the kit: not tied to any zone's harvest table, just
+    // a big decorative species for dressing a forest or a grove by hand.
+    tree_redwood: { label: 'Redwood', tab: 'nature', clear: 4.6, build: natureOf('redwood') },
   };
 
   // Gather nodes and plants come from the live rules table rather than a
