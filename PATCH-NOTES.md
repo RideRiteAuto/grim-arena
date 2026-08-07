@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v16.8) - PARTY SYSTEM
+
+NEW - a party system. Invite from the hold-O player list (or type /invite NAME), the other player gets an accept/decline popup. Once formed, a PARTY tab appears in chat (party-only, no distance limit) and small HP frames show top-left for you and every party member, with a star on the leader and a sword if someone has PVP on. LEAVE is on your own frame, KICK (leader only) is on everyone else's. If the leader disconnects or leaves, the next-longest-standing member takes over automatically, and a party that drops to one person dissolves rather than sitting there empty. Cap is 5. Party membership lives on the relay server itself, the same way monster health does, so two players can never end up disagreeing about who is actually in the party.
+
+
 ## 2026-08-07 (v16.7) - IN-GAME CHAT: LOCAL AND GLOBAL
 
 NEW - a chat box in the bottom left, press Enter to open it. LOCAL is only seen by players within about 45m of you and your message floats above your head just like an NPC catchphrase, using the same fading distance system. GLOBAL reaches everyone in the world. Tabs show a little marker when a channel gets a new message you have not read yet. Chat never pauses or dims the game, so you can keep fighting and walking while it is open.
@@ -70,9 +75,3 @@ NEW - twelve original themes, one for each region of the world, generated as a s
 CHANGED - the music follows the real map now. It used to pick between two tracks using two hardcoded circles left over from before the world was generated; it now asks the world which zone you are standing in, so it stays right wherever the map goes.
 NEW - zone changes crossfade over about five seconds instead of cutting, and the track will not change until you have been in the new zone for a couple of seconds. Step over a border and step back and the music never reacts at all. Stand on a border and it stays put instead of flapping between two songs.
 NEW - each theme loops seamlessly, and the next zone's music starts loading the moment you look like you are heading there, so the fade lands on music instead of silence.
-
-
-## 2026-08-06 (v15.1) - Key hints say PRESS, mount hints move home
-
-FIXED - riding up to an NPC no longer buries the talk prompt under the mount controls. The interact prompt keeps centre stage; PRESS X - DISMOUNT and the turbo hint dock bottom-right with the teleport hint, where standing controls live. The boat hint moves to the same corner.
-CHANGED - every floating key hint now says PRESS, and the turbo hint names the action Z will take rather than the state it is in.
