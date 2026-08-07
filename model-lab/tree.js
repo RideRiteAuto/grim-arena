@@ -153,15 +153,27 @@ export function makeTreeKit(T, opt) {
     },
     redwood: { // the biggest thing in the forest: massive, barely-tapering
                // cinnamon-red trunk, branch-free low down like a real coast
-               // redwood, small conifer crown high up relative to the trunk's
-               // bulk. Not part of any zone's harvest table yet - placeable
+               // redwood, and now a genuinely FULL conifer head up top,
+               // not the small tapering point the shared conifer builder
+               // gives pine. A real coast redwood's own crown is actually
+               // narrow and pyramidal - Kevin's ask ("way bushier, way
+               // more green greenery, big bushy full head") is a
+               // deliberate departure from that toward a giant-sequoia-like
+               // dense, rounded crown, since that is what reads as
+               // impressive at fifty metres instead of "bare at the top".
+               // crownTaper/crownDenseBase/crownDenseFall/crownClumpMul/
+               // crownTipMul/crownTipExtra all default to pine's old
+               // numbers when unset, so pine is untouched by this.
+               // Not part of any zone's harvest table yet - placeable
                // from the world editor's nature catalog for decoration.
       h: 13.5, r: 1.05, flare: 1.85, breakY: 0.95,
       bark: [0.40, 0.20, 0.14], barkDark: [0.20, 0.09, 0.06],
-      leaf: [0.13, 0.28, 0.19], leafDeep: [0.07, 0.18, 0.12], leafSun: [0.30, 0.46, 0.27],
+      leaf: [0.15, 0.36, 0.21], leafDeep: [0.08, 0.23, 0.13], leafSun: [0.36, 0.56, 0.31],
       limbs: 3, limbY: [0.66, 0.84], limbLen: [1.8, 2.6], limbUp: [0.55, 0.9],
-      clumps: 0, crownR: 2.1, crownY0: 8.6,
-      canopy: 'conifer', tiers: 7, taper: 0.24, moss: 0.55, tintMix: 0.30
+      clumps: 0, crownR: 2.85, crownY0: 8.2,
+      canopy: 'conifer', tiers: 8, taper: 0.24, moss: 0.55, tintMix: 0.30,
+      crownTaper: 0.42, crownDenseBase: 9, crownDenseFall: 1,
+      crownClumpMul: 1.3, crownTipMul: 2.1, crownTipExtra: 5
     },
     palm: {   // one bare ringed stem, swept, frond crown at the very top
       h: 8.4, r: 0.31, flare: 0.48, breakY: 0.60,
@@ -515,13 +527,35 @@ export function makeTreeKit(T, opt) {
         leafParts.push(placed(T, geo, ...IN(cx, cy, cz), rnd() * 3, rnd() * 3, rnd() * 3, 1));
         ci++;
       }
-      // willow: curtains hang off the crown rim, almost to the ground
-      if (K.drapes) {
+      // willow: curtains hang off the crown, almost to the ground. Each one
+      // springs from an actual foliage clump's position (picked from
+      // clumpAt, the same list just rendered above) rather than an
+      // independent random point out near the crown radius - the old way,
+      // a drape's own random radius/height rarely landed inside any real
+      // clump's volume, so several curtains every build hung visibly in
+      // empty air with nothing holding them up. A thin drooping branch
+      // stub (buried into the source clump, same trick the limb-end
+      // clusters use) connects clump to curtain, which also reads more
+      // correctly - a willow's curtains are drooping BRANCHES, not leaves
+      // floating free.
+      if (K.drapes && clumpAt.length) {
         for (let i = 0; i < K.drapes; i++) {
-          const a = (i / K.drapes) * Math.PI * 2 + rnd() * 0.5;
-          const rr = K.crownR * (0.75 + rnd() * 0.3);
-          const topY = K.crownY0 + 0.6 + rnd() * 0.5;
-          const dropLen = topY - (0.9 + rnd() * 0.5);
+          const src = clumpAt[Math.floor(rnd() * clumpAt.length)];
+          const [scx, scy, scz, scs] = src;
+          const srcR = (K.clumpR[0] + (K.clumpR[1] - K.clumpR[0]) * 0.5) * scs;
+          // small lateral jitter so several drapes off the same clump do
+          // not all hang dead center on top of each other
+          const jx = (rnd() - 0.5) * srcR * 1.3, jz = (rnd() - 0.5) * srcR * 1.3;
+          const tipX = scx + jx, tipZ = scz + jz;
+          const topY = scy - srcR * 0.1;
+          const dropLen = 0.9 + rnd() * 1.1;
+          const stub = logBetween(T,
+            new T.Vector3(...IN(scx, scy - srcR * 0.25, scz)),
+            new T.Vector3(...IN(tipX, topY, tipZ)),
+            Math.max(0.02, K.r * 0.10), Math.max(0.012, K.r * 0.04),
+            { rough: 0.16, seed: i * 23 + seed + 5, segments: 4 });
+          paintByPos(T, stub.geo, (c, x, y, z) => barkPaint(K, seed)(c, x + hingeX, y + K.breakY, z));
+          woodUp.push(stub);
           const geo = roughen(T, new T.IcosahedronGeometry(0.5, 1), 0.26, i * 17 + seed, 0.9);
           geo.scale(0.42 + rnd() * 0.12, dropLen / 1.0, 0.42 + rnd() * 0.12);
           // darker toward the hanging tip, like leaves in their own shade
@@ -534,8 +568,10 @@ export function makeTreeKit(T, opt) {
               (K.leaf[1] * (1 - d) + K.leafDeep[1] * d) * (0.82 + h2 * 0.3),
               (K.leaf[2] * (1 - d) + K.leafDeep[2] * d) * (0.82 + h2 * 0.3));
           });
+          // top of the drape overlaps up into where the stub ends, so
+          // there is no seam even before the stub geometry is accounted for
           leafParts.push(placed(T, geo,
-            ...IN(Math.sin(a) * rr, topY - dropLen * 0.5, Math.cos(a) * rr),
+            ...IN(tipX, topY - dropLen * 0.42, tipZ),
             0, rnd() * 3, 0, 1));
         }
       }
@@ -545,15 +581,24 @@ export function makeTreeKit(T, opt) {
       // cones reads as a stack of party hats. Each tier is narrower than the
       // one below it, so the silhouette still tapers to a point, but the
       // surface reads as needle clumps instead of sheet metal.
+      // taper/density are parameterized per species so redwood can carry a
+      // full, bushy head without changing pine (which keeps the old
+      // defaults exactly: 0.80 taper, a 7-to-4 clump falloff, a small tip
+      // cap). Redwood overrides all four to stop the top tiers from
+      // shrinking to almost nothing, which read as "bare at the top".
       const nT = K.tiers || 6;
       const topY = tipY + 0.3;
       const span = topY - K.crownY0;
+      const taperAmt = K.crownTaper === undefined ? 0.80 : K.crownTaper;
+      const denseBase = K.crownDenseBase === undefined ? 7 : K.crownDenseBase;
+      const denseFall = K.crownDenseFall === undefined ? 3 : K.crownDenseFall;
+      const clumpMul = K.crownClumpMul || 1;
       for (let i = 0; i < nT; i++) {
         const u = i / (nT - 1);
         const cy = K.crownY0 + span * u;
         const cx0 = line(cy / K.h).x;
-        const tierR = K.crownR * (1 - u * 0.80) * (0.92 + rnd() * 0.14);
-        const nClump = Math.max(4, Math.round(7 - u * 3));
+        const tierR = K.crownR * (1 - u * taperAmt) * (0.92 + rnd() * 0.14);
+        const nClump = Math.max(4, Math.round(denseBase - u * denseFall));
         for (let cc = 0; cc < nClump; cc++) {
           const a = (cc / nClump) * Math.PI * 2 + rnd() * 0.4 + u * 2.3;
           const rr = tierR * (0.68 + rnd() * 0.3);
@@ -564,19 +609,37 @@ export function makeTreeKit(T, opt) {
             Math.max(0.02, K.r * 0.16 * (1 - u * 0.4)), Math.max(0.012, K.r * 0.05), { rough: 0.14, seed: i * 19 + cc * 7 + seed, segments: 4 });
           paintByPos(T, stub.geo, (c, x, y, z) => barkPaint(K, seed)(c, x + hingeX, y + K.breakY, z));
           woodUp.push(stub);
-          const br = tierR * (0.34 + rnd() * 0.16);
+          const br = tierR * (0.34 + rnd() * 0.16) * clumpMul;
           const geo = roughen(T, new T.IcosahedronGeometry(br, 1), 0.42, (i * 13 + cc * 5 + 1) * 31 + seed, 0.6);
           geo.scale(1, 0.60 + rnd() * 0.12, 1);
           paintByPos(T, geo, (c, x, y, z) => leafPaint(K, cy - 0.35, br * 1.5)(c, x, y, z));
           leafParts.push(placed(T, geo, ...IN(bx, by, bz), rnd() * 3, rnd() * 3, rnd() * 3, 1));
         }
       }
-      // the crown tip: one small clump closes off the leader instead of a bare point
+      // the crown tip: one clump closes off the leader instead of a bare
+      // point - crownTipMul lets redwood end on a real full head instead of
+      // the small default cap.
       {
         const tipYY = topY - 0.05;
-        const geo = roughen(T, new T.IcosahedronGeometry(K.crownR * 0.22, 1), 0.4, seed + 91, 0.6);
+        const tipMul = K.crownTipMul || 1;
+        const geo = roughen(T, new T.IcosahedronGeometry(K.crownR * 0.22 * tipMul, 1), 0.4, seed + 91, 0.6);
         paintByPos(T, geo, (c, x, y, z) => leafPaint(K, tipYY - 0.2, K.crownR * 0.3)(c, x, y, z));
         leafParts.push(placed(T, geo, ...IN(line(tipYY / K.h).x, tipYY, 0), rnd() * 3, rnd() * 3, rnd() * 3, 1));
+        // redwood only: a couple of extra sub-clumps clustered right around
+        // the tip cap, so the top reads as one full mass of foliage instead
+        // of a single ball balanced on the leader
+        if (K.crownTipExtra) {
+          for (let e = 0; e < K.crownTipExtra; e++) {
+            const ea = rnd() * Math.PI * 2, er = K.crownR * (0.22 + rnd() * 0.28) * tipMul;
+            const ey = tipYY - 0.15 - rnd() * 0.5;
+            const ebr = K.crownR * (0.16 + rnd() * 0.1) * tipMul;
+            const egeo = roughen(T, new T.IcosahedronGeometry(ebr, 1), 0.42, (e + 1) * 47 + seed + 91, 0.6);
+            paintByPos(T, egeo, (c, x, y, z) => leafPaint(K, ey - 0.3, ebr * 1.5)(c, x, y, z));
+            leafParts.push(placed(T, egeo,
+              ...IN(line(ey / K.h).x + Math.sin(ea) * er, ey, Math.cos(ea) * er),
+              rnd() * 3, rnd() * 3, rnd() * 3, 1));
+          }
+        }
       }
     } else if (style === 'fronds') {
       // palm crown: a fan of drooping blades from the very tip, nuts beneath.
