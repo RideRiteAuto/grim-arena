@@ -21,7 +21,11 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
   const errs = [];
   page.on('pageerror', e => errs.push(String(e && e.message)));
   await page.goto(URL, { waitUntil: 'load', timeout: 90000 });
-  await page.waitForFunction(() => !!window.__grim, { timeout: 90000 });
+  // THREE lands on the game object AFTER the object itself, and the size of
+  // that gap moved when the editor track shipped, which broke this file on
+  // `G.T` being undefined. Wait for the thing actually used.
+  await page.waitForFunction(() => !!(window.__grim && window.__grim.T),
+    { timeout: 90000 });
 
   const res = await page.evaluate(async () => {
     const G = window.__grim;

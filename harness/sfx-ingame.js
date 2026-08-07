@@ -37,7 +37,10 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
                   'combat-hit-flesh', 'combat-hit-leather', 'combat-hit-plate',
                   'combat-crit-ring',
                   'chop-a', 'chop-b', 'chop-c', 'mine-a', 'mine-b', 'mine-c',
-                  'forage', 'timber'];
+                  'forage', 'timber',
+                  'arrow-flesh', 'arrow-plate',
+                  'sp-fire-cast', 'sp-fire-hit', 'sp-frost-cast', 'sp-frost-hit',
+                  'sp-heal-cast', 'sp-heal-apply'];
     const got = {};
     for (const n of want) got[n] = G._samples.has(n);
 
@@ -93,7 +96,7 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     // about 0.2s, and failing it as "truncated" is the test being wrong.
     // Sustained things (anvil ring-out, the fire bed, a falling tree) must
     // carry a real tail.
-    const ONE_SHOT = /^(combat-|chop-|mine-|forage$)/;
+    const ONE_SHOT = /^(combat-|chop-|mine-|arrow-|forage$)/;
     const minSec = ONE_SHOT.test(n) ? 0.15 : 0.5;
     if (st.seconds < minSec) fail.push(n + ' is only ' + st.seconds + 's');
   }
