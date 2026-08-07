@@ -374,11 +374,11 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     if (!ga || !/^arrow-/.test(ga.nm)) fail.push('H: arrow-hit did not reach an arrow sample: ' + JSON.stringify(ga));
     if (ga && gh && !(ga.g < gh.g)) fail.push('H: an arrow lands at ' + ga.g + ', no quieter than the sword at ' + gh.g);
 
-    // ---- I. footsteps (patch 68) -------------------------------------------
-    // footTick_ reads e.phase/e.moveAmt/e._shufA/e._shufPh directly rather
-    // than driving the full rig through animate(), so it can be exercised
-    // here with a minimal fixture instead of a fully-built character mesh -
-    // see the patch's own comment on why that split pays off for testing.
+    // ---- I. footsteps (patch 68, plant hookup reworked in 68.520) ---------
+    // footTick_ reads e.phase/e.moveAmt/e._pivPlant directly rather than
+    // driving the full rig through animate(), so it can be exercised here
+    // with a minimal fixture instead of a fully-built character mesh - see
+    // the patch's own comment on why that split pays off for testing.
     {
       const mkFoot = over => Object.assign({
         parts: { kneeR: {} }, phase: 0, moveAmt: 0, pos: new T.Vector3(0, 0, 0),
@@ -429,11 +429,29 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
       if (!(runGain !== null && walkGain !== null && runGain > walkGain))
         fail.push('I: a run did not read louder than a walk: run=' + runGain + ' walk=' + walkGain);
 
-      // turning in place (shuffle) plays footsteps too, even at moveAmt 0
+      // turning in place (a pivot-step) plays footsteps too, even at
+      // moveAmt 0. The pivot rig (68.520) fires footTick_'s shuffle branch
+      // off a one-frame "a foot just planted" flag rather than a phase
+      // heuristic, so the fixture just sets that flag directly per step -
+      // no need to drive dozens of iterations of phase math to provoke it.
+      // Reset the NPC footstep voice-cap window (patch 68.417) before this
+      // subtest. footVoiceAllow_'s cap is intentionally GLOBAL, not per
+      // entity, so the walker/runner subtests just above leave an entry in
+      // it that's only 0.033s old - well inside the real 0.22s window - and
+      // with this fixture's this.me left unset (footAtten_ returns 1 for
+      // everything with no player entity to measure distance from) that
+      // stale entry ties the shuffler's own att exactly, so the strict
+      // att > worst.att eviction check never fires and the cap silently
+      // eats the second plant. Real gameplay never sees this collision
+      // (this.me is always set, and only genuinely-simultaneous nearby NPCs
+      // tie) - it's this subtest's own leftover state, so clear it.
+      G._footVoices = [];
       plays = [];
       const shuffler = mkFoot({ moveAmt: 0 });
-      shuffler._shufA = 0.5;
-      for (let i = 0; i < 30; i++) { shuffler._shufPh = (shuffler._shufPh || 0) + 0.15; G.footTick_(shuffler, 0.033, false); }
+      shuffler._pivPlant = true;
+      G.footTick_(shuffler, 0.033, false);
+      shuffler._pivPlant = true;
+      G.footTick_(shuffler, 0.033, false);
       note.footShufflePlays = plays.length;
       if (plays.length < 2) fail.push('I: turning in place did not trigger shuffle footsteps: ' + plays.length);
 
