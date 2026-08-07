@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.6) - WHO'S ONLINE
+
+ADDED - the players list (press O) now shows where everyone is and how tough they are: a Zone · Level line under every name, yours included. Two new filters at the top narrow it down by zone or by a minimum combat level, so a big server reads as a short list of exactly who you're looking for. Friends and your own row are never filtered out.
+
+
 ## 2026-08-07 (v17.5) - COMBAT LEVEL
 
 ADDED - a combat level now shows next to your name at the top of the screen and in party frames, right alongside each member's zone. It is your hitpoints level plus your best of melee, ranged, or magic, halved and capped at 99, so it reflects real fighting strength rather than time spent gathering. It updates the instant a relevant skill levels up.
@@ -55,8 +60,3 @@ FIXED - a talking NPC's line only ever showed up while that NPC happened to be y
 ## 2026-08-07 (v16.5) - HOTFIX: TYPE A NUMBER INTO THE CRAFTING WINDOWS
 
 FIXED - typing a quantity into the furnace or anvil window fired the game's hotkeys instead: pressing 3 closed the window under your cursor, and other keys could swap weapons or open the map mid-type. Any text box you click into now owns the keyboard until you leave it. BONUS - pressing Enter in a quantity box starts the smelt or smith right away, and Escape steps out of the box and closes the window.
-
-
-## 2026-08-07 (v16.4) - HOTFIX: THE WORLD NO LONGER FREEZES AFTER SMELT OR SMITH
-
-FIXED - hitting SMELT or SMITH froze the whole game solid until you clicked. The world simulation paused the moment the crafting window closed because your mouse was not locked back into the game, so the furnace never produced a single bar and everything looked crashed. Now the world always keeps running while the furnace or anvil is working, and the SMELT and SMITH buttons hand your mouse straight back to the game.
