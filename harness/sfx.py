@@ -195,6 +195,82 @@ MANIFEST = [
         'seconds': 1.2,
         'takes': [0.3, 0.5, 0.7],
     },
+
+    # TREES AND MINING, August 7. One set of sounds shared by every tree and
+    # every ore node in the game, so they get tuned once and reused forever.
+    #
+    # CHOP. A real axe blow into green wood is a THOCK, not a click: a woody
+    # impact with a splintering bite and the trunk resonating underneath.
+    # Naming the resonance keeps the model from producing a kindling snap.
+    #
+    # FELL. Kevin wants the crack, the groan, the branch whoosh and the ground
+    # hit as ONE cohesive event; the fall animation gets tuned to this take's
+    # timing rather than the other way round. Describing the sequence in
+    # strict order ("then... ending in...") is what keeps the phases distinct
+    # instead of smeared together. Chosen take: crack at 0.05s, crash at 3.0s.
+    #
+    # MINING. Strike is steel point on stone: bright tink plus grit. Chip is
+    # the reward moment, so it carries a faint mineral chime the strike does
+    # not. Deplete is the same family but heavier, ending dry and flat.
+    {
+        'id': 'tree-chop',
+        'text': 'A single sharp axe blow chopping into a living tree trunk. '
+                'One clean powerful impact: a deep woody thock with a brief '
+                'splintering bite as the blade sinks in, a low knock '
+                'resonating through the trunk. Close microphone in a quiet '
+                'forest. No voice, no birds, no wind. Brief.',
+        'seconds': 1.2,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'tree-fell',
+        'text': 'A large tree being felled in a quiet forest, one continuous '
+                'sequence: a loud sharp crack of the trunk splitting with '
+                'wood fibers tearing, then a slow groaning creak that '
+                'accelerates, branches whooshing and snapping through the '
+                'air, ending in one heavy ground impact, a deep thud with '
+                'breaking branches and a leafy rustle settling. No voice, no '
+                'birds, no chainsaw.',
+        'seconds': 5.0,
+        'takes': [0.35, 0.55, 0.75],
+    },
+    {
+        'id': 'tree-impact',
+        'text': 'A massive tree trunk slamming into forest ground. One '
+                'single enormous heavy thud, deep and dull, with branches '
+                'cracking under the weight and a shower of leaves and small '
+                'debris settling afterwards. No voice, no crack of '
+                'splitting, just the landing.',
+        'seconds': 2.0,
+        'takes': [0.4, 0.6],
+    },
+    {
+        'id': 'mine-strike',
+        'text': 'A single pickaxe blow striking hard rock. One sharp stony '
+                'impact: a bright metallic tink of the steel point, stone '
+                'chips scattering, a short gritty debris rattle. Close '
+                'microphone in the open air. No voice, no echo tail. Brief.',
+        'seconds': 1.0,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'mine-chip',
+        'text': 'A chunk of ore breaking loose from a rock face. A crunching '
+                'stony crack as the piece gives way, small rocks and gravel '
+                'tumbling and scattering on the ground, with a faint bright '
+                'mineral chime as the ore chunk lands. No voice. Short.',
+        'seconds': 1.5,
+        'takes': [0.3, 0.5, 0.7],
+    },
+    {
+        'id': 'mine-deplete',
+        'text': 'The last ore breaking out of an exhausted rock vein. A '
+                'heavier crumbling collapse: rock fracturing, a small '
+                'cascade of rubble and gravel pouring down, dust settling, '
+                'ending flat and dry. No voice, no explosion.',
+        'seconds': 2.5,
+        'takes': [0.4, 0.6],
+    },
 ]
 
 
