@@ -4,15 +4,19 @@
 // flat poker-chip stump. What a real broadleaf has, in the order a player
 // reads it:
 //
-//   1. ROOT FLARE. A trunk does not emerge from the ground like a fence post;
-//      it spreads into buttress roots. This is the single strongest "real
-//      tree" cue at ground level, where the player actually is.
+//   1. A TRUNK THAT WIDENS AT THE GROUND. Not buttress roots reaching out as
+//      separate limbs (that read as four planks stuck on a pole - cut after
+//      one round of trying to fix it and left alone), just the trunk's own
+//      loft flaring wider at its base, same as every tree in this file
+//      always had underneath the roots.
 //   2. VISIBLE STRUCTURE. Limbs leave the trunk as wood you can see, and the
 //      foliage sits in asymmetric clumps AT THE ENDS of those limbs. Oaks
 //      branch LOW and wide; young broadleaves keep a leader and branch high.
 //   3. THE BREAK. When it is felled it must read as ONE trunk splitting: a
-//      splinter crown on the stump and a matching splintered butt on the
-//      fallen trunk, hinged AT the break line, not at the ground.
+//      plain cut face with painted growth rings on the stump, matched on the
+//      fallen trunk's butt, hinged AT the break line, not at the ground. No
+//      "shattered wood" shard geometry - a felled trunk's cut face is flat,
+//      and the rings alone read as wood without pretending to be splintered.
 //
 // Contract preserved from the old builders: build() returns { g, fell,
 // canopies, stump } - the game's fall fx rotates `fell`, reveals `stump`,
@@ -24,13 +28,38 @@
 // geometry, vertex paint for bark, moss and sun, no textures, seeded so no
 // two trees repeat.
 //
-// Zone shapes (patch 58): the same rig now builds every zone tree. Each
-// KINDS row states the one structural fact that makes the species readable
-// at fifty metres - poplar branches nearly VERTICAL from low down, a palm
-// is a bare ringed stem with a frond crown, a willow hangs curtains off a
-// dome, a snag is dead wood with a shattered top, a pine stacks shrinking
-// cones on a straight leader. Zone identity comes in through o.tint
+// Zone shapes: the same rig builds every zone tree. Each KINDS row states
+// the one structural fact that makes the species readable at fifty metres -
+// poplar branches nearly VERTICAL from low down, a palm is a bare ringed
+// stem with a frond crown, a willow hangs silvery curtains off a dome, a
+// snag is dead wood with a shattered top, a conifer (pine, redwood) is
+// built from soft roughened needle clumps staged in tiers on real branch
+// stubs, not smooth stacked cones - a perfect cone stack reads as a row of
+// party hats, not a fir tree. Zone identity comes in through o.tint
 // (trunk/leaf/leaf2 from ZONE_LOOK) and o.sc scales the whole build.
+//
+// Species colour identity is pulled from real trees and re-skinned under
+// the fictional names: oak's bark is cool furrowed gray-brown, not warm
+// brown; willow foliage is silvery sage, not plain green; acacia (Windscar's
+// ironbark) is near-black deeply fissured bark under a flat, wind-pruned
+// umbrella crown, the way real savanna acacias grow; poplar bark stays pale
+// and the crown gets a brighter aspen-shimmer highlight; pine takes the
+// warm cinnamon-orange upper bark of a real Scots pine over dark blue-green
+// needles. The two dead-wood species used to be literally the same model
+// under a different tint and read as duplicates - bogoak is now ancient
+// black bog-preserved oak, slender and skeletal, while emberbark is a
+// thicker charred trunk with painted ember-glow cracks in the bark, for the
+// volcanic Ember highlands. A new `redwood` kind fills the "biggest tree in
+// the place" role Kevin asked for: a massive, barely-tapering cinnamon-bark
+// column, taller and thicker than anything else in the table, placeable
+// from the world editor's nature catalog.
+//
+// Every kind also builds in one of at least two SIZE VARIANTS, chosen from
+// the tree's own seed (so a given position always builds the same variant
+// as the zone streams in and out) rather than a caller-supplied flag. Both
+// variants are bigger than the species' old base size - never smaller - and
+// carry a slightly different bark/leaf shade, so a cluster of the same
+// species never reads as one tree copy-pasted next to itself.
 
 import {
   rngFor, mergeParts, roughen, paintByPos, logBetween, placed, loftRect
@@ -43,79 +72,131 @@ export function makeTreeKit(T, opt) {
   M.wood = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
   M.leaf = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0, flatShading: true });
 
-  // per-kind identity: sizes, bark and leaf ramps, branching habit
+  // per-kind identity: sizes, bark and leaf ramps, branching habit. Sizes
+  // here are already the "scaled up" numbers Kevin asked for - roughly 20
+  // to 30 percent bigger than this rig originally shipped with, more for
+  // the oak/evergreen tier so they end up the biggest things in the forest
+  // short of the ancient elder and the new redwood.
   const KINDS = {
     tree: {   // the starter broadleaf: one leader, branches in the upper third
-      h: 5.6, r: 0.30, flare: 0.62, breakY: 0.55,
-      bark: [0.42, 0.31, 0.19], barkDark: [0.24, 0.175, 0.11],
-      leaf: [0.30, 0.46, 0.20], leafDeep: [0.155, 0.29, 0.13], leafSun: [0.50, 0.62, 0.26],
-      limbs: 3, limbY: [0.55, 0.85], limbLen: [1.1, 1.7], limbUp: [0.5, 0.85],
-      clumps: 6, clumpR: [0.85, 1.25], crownR: 1.5, crownY0: 3.4
+      h: 6.7, r: 0.36, flare: 0.74, breakY: 0.66,
+      bark: [0.40, 0.33, 0.24], barkDark: [0.20, 0.16, 0.11],
+      leaf: [0.28, 0.46, 0.18], leafDeep: [0.14, 0.28, 0.11], leafSun: [0.52, 0.64, 0.22],
+      limbs: 3, limbY: [0.55, 0.85], limbLen: [1.32, 2.04], limbUp: [0.5, 0.85],
+      clumps: 6, clumpR: [1.02, 1.5], crownR: 1.8, crownY0: 4.08
     },
-    oak: {    // the great oak: squat heavy trunk, limbs leave LOW and spread wide
-      h: 7.6, r: 0.52, flare: 1.05, breakY: 0.72,
-      bark: [0.30, 0.225, 0.145], barkDark: [0.16, 0.115, 0.075],
-      leaf: [0.22, 0.38, 0.16], leafDeep: [0.115, 0.24, 0.10], leafSun: [0.42, 0.54, 0.21],
-      limbs: 5, limbY: [0.32, 0.62], limbLen: [1.9, 3.0], limbUp: [0.35, 0.7],
-      clumps: 9, clumpR: [1.05, 1.6], crownR: 2.4, crownY0: 4.2
+    oak: {    // the great oak: squat heavy trunk, limbs leave LOW and spread wide.
+              // real oak bark reads cool gray-brown, not warm - a stronger, older
+              // colour than a young broadleaf's, and the biggest hardwood here.
+      h: 9.9, r: 0.69, flare: 1.37, breakY: 0.94,
+      bark: [0.32, 0.28, 0.23], barkDark: [0.14, 0.12, 0.10],
+      leaf: [0.18, 0.32, 0.16], leafDeep: [0.09, 0.20, 0.09], leafSun: [0.38, 0.50, 0.19],
+      limbs: 5, limbY: [0.32, 0.62], limbLen: [2.47, 3.9], limbUp: [0.35, 0.7],
+      clumps: 9, clumpR: [1.37, 2.08], crownR: 3.12, crownY0: 5.46
     },
     // ---- zone shapes: tints come from ZONE_LOOK via o.tint ------------------
-    broad: {  // generic zone broadleaf (zoak, acacia): wide spreading crown
-      h: 6.4, r: 0.36, flare: 0.75, breakY: 0.58,
-      bark: [0.38, 0.28, 0.17], barkDark: [0.21, 0.15, 0.09],
-      leaf: [0.28, 0.44, 0.19], leafDeep: [0.14, 0.27, 0.12], leafSun: [0.48, 0.60, 0.25],
-      limbs: 4, limbY: [0.42, 0.68], limbLen: [1.4, 2.2], limbUp: [0.4, 0.75],
-      clumps: 7, clumpR: [0.95, 1.35], crownR: 1.9, crownY0: 3.6
+    broad: {  // generic zone broadleaf (zoak, orchard fallback): wide spreading crown
+      h: 7.7, r: 0.43, flare: 0.90, breakY: 0.70,
+      bark: [0.38, 0.29, 0.19], barkDark: [0.20, 0.15, 0.10],
+      leaf: [0.27, 0.44, 0.19], leafDeep: [0.14, 0.27, 0.12], leafSun: [0.47, 0.60, 0.24],
+      limbs: 4, limbY: [0.42, 0.68], limbLen: [1.68, 2.64], limbUp: [0.4, 0.75],
+      clumps: 7, clumpR: [1.14, 1.62], crownR: 2.28, crownY0: 4.32
     },
-    poplar: { // fastigiate: branches nearly VERTICAL, one continuous column
-      h: 8.4, r: 0.24, flare: 0.48, breakY: 0.50,
-      bark: [0.46, 0.42, 0.34], barkDark: [0.26, 0.23, 0.18],
-      leaf: [0.30, 0.46, 0.20], leafDeep: [0.155, 0.29, 0.13], leafSun: [0.52, 0.62, 0.26],
-      limbs: 4, limbY: [0.28, 0.55], limbLen: [0.55, 0.8], limbUp: [1.9, 2.6],
-      clumps: 7, clumpR: [0.62, 0.88], crownR: 0.4, crownY0: 2.6,
+    acacia: { // Windscar's ironbark: real acacia bark is near-black and deeply
+              // fissured, and an umbrella thorn's crown is flat and wide, not
+              // round - branches leave HIGH and nearly horizontal so the whole
+              // canopy sits as one wind-pruned layer over a bare trunk.
+      h: 6.6, r: 0.40, flare: 0.82, breakY: 0.62,
+      bark: [0.16, 0.13, 0.11], barkDark: [0.07, 0.06, 0.05],
+      leaf: [0.34, 0.44, 0.20], leafDeep: [0.19, 0.27, 0.13], leafSun: [0.58, 0.64, 0.28],
+      limbs: 5, limbY: [0.66, 0.86], limbLen: [2.2, 3.4], limbUp: [0.06, 0.28],
+      clumps: 6, clumpR: [0.7, 1.0], crownR: 2.6, crownY0: 5.6
+    },
+    poplar: { // fastigiate: branches nearly VERTICAL, one continuous column.
+              // pale aspen-poplar bark, brighter shimmering highlight on top.
+      h: 10.1, r: 0.29, flare: 0.58, breakY: 0.60,
+      bark: [0.50, 0.47, 0.40], barkDark: [0.28, 0.26, 0.22],
+      leaf: [0.32, 0.48, 0.20], leafDeep: [0.16, 0.30, 0.12], leafSun: [0.62, 0.72, 0.28],
+      limbs: 4, limbY: [0.28, 0.55], limbLen: [0.66, 0.96], limbUp: [1.9, 2.6],
+      clumps: 7, clumpR: [0.74, 1.06], crownR: 0.48, crownY0: 3.12,
       clumpYScale: 1.6, column: true
     },
-    elder: {  // the ancient one: massive trunk, heavy low limbs, huge crown
-      h: 9.4, r: 0.66, flare: 1.35, breakY: 0.82,
-      bark: [0.28, 0.21, 0.14], barkDark: [0.14, 0.10, 0.07],
-      leaf: [0.22, 0.38, 0.16], leafDeep: [0.115, 0.24, 0.10], leafSun: [0.42, 0.54, 0.21],
-      limbs: 6, limbY: [0.30, 0.60], limbLen: [2.2, 3.4], limbUp: [0.35, 0.7],
-      clumps: 10, clumpR: [1.2, 1.8], crownR: 2.8, crownY0: 5.0
+    elder: {  // the ancient one: massive trunk, heavy low limbs, huge crown.
+              // deep purple-brown ancient bark, mossy near-black canopy.
+      h: 11.75, r: 0.84, flare: 1.69, breakY: 1.03,
+      bark: [0.24, 0.17, 0.16], barkDark: [0.11, 0.08, 0.08],
+      leaf: [0.19, 0.33, 0.16], leafDeep: [0.09, 0.21, 0.09], leafSun: [0.38, 0.50, 0.20],
+      limbs: 6, limbY: [0.30, 0.60], limbLen: [2.75, 4.25], limbUp: [0.35, 0.7],
+      clumps: 10, clumpR: [1.5, 2.25], crownR: 3.5, crownY0: 6.25
     },
-    willow: { // stout trunk, up-arching scaffolds, dome with HANGING curtains
-      h: 6.6, r: 0.44, flare: 0.9, breakY: 0.60,
-      bark: [0.34, 0.27, 0.17], barkDark: [0.18, 0.14, 0.09],
-      leaf: [0.30, 0.42, 0.22], leafDeep: [0.16, 0.26, 0.13], leafSun: [0.48, 0.56, 0.27],
-      limbs: 5, limbY: [0.34, 0.58], limbLen: [1.3, 2.0], limbUp: [0.8, 1.25],
-      clumps: 8, clumpR: [0.9, 1.3], crownR: 2.2, crownY0: 3.4,
-      drapes: 7
+    willow: { // stout trunk, up-arching scaffolds, dome with HANGING curtains.
+              // real weeping willow foliage is a distinctive silvery sage
+              // green, quite unlike a normal leaf ramp - that is the one
+              // structural fact that makes a willow read as a willow.
+      h: 7.9, r: 0.53, flare: 1.08, breakY: 0.72,
+      bark: [0.35, 0.33, 0.29], barkDark: [0.17, 0.16, 0.14],
+      leaf: [0.40, 0.48, 0.34], leafDeep: [0.22, 0.30, 0.20], leafSun: [0.62, 0.68, 0.46],
+      limbs: 5, limbY: [0.34, 0.58], limbLen: [1.56, 2.4], limbUp: [0.8, 1.25],
+      clumps: 8, clumpR: [1.08, 1.56], crownR: 2.64, crownY0: 4.08,
+      drapes: 8
     },
-    pine: {   // conifer: straight leader, stacked cone tiers shrinking to a point
-      h: 7.8, r: 0.34, flare: 0.62, breakY: 0.52,
-      bark: [0.33, 0.24, 0.15], barkDark: [0.17, 0.12, 0.08],
-      leaf: [0.16, 0.33, 0.20], leafDeep: [0.09, 0.20, 0.12], leafSun: [0.34, 0.50, 0.30],
-      limbs: 0, clumps: 0, crownR: 1.7, crownY0: 2.5,
-      canopy: 'tiers', tiers: 5, moss: 0.5, tintMix: 0.38
+    pine: {   // conifer: straight leader, soft roughened needle tiers shrinking
+              // to a point. Real Scots pine bark runs warm cinnamon-orange
+              // higher up the trunk over near-black needles - a stack of clean
+              // cones reads as spikes, so the tiers are built from clustered
+              // foliage on real branch stubs instead (see canopy 'conifer').
+      h: 10.1, r: 0.44, flare: 0.81, breakY: 0.68,
+      bark: [0.42, 0.24, 0.14], barkDark: [0.22, 0.11, 0.06],
+      leaf: [0.13, 0.27, 0.22], leafDeep: [0.07, 0.17, 0.15], leafSun: [0.30, 0.46, 0.32],
+      limbs: 0, clumps: 0, crownR: 2.21, crownY0: 3.25,
+      canopy: 'conifer', tiers: 6, moss: 0.5, tintMix: 0.38
+    },
+    redwood: { // the biggest thing in the forest: massive, barely-tapering
+               // cinnamon-red trunk, branch-free low down like a real coast
+               // redwood, small conifer crown high up relative to the trunk's
+               // bulk. Not part of any zone's harvest table yet - placeable
+               // from the world editor's nature catalog for decoration.
+      h: 13.5, r: 1.05, flare: 1.85, breakY: 0.95,
+      bark: [0.40, 0.20, 0.14], barkDark: [0.20, 0.09, 0.06],
+      leaf: [0.13, 0.28, 0.19], leafDeep: [0.07, 0.18, 0.12], leafSun: [0.30, 0.46, 0.27],
+      limbs: 3, limbY: [0.66, 0.84], limbLen: [1.8, 2.6], limbUp: [0.55, 0.9],
+      clumps: 0, crownR: 2.1, crownY0: 8.6,
+      canopy: 'conifer', tiers: 7, taper: 0.24, moss: 0.55, tintMix: 0.30
     },
     palm: {   // one bare ringed stem, swept, frond crown at the very top
-      h: 7.0, r: 0.26, flare: 0.40, breakY: 0.50,
-      bark: [0.48, 0.40, 0.28], barkDark: [0.28, 0.23, 0.15],
-      leaf: [0.30, 0.50, 0.22], leafDeep: [0.14, 0.30, 0.13], leafSun: [0.50, 0.64, 0.28],
+      h: 8.4, r: 0.31, flare: 0.48, breakY: 0.60,
+      bark: [0.50, 0.42, 0.29], barkDark: [0.29, 0.24, 0.16],
+      leaf: [0.32, 0.52, 0.22], leafDeep: [0.15, 0.31, 0.13], leafSun: [0.54, 0.68, 0.28],
       limbs: 0, clumps: 0, crownR: 0, crownY0: 0,
-      canopy: 'fronds', fronds: 10, rings: true, moss: 0, sweep: 2.2, taper: 0.30
+      canopy: 'fronds', fronds: 11, rings: true, moss: 0, sweep: 2.2, taper: 0.30
     },
-    snag: {   // DEAD: shattered top, crooked bare limbs, not one leaf
-      h: 5.4, r: 0.40, flare: 0.82, breakY: 0.55,
-      bark: [0.30, 0.26, 0.22], barkDark: [0.15, 0.13, 0.11],
+    snag: {   // "bogoak": ancient dead wood pulled black from a peat bog -
+              // slender and skeletal, near-black, not brown. DEAD: shattered
+              // top, crooked bare limbs, not one leaf.
+      h: 6.2, r: 0.41, flare: 0.90, breakY: 0.63,
+      bark: [0.13, 0.115, 0.105], barkDark: [0.055, 0.05, 0.045],
       leaf: [0, 0, 0], leafDeep: [0, 0, 0], leafSun: [0, 0, 0],
-      limbs: 3, limbY: [0.35, 0.72], limbLen: [1.0, 1.7], limbUp: [0.3, 0.9],
+      limbs: 3, limbY: [0.35, 0.75], limbLen: [1.15, 2.19], limbUp: [0.3, 0.95],
       clumps: 0, crownR: 0, crownY0: 0,
-      canopy: 'none', crooked: true, shatterTop: true, moss: 0.35
+      canopy: 'none', crooked: true, shatterTop: true, moss: 0.30
+    },
+    emberbark: { // the Ember highlands' dead wood: distinct from bogoak, not a
+                 // recolour of it - a thicker, heavier charred trunk with
+                 // painted ember-glow cracks running through the black bark
+                 // (see barkPaint's K.embers pass), and less moss since it is
+                 // scorched volcanic ground, not a wet bog.
+      h: 6.4, r: 0.62, flare: 1.15, breakY: 0.65,
+      bark: [0.10, 0.085, 0.075], barkDark: [0.045, 0.038, 0.032],
+      leaf: [0, 0, 0], leafDeep: [0, 0, 0], leafSun: [0, 0, 0],
+      limbs: 4, limbY: [0.30, 0.68], limbLen: [1.2, 2.1], limbUp: [0.25, 0.85],
+      clumps: 0, crownR: 0, crownY0: 0,
+      canopy: 'none', crooked: true, shatterTop: true, moss: 0.15, embers: true
     }
   };
-  KINDS.zoak = KINDS.broad; KINDS.acacia = KINDS.broad; KINDS.orchard = KINDS.broad;
-  KINDS.bogoak = KINDS.snag; KINDS.emberbark = KINDS.snag;
+  KINDS.zoak = KINDS.broad; KINDS.orchard = KINDS.broad;
   KINDS.icewood = KINDS.pine; KINDS.elderking = KINDS.elder;
+  KINDS.bogoak = KINDS.snag;   // dead wood alias kept for the legacy node name
+  KINDS.dead = KINDS.snag;     // the world editor's older "Dead tree" catalog entry
 
   // scale every linear dimension; fractions and slopes stay put
   const scaled = (K, S) => {
@@ -149,7 +230,8 @@ export function makeTreeKit(T, opt) {
 
   // bark paint: vertical ridge striations, dark bases, moss on the north
   // side. K.rings switches to horizontal frond-scar rings (palms), K.moss
-  // scales the moss down for dead wood and dry species.
+  // scales the moss down for dead wood and dry species, K.embers blends in
+  // glowing crack veins for the charred emberbark trunk.
   const barkPaint = (K, seed) => (c, x, y, z) => {
     const ang = Math.atan2(x, z);
     const ridge = K.rings
@@ -166,11 +248,21 @@ export function makeTreeKit(T, opt) {
     // moss creeps up the shaded side of the lower trunk
     const mossAmt = (K.moss === undefined ? 1 : K.moss);
     const moss = Math.min(0.8, Math.max(0, -z) * Math.max(0, 1 - y / 1.9) * 0.85 * mossAmt);
-    c.setRGB(
-      base[0] * ridge * (0.72 + h * 0.55) * (1 - moss),
-      base[1] * ridge * (0.72 + h * 0.55) * (1 - moss * 0.2) + moss * 0.10,
-      base[2] * ridge * (0.72 + h * 0.55) * (1 - moss)
-    );
+    let r = base[0] * ridge * (0.72 + h * 0.55) * (1 - moss);
+    let g = base[1] * ridge * (0.72 + h * 0.55) * (1 - moss * 0.2) + moss * 0.10;
+    let b = base[2] * ridge * (0.72 + h * 0.55) * (1 - moss);
+    if (K.embers) {
+      // a second, TIGHTER hash than the bark grain picks out thin veins in
+      // the charred wood; where it crosses a high threshold the crack glows
+      // hot ember-orange instead of char black.
+      let h2 = Math.sin(Math.round(x * 540) * 61.3 + Math.round(y * 460) * 21.7 + Math.round(z * 500) * 91.1 + seed * 3.1) * 24634.2;
+      h2 -= Math.floor(h2);
+      const vein = h2 > 0.93 ? (h2 - 0.93) / 0.07 : 0;
+      r = r * (1 - vein) + 0.95 * vein;
+      g = g * (1 - vein) + 0.42 * vein;
+      b = b * (1 - vein) + 0.08 * vein;
+    }
+    c.setRGB(r, g, b);
   };
 
   // leaf paint: deep shadow low and inside, sunlit tops, per-vertex breakup
@@ -186,39 +278,57 @@ export function makeTreeKit(T, opt) {
     );
   };
 
-  // The splinter crown: a ring of jagged shards around a torn core. Built
-  // once per break as two matching halves - `up` for the stump (shards point
-  // up), `down` for the trunk butt (shards point down in TRUNK-local space,
-  // i.e. toward the break when the trunk lies on the ground).
-  const splinters = (K, rnd, upward, mat) => {
-    const parts = [];
-    const R = K.r * 0.92;
-    const n = 9;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + rnd() * 0.3;
-      const rr = R * (0.35 + rnd() * 0.6);
-      const hgt = (0.10 + rnd() * 0.22) * (upward ? 1 : 0.8);
-      const geo = new T.ConeGeometry(0.035 + rnd() * 0.04, hgt, 4);
-      if (!upward) geo.rotateX(Math.PI);
-      // pale torn wood inside, bark color out at the rim
-      paintByPos(T, geo, (c, x, y, z) => {
-        const edge = rr / R;
-        const pale = 1 - edge * 0.55;
-        c.setRGB(0.62 * pale + K.bark[0] * (1 - pale), 0.50 * pale + K.bark[1] * (1 - pale), 0.33 * pale + K.bark[2] * (1 - pale));
-      });
-      parts.push(placed(T, geo, Math.sin(a) * rr, upward ? hgt * 0.4 : -hgt * 0.4, Math.cos(a) * rr,
-        (rnd() - 0.5) * 0.5, 0, (rnd() - 0.5) * 0.5, 1));
-    }
-    // the torn core disc
-    const core = new T.CylinderGeometry(R * 0.9, R * 0.98, 0.05, 9);
-    roughen(T, core, 0.15, 5, 1);
-    paintByPos(T, core, (c, x, y, z) => {
-      const rr2 = Math.hypot(x, z) / R;
-      const pale = 1 - rr2 * 0.4;
-      c.setRGB(0.60 * pale, 0.47 * pale, 0.31 * pale);
-    });
-    parts.push(placed(T, core, 0, upward ? 0.012 : -0.012, 0, 0, 0, 0, 1));
-    return parts;
+  // A plain, flat stump cap: a shallow wood disc with painted growth rings
+  // radiating from the pith, fading to a dark bark-toned rim. Used for BOTH
+  // exposed break faces - the stump the game reveals when a tree is felled,
+  // and the matching cut face on the butt of the falling trunk. No jagged
+  // "shattered wood" shard geometry: a cut face is flat, and the rings alone
+  // read as a cut tree trunk instantly.
+  //
+  // The visible face is built as its own disc (a flattened RingGeometry) with
+  // real radial subdivisions, not a cylinder's end cap. A cylinder cap is a
+  // fan from one center vertex to the outer rim - only two distinct radii
+  // exist in the mesh, so a concentric ring pattern painted by radius has
+  // nowhere to land and collapses into a single center-to-edge gradient. That
+  // read as a blank rounded dome, not a cut trunk, on the first pass. A few
+  // real radial rings, painted a bit boldly, gives the low-poly style actual
+  // concentric bands instead of a smooth blend.
+  const stumpCap = (K, rnd, upward) => {
+    const R = K.r * 0.97;
+    const h = Math.max(0.05, K.r * 0.12);
+    const ringPhase = rnd() * 6.28;
+    const paint = (c, x, y, z) => {
+      const rr = Math.min(1.05, Math.hypot(x, z) / R);
+      const band = 0.5 + 0.5 * Math.sin(rr * 10 - ringPhase);
+      const pith = Math.max(0, 1 - rr * 1.6);
+      const pale = [0.70, 0.55, 0.32], dark = [0.24, 0.16, 0.09];
+      let r0 = dark[0] + (pale[0] - dark[0]) * band + pith * 0.13;
+      let g0 = dark[1] + (pale[1] - dark[1]) * band + pith * 0.09;
+      let b0 = dark[2] + (pale[2] - dark[2]) * band + pith * 0.03;
+      const edge = Math.max(0, (rr - 0.82) / 0.18);
+      r0 = r0 * (1 - edge) + K.bark[0] * 0.8 * edge;
+      g0 = g0 * (1 - edge) + K.bark[1] * 0.8 * edge;
+      b0 = b0 * (1 - edge) + K.bark[2] * 0.8 * edge;
+      c.setRGB(r0, g0, b0);
+    };
+    // the flat top: nine concentric rings of vertices, so the sine bands
+    // above draw as real steps of colour instead of one gradient. Roughen is
+    // light and applied before the colour pass would otherwise blur it - too
+    // much radial jitter here smears adjacent rings into each other.
+    const face = new T.RingGeometry(R * 0.03, R, 16, 9);
+    face.rotateX(-Math.PI / 2);
+    face.translate(0, h * 0.5, 0);
+    roughen(T, face, 0.018, Math.floor(rnd() * 900) + 1, 0.3);
+    paintByPos(T, face, paint);
+    // a short open rim wall so the disc still reads as solid wood from a low
+    // angle, not a sheet floating on the trunk
+    const rim = new T.CylinderGeometry(R, R * 1.015, h, 16, 1, true);
+    roughen(T, rim, 0.03, Math.floor(rnd() * 900) + 2, 1);
+    paintByPos(T, rim, paint);
+    return [
+      placed(T, face, 0, upward ? h * 0.5 : -h * 0.5, 0, 0, 0, 0, 1),
+      placed(T, rim, 0, upward ? h * 0.5 : -h * 0.5, 0, 0, 0, 0, 1)
+    ];
   };
 
   // o: { kind, seed, x, y, z, sc, tint: {trunk,leaf,leaf2}, merged }
@@ -227,7 +337,26 @@ export function makeTreeKit(T, opt) {
   kit.build = function (o) {
     o = o || {};
     let K = KINDS[o.kind || 'tree'] || KINDS.broad;
-    K = tinted(scaled(K, o.sc || 1), o.tint);
+
+    // ---- size variant: at least two sizes per species so a cluster of the
+    // same kind never reads as one tree copy-pasted next to itself. Keyed
+    // off the seed rather than a fresh random roll, so the SAME position
+    // always builds the SAME variant as the zone streams in and out. Always
+    // bigger than the species' base size, never smaller, with a slightly
+    // different shade so the two variants read as two trees even standing
+    // side by side.
+    const vr = rngFor((o.seed || 3) * 131 + 977);
+    const vRoll = vr();
+    const isBig = vRoll > 0.62;
+    const variantScale = isBig ? (1.18 + vr() * 0.16) : 1.0;
+    const shadeT = isBig ? (0.87 + vr() * 0.09) : (1.0 + vr() * 0.10);
+
+    K = tinted(scaled(K, (o.sc || 1) * variantScale), o.tint);
+    K = Object.assign({}, K);
+    ['bark', 'barkDark', 'leaf', 'leafDeep', 'leafSun'].forEach(f => {
+      K[f] = K[f].map(v => Math.min(1, v * shadeT));
+    });
+
     const rnd = rngFor((o.seed || 3) * 7 + (o.kind === 'oak' ? 131 : 17));
     const seed = (o.seed || 3) % 100;
     const g = new T.Group();
@@ -246,7 +375,7 @@ export function makeTreeKit(T, opt) {
     const leafParts = [];
     const woodDown = [];  // the planted part: flare + stump, revealed on fell
 
-    // ---- trunk: root flare to tip, split at the break line ------------------
+    // ---- trunk: base flare to tip, split at the break line ------------------
     const lean = (rnd() - 0.5) * 0.16 * (K.sweep || 1) + (K.sweep ? (rnd() > 0.5 ? 0.08 : -0.08) * K.sweep : 0);
     const line = (t) => ({ x: lean * t * t * 2.4, y: t });   // gentle sweep
     const trunkSecs = [];
@@ -256,20 +385,10 @@ export function makeTreeKit(T, opt) {
       if (y > K.breakY) break;
       trunkSecs.push({ at: y, hu: rr, hv: rr, cu: line(y / K.h).x, p });
     }
-    // the flare gets buttress roots: lobes pushed out at 4-5 angles
-    const rootN = 4 + (rnd() > 0.5 ? 1 : 0);
-    for (let i = 0; i < rootN; i++) {
-      const a = (i / rootN) * Math.PI * 2 + rnd() * 0.5;
-      const len = K.flare * (0.85 + rnd() * 0.5);
-      const root = logBetween(T,
-        new T.Vector3(Math.sin(a) * K.r * 0.55, 0.26, Math.cos(a) * K.r * 0.55),
-        new T.Vector3(Math.sin(a) * (K.r + len), -0.06, Math.cos(a) * (K.r + len)),
-        K.r * 0.42, K.r * 0.10, { rough: 0.14, seed: i * 9 + seed, segments: 6 });
-      root.geo.scale(1, 0.8, 1);
-      paintByPos(T, root.geo, barkPaint(K, seed));
-      woodDown.push(root);
-    }
-    // lower trunk (planted): flare up to the break
+    // lower trunk (planted): flare up to the break. This loft is the ENTIRE
+    // base - no separate buttress-root lobes glued on. A first pass tried
+    // those and they read as four little planks stuck on a pole no matter
+    // how they were angled; the loft's own flare is the tree's base.
     const lower = loftRect(T, 'y', trunkSecs.concat([{ at: K.breakY, hu: K.r, hv: K.r, cu: line(K.breakY / K.h).x, p: 2.6 }]), 9,
       barkPaint(K, seed));
     roughen(T, lower, 0.085, seed + 2, 1);   // same seed as the upper loft
@@ -287,13 +406,15 @@ export function makeTreeKit(T, opt) {
       upperSecs.push({ at: ly, hu: Math.max(0.05, rr), hv: Math.max(0.05, rr), cu: lx, p: 2.6 });
     }
     const upper = loftRect(T, 'y', upperSecs, 9, (c, x, y, z) => barkPaint(K, seed)(c, x + hingeX, y + K.breakY, z));
-    // a snag's top is TORN, not sawn: a jagged ring of upward shards
+    // a snag's top is TORN, not sawn: a jagged ring of upward shards. This is
+    // the dead tree's permanent, naturally-broken silhouette (what a snag
+    // IS), a different thing from the fell mechanic's break faces below.
     if (K.shatterTop) {
       const topR = K.r * (1 - (K.taper === undefined ? 0.72 : K.taper) * (tipY / K.h));
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 + rnd() * 0.4;
-        const hgt = 0.25 + rnd() * 0.45;
-        const shard = new T.ConeGeometry(0.05 + rnd() * 0.05, hgt, 4);
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + rnd() * 0.4;
+        const hgt = 0.22 + rnd() * 0.34;
+        const shard = new T.ConeGeometry(0.06 + rnd() * 0.05, hgt, 4);
         const pale = 0.5 + rnd() * 0.2;
         paintByPos(T, shard, (c) => {
           c.setRGB(K.bark[0] * 0.6 + 0.30 * pale, K.bark[1] * 0.6 + 0.24 * pale, K.bark[2] * 0.6 + 0.15 * pale);
@@ -418,33 +539,59 @@ export function makeTreeKit(T, opt) {
             0, rnd() * 3, 0, 1));
         }
       }
-    } else if (style === 'tiers') {
-      // conifer: stacked cones shrinking to the leader's point. Each tier's
-      // skirt OVERLAPS the one below - gaps read as stacked umbrellas.
-      const nT = K.tiers || 5;
-      const topY = tipY + 0.35;
+    } else if (style === 'conifer') {
+      // conifer: soft branch TIERS built from clustered, roughened foliage on
+      // real branch stubs, not smooth stacked cones - a stack of perfect
+      // cones reads as a stack of party hats. Each tier is narrower than the
+      // one below it, so the silhouette still tapers to a point, but the
+      // surface reads as needle clumps instead of sheet metal.
+      const nT = K.tiers || 6;
+      const topY = tipY + 0.3;
       const span = topY - K.crownY0;
-      const ch = span / nT * 2.6;
       for (let i = 0; i < nT; i++) {
         const u = i / (nT - 1);
         const cy = K.crownY0 + span * u;
-        const cr = K.crownR * (1 - u * 0.72) * (0.94 + rnd() * 0.12);
-        const geo = new T.ConeGeometry(cr, ch, 8);
-        roughen(T, geo, 0.20, i * 23 + seed, 0.9);
-        paintByPos(T, geo, (c, x, y, z) => leafPaint(K, -ch * 0.4, ch * 0.9)(c, x, y, z));
-        leafParts.push(placed(T, geo,
-          ...IN(line(cy / K.h).x + (rnd() - 0.5) * 0.12, cy + ch * 0.30, (rnd() - 0.5) * 0.12),
-          0, rnd() * 3, 0, 1));
+        const cx0 = line(cy / K.h).x;
+        const tierR = K.crownR * (1 - u * 0.80) * (0.92 + rnd() * 0.14);
+        const nClump = Math.max(4, Math.round(7 - u * 3));
+        for (let cc = 0; cc < nClump; cc++) {
+          const a = (cc / nClump) * Math.PI * 2 + rnd() * 0.4 + u * 2.3;
+          const rr = tierR * (0.68 + rnd() * 0.3);
+          const bx = cx0 + Math.sin(a) * rr, bz = Math.cos(a) * rr;
+          const by = cy - rnd() * 0.16;
+          // a real branch stub reaching from the leader out to the clump
+          const stub = logBetween(T, new T.Vector3(...IN(cx0, cy, 0)), new T.Vector3(...IN(bx, by - 0.04, bz)),
+            Math.max(0.02, K.r * 0.16 * (1 - u * 0.4)), Math.max(0.012, K.r * 0.05), { rough: 0.14, seed: i * 19 + cc * 7 + seed, segments: 4 });
+          paintByPos(T, stub.geo, (c, x, y, z) => barkPaint(K, seed)(c, x + hingeX, y + K.breakY, z));
+          woodUp.push(stub);
+          const br = tierR * (0.34 + rnd() * 0.16);
+          const geo = roughen(T, new T.IcosahedronGeometry(br, 1), 0.42, (i * 13 + cc * 5 + 1) * 31 + seed, 0.6);
+          geo.scale(1, 0.60 + rnd() * 0.12, 1);
+          paintByPos(T, geo, (c, x, y, z) => leafPaint(K, cy - 0.35, br * 1.5)(c, x, y, z));
+          leafParts.push(placed(T, geo, ...IN(bx, by, bz), rnd() * 3, rnd() * 3, rnd() * 3, 1));
+        }
+      }
+      // the crown tip: one small clump closes off the leader instead of a bare point
+      {
+        const tipYY = topY - 0.05;
+        const geo = roughen(T, new T.IcosahedronGeometry(K.crownR * 0.22, 1), 0.4, seed + 91, 0.6);
+        paintByPos(T, geo, (c, x, y, z) => leafPaint(K, tipYY - 0.2, K.crownR * 0.3)(c, x, y, z));
+        leafParts.push(placed(T, geo, ...IN(line(tipYY / K.h).x, tipYY, 0), rnd() * 3, rnd() * 3, rnd() * 3, 1));
       }
     } else if (style === 'fronds') {
-      // palm crown: a fan of drooping blades from the very tip, nuts beneath
+      // palm crown: a fan of drooping blades from the very tip, nuts beneath.
+      // Frond length was hardcoded here rather than scaled off the trunk, so
+      // a bumped-up palm kept the old rig's crown on a taller pole and a big
+      // size variant looked balding. frScale ties the crown back to K.r,
+      // against the species' own base radius.
+      const frScale = K.r / 0.26;
       const nF = K.fronds || 10;
       const crownY = tipY;
       const crownX = line(tipY / K.h).x;
       // the fibrous husk where the fronds sheath the stem - also plugs the
       // dark hole the blade roots leave when seen from below
       {
-        const husk = roughen(T, new T.IcosahedronGeometry(0.30, 1), 0.2, seed + 77, 1);
+        const husk = roughen(T, new T.IcosahedronGeometry(0.30 * frScale, 1), 0.2, seed + 77, 1);
         husk.scale(1, 0.8, 1);
         paintByPos(T, husk, (c) => c.setRGB(K.bark[0] * 0.9, K.bark[1] * 0.85, K.bark[2] * 0.8));
         woodUp.push(placed(T, husk, ...IN(crownX, crownY + 0.05, 0), 0, 0, 0, 1));
@@ -452,12 +599,19 @@ export function makeTreeKit(T, opt) {
       for (let i = 0; i < nF + 6; i++) {
         const young = i % 5 === 0;
         const a = (i / nF) * Math.PI * 2 + rnd() * 0.35;
-        const len = (young ? 1.6 : 2.3) + rnd() * 0.6;
+        const len = ((young ? 1.6 : 2.3) + rnd() * 0.6) * frScale;
         // tilt is the blade's ELEVATION above horizontal (rotX(PI/2 - tilt)).
-        // Working fronds hang a little BELOW horizontal; only the young
-        // center blades stand up.
-        const tilt = young ? 1.05 + rnd() * 0.3 : -0.22 + rnd() * 0.5;
-        const geo = new T.ConeGeometry(0.42, len, 4);
+        // A near-horizontal blade points its broad face almost straight UP
+        // and DOWN in world space, and from anywhere near ground level a
+        // player mostly sees its underside - which gets next to no direct
+        // light from either the sun or the sky hemisphere, so the whole
+        // crown read as a flat black star no matter how bright its paint
+        // was. Working fronds now droop at a real angle instead of staying
+        // near flat, the way a real mature frond actually hangs: the broad
+        // face turns to catch light from the side rather than presenting a
+        // shadowed floor to the camera. Only the young center blades stand up.
+        const tilt = young ? 1.05 + rnd() * 0.3 : -0.95 + rnd() * 0.45;
+        const geo = new T.ConeGeometry(0.42 * frScale, len, 4);
         geo.scale(1.3, 1, 0.13);                             // flatten into a blade
         // bow the blade so the mid arches while the tip drops
         {
@@ -495,10 +649,17 @@ export function makeTreeKit(T, opt) {
           const nn = g2.getAttribute('normal'), cc = g2.getAttribute('color');
           const nm3 = new T.Matrix3().getNormalMatrix(m);
           const v = new T.Vector3();
+          // taller palms now get looked at from further below than this
+          // rig was first tuned for, which put MOST of a drooping frond's
+          // visible area into that unlit case rather than a rare grazing
+          // edge - the -0.15 cutoff and a 2.3x ceiling were not enough
+          // headroom, and a whole crown went black. Wider catch, harder
+          // push: anything at or below level gets brightened, ramping up
+          // fast as the face points further down.
           if (nn && cc) for (let vi = 0; vi < nn.count; vi++) {
             v.set(nn.getX(vi), nn.getY(vi), nn.getZ(vi)).applyMatrix3(nm3);
-            if (v.y < -0.15) {
-              const k2 = 1 + Math.min(1.3, -v.y * 1.8);
+            if (v.y < 0.08) {
+              const k2 = 1 + Math.min(2.8, (0.08 - v.y) * 3.1);
               cc.setXYZ(vi, Math.min(1, cc.getX(vi) * k2), Math.min(1, cc.getY(vi) * k2), Math.min(1, cc.getZ(vi) * k2));
             }
           }
@@ -508,18 +669,21 @@ export function makeTreeKit(T, opt) {
       // coconuts tucked under the crown
       for (let i = 0; i < 3; i++) {
         const a = rnd() * Math.PI * 2;
-        const nut = new T.IcosahedronGeometry(0.13, 0);
+        const nut = new T.IcosahedronGeometry(0.13 * frScale, 0);
         paintByPos(T, nut, (c) => c.setRGB(0.30, 0.22, 0.12));
         woodUp.push(placed(T, nut,
-          ...IN(crownX + Math.sin(a) * 0.24, crownY - 0.16, Math.cos(a) * 0.24), 0, 0, 0, 1));
+          ...IN(crownX + Math.sin(a) * 0.24 * frScale, crownY - 0.16 * frScale, Math.cos(a) * 0.24 * frScale), 0, 0, 0, 1));
       }
     }
     // style 'none' (snags): not one leaf
 
     // ---- the break faces ----------------------------------------------------
-    // trunk butt: shards pointing back toward the stump, in hinge space
-    for (const p of splinters(K, rngFor(seed * 3 + 5), false, M.wood)) {
-      p.matrix = new T.Matrix4().makeTranslation(-hingeX + line(K.breakY / K.h).x, 0.005, 0).multiply(p.matrix);
+    // trunk butt: a flat, ring-painted cut face, back toward the stump, in
+    // hinge space. Both halves of the same break get the SAME rng seed, so
+    // the rings drawn on the stump and on the fallen trunk's butt line up as
+    // if they were always one cut.
+    for (const p of stumpCap(K, rngFor(seed * 3 + 5), false)) {
+      p.matrix = new T.Matrix4().makeTranslation(-hingeX + line(K.breakY / K.h).x, 0.006, 0).multiply(p.matrix);
       woodUp.push(p);
     }
 
@@ -539,21 +703,22 @@ export function makeTreeKit(T, opt) {
       }
     }
 
-    // ---- the planted base: root flare and lower trunk, ALWAYS visible ------
+    // ---- the planted base: trunk flare, ALWAYS visible ---------------------
     // It is the bottom of the living tree and, once the top breaks off, it IS
     // the stump body. Nothing about it changes at the fell.
     const baseMesh = new T.Mesh(mergeParts(T, woodDown), M.wood);
     baseMesh.castShadow = true; g.add(baseMesh);
 
     // ---- the stump crown: the game's toggled stump group -------------------
-    // ONLY the splinter crown and torn core live here, hidden while the tree
-    // stands (the upper trunk loft covers the same footprint) and revealed at
-    // the exact moment the trunk breaks off. resourceRespawned hides it again.
+    // The plain, ring-painted cut face lives here, hidden while the tree
+    // stands (the upper trunk loft covers the same footprint) and revealed
+    // at the exact moment the trunk breaks off. resourceRespawned hides it
+    // again.
     const stumpG = new T.Group();
     stumpG.visible = false;
     g.add(stumpG);
     const crownParts = [];
-    for (const p of splinters(K, rngFor(seed * 3 + 5), true, M.wood)) {
+    for (const p of stumpCap(K, rngFor(seed * 3 + 5), true)) {
       p.matrix = new T.Matrix4().makeTranslation(line(K.breakY / K.h).x, K.breakY, 0).multiply(p.matrix);
       crownParts.push(p);
     }
