@@ -44,6 +44,7 @@ const GRIM_EDIT_UI = (() => {
       sel: null, ghost: null, hoverPt: null,
       undo: [], redo: [],
       dirty: false, saving: false, msg: '', msgAt: 0,
+      speed: 2,
       districtPts: null,
       prefabName: '', clipboard: null,
       lastPaintCell: -1
@@ -429,7 +430,12 @@ const GRIM_EDIT_UI = (() => {
   function camTick(dt) {
     const k = S.keys, c = S.cam;
     const fast = k['shift'] ? 4.2 : (k['control'] ? 0.25 : 1);
-    const acc = 90 * fast;
+    // Two speed multipliers on top of Shift: the slider Kevin sets, and
+    // altitude. Climbing makes you faster (up to 5x at 250m) so crossing the
+    // 6.6km map is a short climb-and-glide rather than a commute, while low
+    // flight near the ground stays precise for actual editing.
+    const alt = Math.max(1, Math.min(5, 1 + (c.y - surfAt(c.x, c.z)) / 60));
+    const acc = 90 * fast * (S.speed || 1) * alt;
     const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
     let ax = 0, az = 0, ay = 0;
     if (k['w']) { ax -= fx; az -= fz; }
@@ -498,14 +504,20 @@ const GRIM_EDIT_UI = (() => {
       'color:#8f8f8f;font:11px system-ui;padding:8px 10px;line-height:1.5');
     help.innerHTML =
       '<b style="color:' + GOLD + '">Camera</b><br>' +
-      'WASD move, Q and E down and up<br>Shift fast, Ctrl slow<br>Right mouse drag to look<br>' +
+      'WASD move, Q and E down and up<br>Shift fast, Ctrl slow, fly high to go faster<br>Speed slider is under the tools<br>Right mouse drag to look<br>' +
       '<b style="color:' + GOLD + '">Editing</b><br>' +
       'Left click uses the tool<br>Alt click erases or picks<br>' +
       'Wheel rotates, Ctrl wheel resizes the brush<br>' +
       'Ctrl Z undo, Ctrl Y redo, Ctrl S save<br>Ctrl C copy, Ctrl V paste<br>' +
       'Alt right click picks the surface<br>Delete removes the selection<br>' +
       'Enter lays a road, Escape cancels';
-    wrap.appendChild(h); wrap.appendChild(sub); wrap.appendChild(tools); wrap.appendChild(body);
+    const spd = el('div', 'margin:2px 0 8px;padding:6px 8px;background:#232323;border:1px solid #383838;border-radius:8px');
+    const spdT = el('div', 'color:#8f8f8f;font-size:10px;margin-bottom:2px', 'camera speed: 2x (Shift sprints, height adds more)');
+    const spdI = el('input', 'width:100%');
+    spdI.type = 'range'; spdI.min = 0.5; spdI.max = 10; spdI.step = 0.5; spdI.value = 2;
+    spdI.oninput = () => { S.speed = +spdI.value; spdT.textContent = 'camera speed: ' + S.speed + 'x (Shift sprints, height adds more)'; };
+    spd.appendChild(spdT); spd.appendChild(spdI);
+    wrap.appendChild(h); wrap.appendChild(sub); wrap.appendChild(tools); wrap.appendChild(spd); wrap.appendChild(body);
     document.body.appendChild(wrap);
     document.body.appendChild(status);
     document.body.appendChild(help);
@@ -850,8 +862,13 @@ const GRIM_EDIT_UI = (() => {
     window.addEventListener('mousemove', e => {
       if (!S.on) return;
       if (S.look) {
-        S.cam.yaw -= (e.clientX - S.lastX) * 0.0032;
-        S.cam.pit -= (e.clientY - S.lastY) * 0.0032;
+        // movementX/Y instead of clientX deltas: they keep answering even if
+        // something engages pointer lock, under which clientX freezes and a
+        // drag silently does nothing.
+        const dx = (typeof e.movementX === 'number') ? e.movementX : (e.clientX - S.lastX);
+        const dy = (typeof e.movementY === 'number') ? e.movementY : (e.clientY - S.lastY);
+        S.cam.yaw -= dx * 0.0032;
+        S.cam.pit -= dy * 0.0032;
         S.cam.pit = Math.max(-1.5, Math.min(1.5, S.cam.pit));
         S.lastX = e.clientX; S.lastY = e.clientY;
       }
@@ -1154,6 +1171,38 @@ const GRIM_EDIT_UI = (() => {
       G.me.hp = G.me.max || 100;
     }
     if (G.foe && G.foe.g) G.foe.g.visible = false;
+    if (G.donkeyCompanion && G.donkeyCompanion.g) G.donkeyCompanion.g.visible = false;
+    // Pointer lock is a gameplay concept and it silently breaks the editor:
+    // the game's own click handlers grab the lock, clientX freezes under it,
+    // and right-drag look stops answering. The editor never wants it.
+    try { G.requestLock = function () {}; } catch (e) {}
+    try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
+    // Depth precision for an aerial camera. The game camera lives 6m off the
+    // ground, the editor's lives 100m up looking across kilometres, and at
+    // that range the sea plane (6cm under the shore) z-fights the low coast
+    // into flickering blue stripes. A 1m near plane buys back the precision,
+    // and the sea drops a little further in editor sessions only.
+    try { G.cam.near = 1.0; G.cam.updateProjectionMatrix(); } catch (e) {}
+    try { if (G.sea) G.sea.position.y = -0.45; } catch (e) {}
+    // NPCs: their on-screen position is simulation output, and the editor
+    // runs no simulation, so nothing ever copies pos into the mesh. Without
+    // this every monster in the world stands at the origin, which reads as
+    // the entire zoo crowded into the old arena. Park each at its authored
+    // home, on the ground, frozen.
+    try {
+      for (const n of (G.npcs || [])) {
+        if (!n || !n.g) continue;
+        const h = n.home || n.pos;
+        if (!h) continue;
+        const gy = (typeof GRIM_WORLD !== 'undefined' && GRIM_WORLD.ready) ? GRIM_WORLD.height(h.x, h.z) : 0;
+        if (n.pos && n.pos.set) n.pos.set(h.x, 0, h.z);
+        n.g.position.set(h.x, gy, h.z);
+        n.g.visible = true;
+        n.g.matrixAutoUpdate = true;
+        n.g.traverse(o => { o.matrixAutoUpdate = true; });
+        n.g.updateMatrixWorld(true);
+      }
+    } catch (e) {}
     // Editor light: the world is a dusk scene and authored geometry cannot be
     // judged as a silhouette. Editor only, never in the bundle's game path.
     try {
@@ -1169,8 +1218,13 @@ const GRIM_EDIT_UI = (() => {
       if (G._playBtn) G._playBtn.style.display = 'none';
       if (G._logoutBtn) G._logoutBtn.style.display = 'none';
     } catch (e) {}
-    const ov = document.getElementById('grim-overlay');
-    if (ov) ov.style.display = 'none';
+    // The title menu is the overlayRef, and showOverlay(false) is the game's
+    // own dismissal path (it also clears the prompt, the banner and the
+    // shout line). The first build hid a #grim-overlay id that does not
+    // exist, so the menu sat on top of the editor; the harness missed it
+    // because it never asserted the menu was gone.
+    try { if (G.showOverlay) G.showOverlay(false); } catch (e) {}
+    try { if (G.overlayRef && G.overlayRef.current) G.overlayRef.current.style.display = 'none'; } catch (e) {}
 
     build();
     bind();
@@ -1193,6 +1247,9 @@ const GRIM_EDIT_UI = (() => {
     }
     updateGhost();
     try { G.stepTerrain(dt, 40); } catch (e) {}
+    // stepTerrain re-seats the sea at -0.06 every pass, so the editor's
+    // z-fight offset has to be re-applied after it, not just once at entry.
+    try { if (G.sea) G.sea.position.y = -0.45; } catch (e) {}
     try { G.stepFx && G.stepFx(dt); } catch (e) {}
     if (S._statAcc === undefined) S._statAcc = 0;
     S._statAcc += dt;

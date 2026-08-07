@@ -315,10 +315,30 @@ async function open(browser) {
       catalogSize: Object.keys(g.EDIT_CAT()).length,
       chunks: g._chunks.size,
       // the tick must render without the player's frame ever running
-      editorOn: g.editorOn === true
+      editorOn: g.editorOn === true,
+      menuHidden: !g.overlayRef || !g.overlayRef.current ||
+        g.overlayRef.current.style.display === 'none' ||
+        getComputedStyle(g.overlayRef.current).display === 'none',
+      nearPlane: g.cam.near,
+      seaDropped: !g.sea || g.sea.position.y < -0.3,
+      lockNeutered: (() => { try { g.requestLock(); return !document.pointerLockElement; } catch (e) { return false; } })(),
+      npcsParked: (() => {
+        const withHome = (g.npcs || []).filter(n => n && n.g && n.home);
+        if (!withHome.length) return 'no-npcs';
+        let okc = 0;
+        for (const n of withHome) {
+          if (Math.abs(n.g.position.x - n.home.x) < 0.01 && Math.abs(n.g.position.z - n.home.z) < 0.01) okc++;
+        }
+        return okc + '/' + withHome.length;
+      })()
     };
   });
   ok(ed.editorOn, '?edit=1 enters editor mode');
+  ok(ed.menuHidden, 'the title menu is dismissed, not sitting over the editor');
+  ok(ed.nearPlane === 1.0, 'the aerial camera gets a 1m near plane against sea z-fighting', 'near ' + ed.nearPlane);
+  ok(ed.seaDropped, 'the sea sits lower in editor sessions');
+  ok(ed.lockNeutered, 'pointer lock is neutered so right-drag look always answers');
+  ok(/^(\d+)\/\1$/.test(ed.npcsParked), 'every NPC stands at its authored home, not the origin', ed.npcsParked);
   ok(ed.moved > 3, 'the free camera moves under WASD', ed.moved.toFixed(1) + 'm in a second');
   ok(ed.camFollowsPlayer, 'the terrain streamer follows the camera');
   ok(ed.bodyHidden, 'the player body is hidden in the editor');
