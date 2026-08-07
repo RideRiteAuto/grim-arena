@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v17.5) - COMBAT LEVEL
+
+ADDED - a combat level now shows next to your name at the top of the screen and in party frames, right alongside each member's zone. It is your hitpoints level plus your best of melee, ranged, or magic, halved and capped at 99, so it reflects real fighting strength rather than time spent gathering. It updates the instant a relevant skill levels up.
+
+
 ## 2026-08-07 (v17.4) - PARTY FRAMES SHOW WHERE YOUR PARTY IS
 
 ADDED - party frames now show which zone each member is standing in, right under their name. Your own zone updates live as you move; a party member's zone comes from the same state broadcast that already drives their health bar, so it stays current with no extra chat needed to find each other.
@@ -55,12 +60,3 @@ FIXED - typing a quantity into the furnace or anvil window fired the game's hotk
 ## 2026-08-07 (v16.4) - HOTFIX: THE WORLD NO LONGER FREEZES AFTER SMELT OR SMITH
 
 FIXED - hitting SMELT or SMITH froze the whole game solid until you clicked. The world simulation paused the moment the crafting window closed because your mouse was not locked back into the game, so the furnace never produced a single bar and everything looked crashed. Now the world always keeps running while the furnace or anvil is working, and the SMELT and SMITH buttons hand your mouse straight back to the game.
-
-
-## 2026-08-07 (v16.3) - SMELT AND SMITH: REAL CRAFTING UIS
-
-REDONE - the furnace. F now opens a menu listing every ore you can smelt with pictures, how many you carry, and what each bar needs. Pick one, set how many with + and - or just type the number, hit MAX for everything, then SMELT and watch the furnace work - one bar at a time with the pour, the sparks and the XP, straight into your pack. Stopping early keeps your leftover ore.
-NEW - BRONZE and STEEL. Copper ore now smelts into BRONZE BARS (old copper bars melt over 1 for 1 at the furnace), and at SMITHING 40 iron ore plus 2 coal makes a STEEL BAR.
-REDONE - the anvil. F opens a smithy with three metal tabs - BRONZE, IRON, STEEL - each listing the full set you can make: helm, platebody, platelegs, kite shield, scimitar, a two-handed CLAYMORE, pickaxe, axe, sickle, and a skinning knife (craftable now, skinning comes later). Same pick-a-number-and-go controls, then the anvil rings while your order is hammered out piece by piece with XP on every one.
-NEW - sixteen new pieces of gear with their own thumbnails. Steel plate is the best armour in the game now, and every metal has its own claymore - the Grim Cleaver you may already own is the iron claymore's famous older brother and is no longer craftable.
-FAIR PLAY - bars are only spent as each piece is finished, everything happens in one no-dupe inventory step, and walking away from the furnace or anvil stops the work with your materials safe.
