@@ -271,7 +271,42 @@ const GRIM_EDIT_CATALOG = (() => {
       const look = zoneLook(G, o.x, o.z);
       if (!look || !G.makeZoneOre) return null;
       const tint = G.NODE_TINT ? G.NODE_TINT(kind) : 0x8a8f92;
-      const built = G.makeZoneOre(look, 1, seedAt(o.x, o.z, 'edit' + kind), tint);
+      // The fifth argument is the ore IDENTITY (patch 56 rework): without it
+      // every editor-placed vein built as plain stone, whatever the label
+      // said. Copper shows copper, gold shows gold.
+      const built = G.makeZoneOre(look, 1, seedAt(o.x, o.z, 'edit' + kind), tint, kind);
+      return built && built.g;
+    };
+  }
+  // The high-quality kit builders the art track shipped: the bloomery
+  // furnace, the London-pattern anvil, the campfire and the reworked trees.
+  // Each is built AT THE ORIGIN with a flat ground function, because the
+  // renderer positions authored objects itself; and each is guarded, so a
+  // bundle built before its kit existed skips the entry instead of throwing.
+  function kitProp(method, opts) {
+    return (G, o) => {
+      if (typeof G[method] !== 'function') return null;
+      const kit = G[method]();
+      if (!kit || !kit.build) return null;
+      const built = kit.build(Object.assign({
+        seed: (seedAt(o.x, o.z, 'edit' + method) % 99991) + 1,
+        x: 0, y: 0, z: 0, heightAt: () => 0
+      }, opts || {}));
+      if (!built || !built.g) return null;
+      // These kits SHARE geometry and materials across every instance in the
+      // world ("one of each, shared by every instance"). Disposing them when
+      // a chunk streams out would destroy the camp furnace along with the
+      // placed one, so the renderer is told hands off.
+      built.g.userData._noDispose = true;
+      return built.g;
+    };
+  }
+  function natureOf(kind) {
+    return (G, o) => {
+      if (typeof G.natureKits !== 'function') return null;
+      const kits = G.natureKits();
+      if (!kits || !kits.tree || !kits.tree.build) return null;
+      const built = kits.tree.build({ kind: kind, seed: (seedAt(o.x, o.z, 'edit' + kind) % 99991) + 1 });
       return built && built.g;
     };
   }
@@ -285,6 +320,16 @@ const GRIM_EDIT_CATALOG = (() => {
     };
   }
   function rockOf(G, o) {
+    // The reworked ore kit's barren stone, so a placed boulder matches the
+    // rocks the world grows. The dodecahedron stays as the fallback for a
+    // bundle without the kit.
+    if (G.makeZoneOre && typeof G.natureKits === 'function') {
+      try {
+        const look = zoneLook(G, o.x, o.z);
+        const built = G.makeZoneOre(look || { stone: 0x6e6a5e }, 1.15, seedAt(o.x, o.z, 'editrock'), 0x8b8b84, 'stone');
+        if (built && built.g) return built.g;
+      } catch (e) {}
+    }
     const T = G.T, M = GRIM_EDIT_MATS(T), g = grp(T);
     const r = new T.Mesh(new T.DodecahedronGeometry(0.9, 0), M.stone);
     r.position.y = 0.55; r.rotation.set(0.4, o.r || 0, 0.2);
@@ -321,7 +366,14 @@ const GRIM_EDIT_CATALOG = (() => {
     packbench:  { label: 'Packing bench', tab: 'props', clear: 1.8, build: packBench },
     tradepost:  { label: 'Trade post',    tab: 'props', clear: 2.4, build: tradePost },
     mailbox:    { label: 'Mailbox',       tab: 'props', clear: 1.0, build: mailbox },
+    // the art track's kit models: the same builders the game itself uses, so
+    // a placed furnace IS the camp furnace, sharing its animated materials
+    furnace:    { label: 'Furnace',    tab: 'props', clear: 3.2, solid: 1.5, build: kitProp('furnaceKit') },
+    anvil:      { label: 'Anvil',      tab: 'props', clear: 1.4, solid: 0.7, build: kitProp('anvilKit', { scale: 1.35 }) },
+    campfire:   { label: 'Campfire',   tab: 'props', clear: 2.2, solid: 0.9, build: kitProp('campfireKit') },
     // nature, straight through the game's own builders
+    tree_new:   { label: 'Broadleaf (new kit)', tab: 'nature', clear: 2.6, build: natureOf('tree') },
+    tree_oak:   { label: 'Great oak',           tab: 'nature', clear: 3.4, build: natureOf('oak') },
     tree_broad: { label: 'Broadleaf tree', tab: 'nature', clear: 2.6, build: treeOf('broad') },
     tree_pine:  { label: 'Pine tree',      tab: 'nature', clear: 2.4, build: treeOf('pine') },
     tree_dead:  { label: 'Dead tree',      tab: 'nature', clear: 2.2, build: treeOf('dead') },
@@ -382,24 +434,46 @@ const GRIM_EDIT_RENDER = (() => {
     const list = GRIM_EDIT.objectsIn(rec.cx, rec.cz);
     if (!list || !list.length) return;
     const built = [];
+    const cols = [];
     for (let i = 0; i < list.length; i++) {
       const g = build(G, list[i]);
       if (!g) continue;
       G.scene.add(g);
       built.push(g);
+      // Solid objects push back. Same collider list the world's own props
+      // use, so a placed furnace stops a player exactly the way the camp
+      // furnace does. Tracked on the chunk record and removed with it, so
+      // streaming out never leaves a ghost wall behind.
+      const c = GRIM_EDIT_CATALOG[list[i].k];
+      if (c && c.solid && G.colliders) {
+        const col = { x: list[i].x, z: list[i].z, r: c.solid * (list[i].s || 1) };
+        G.colliders.push(col);
+        cols.push(col);
+      }
     }
     if (built.length) rec.editObjs = built;
+    if (cols.length) rec.editCols = cols;
   }
 
   function drop(G, rec) {
-    if (!rec || !rec.editObjs) return;
-    for (const g of rec.editObjs) {
-      try { G.scene.remove(g); } catch (e) {}
-      g.traverse(o => {
-        if (o.geometry) { try { o.geometry.dispose(); } catch (e) {} }
-      });
+    if (!rec) return;
+    if (rec.editObjs) {
+      for (const g of rec.editObjs) {
+        try { G.scene.remove(g); } catch (e) {}
+        if (g.userData && g.userData._noDispose) continue;   // kit-shared geometry
+        g.traverse(o => {
+          if (o.geometry) { try { o.geometry.dispose(); } catch (e) {} }
+        });
+      }
+      rec.editObjs = null;
     }
-    rec.editObjs = null;
+    if (rec.editCols && G.colliders) {
+      for (const col of rec.editCols) {
+        const i = G.colliders.indexOf(col);
+        if (i >= 0) G.colliders.splice(i, 1);
+      }
+      rec.editCols = null;
+    }
   }
 
   return { build, dress, drop };

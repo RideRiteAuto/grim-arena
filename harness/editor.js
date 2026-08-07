@@ -414,6 +414,63 @@ async function open(browser) {
   ok(ed.chunks > 0, 'the editor streams the world', ed.chunks + ' chunks');
   ok(ed.catalogSize > 20, 'the object catalog is populated', ed.catalogSize + ' kinds');
 
+  // The art track's kit models are placeable and correct
+  const kits = await page.evaluate(() => {
+    const g = window.__grim, CAT = g.EDIT_CAT(), R = g.EDIT_RENDER();
+    const out = { have: {} };
+    for (const k of ['furnace', 'anvil', 'campfire', 'tree_new', 'tree_oak', 'node_copper', 'node_gold', 'rock']) {
+      out.have[k] = !!CAT[k];
+    }
+    // build each kit prop and confirm real geometry comes back
+    const counts = {};
+    for (const k of ['furnace', 'anvil', 'campfire', 'tree_new', 'tree_oak']) {
+      const built = R.build(g, { i: 't' + k, k, x: 100, z: 100, y: 0, r: 0, s: 1 });
+      let meshes = 0;
+      if (built) built.traverse(o => { if (o.isMesh) meshes++; });
+      counts[k] = meshes;
+      out.noDispose = out.noDispose || (built && built.userData && built.userData._noDispose) || false;
+    }
+    out.counts = counts;
+    // ore identity: copper and coal must build DIFFERENT geometry, which is
+    // exactly what broke when the kind argument was dropped
+    const fp = (kind) => {
+      const built = R.build(g, { i: 'o' + kind, k: 'node_' + kind, x: 60, z: 60, y: 0, r: 0, s: 1 });
+      let verts = 0, colorSum = 0;
+      if (built) built.traverse(o => {
+        if (o.isMesh && o.geometry && o.geometry.attributes.position) {
+          verts += o.geometry.attributes.position.count;
+          const col = o.geometry.attributes.color;
+          if (col) for (let i = 0; i < Math.min(col.count, 200); i++) colorSum += col.getX(i);
+        }
+      });
+      return verts + ':' + colorSum.toFixed(2);
+    };
+    out.copper = fp('copper');
+    out.coal = fp('coal');
+    // solid objects register a collider through the dress path
+    const before = g.colliders.length;
+    const rec = { cx: 9999, cz: 9999 };
+    const L = g.EDIT().raw;
+    L.objects.push({ i: 'coltest', k: 'furnace', x: 9999 * 64 + 5, z: 9999 * 64 + 5, y: 0, r: 0, s: 1 });
+    g.EDIT().reindex();
+    R.dress(g, rec);
+    const during = g.colliders.length;
+    R.drop(g, rec);
+    const after = g.colliders.length;
+    L.objects.pop(); g.EDIT().reindex();
+    out.collider = { before, during, after };
+    return out;
+  });
+  ok(Object.values(kits.have).every(Boolean), 'furnace, anvil, campfire, new trees, ores and boulder are all in the catalog',
+    JSON.stringify(kits.have));
+  ok(Object.values(kits.counts).every(n => n > 0), 'every kit model builds real geometry', JSON.stringify(kits.counts));
+  ok(kits.noDispose, 'kit models are marked non-disposable so shared geometry survives streaming');
+  ok(kits.copper !== kits.coal, 'copper and coal build different ore geometry (the kind argument reaches the kit)',
+    kits.copper + ' vs ' + kits.coal);
+  ok(kits.collider.during === kits.collider.before + 1 && kits.collider.after === kits.collider.before,
+    'a solid placed object registers a collider and removes it when the chunk drops',
+    JSON.stringify(kits.collider));
+
   // Paint through the real tool path and confirm the layer grew.
   const painted = await page.evaluate(() => {
     const g = window.__grim, S = g.EDIT_UI().state;

@@ -1045,11 +1045,16 @@ const GRIM_EDIT_UI = (() => {
       placeAt(pt);
     } else if (S.tool === 'select') {
       if (!first) {
-        if (S.sel) { S.sel.x = snap(pt.x); S.sel.z = snap(pt.z); GRIM_EDIT.reindex(); rebuildWorld(); }
+        if (S.sel) {
+          // the undo snapshot belongs to the first actual movement; taking
+          // it on every selecting click filled the undo stack with no-ops
+          if (!S.selMoved) { pushUndo(); S.selMoved = true; }
+          S.sel.x = snap(pt.x); S.sel.z = snap(pt.z); GRIM_EDIT.reindex(); rebuildWorld();
+        }
         return;
       }
       S.sel = pickObject(pt);
-      if (S.sel) pushUndo();
+      S.selMoved = false;
       paintPanel();
       say(S.sel ? 'selected, drag to move' : 'nothing there');
     } else if (S.tool === 'spawn') {
