@@ -355,7 +355,11 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     // ---- G. the samples the routing now depends on actually exist ---------
     const need = ['arrow-flesh', 'arrow-plate', 'sp-fire-cast', 'sp-fire-hit',
                   'sp-frost-cast', 'sp-frost-hit', 'sp-heal-cast', 'sp-heal-apply',
-                  'sp-storm-cast', 'sp-storm-hit', 'arrow-wood', 'arrow-dirt'];
+                  'sp-storm-cast', 'sp-storm-hit', 'arrow-wood', 'arrow-dirt',
+                  'foot-wood-a', 'foot-wood-b', 'foot-wood-c',
+                  'foot-dirt-a', 'foot-dirt-b', 'foot-dirt-c',
+                  'foot-sand-a', 'foot-sand-b', 'foot-sand-c',
+                  'foot-metal-a', 'foot-metal-b', 'foot-metal-c'];
     const missing = need.filter(n => !G._samples.has(n));
     if (missing.length) fail.push('G: routed to samples that did not decode: ' + missing.join(','));
 
@@ -369,6 +373,93 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     note.gains = { arrow: ga, sword: gh };
     if (!ga || !/^arrow-/.test(ga.nm)) fail.push('H: arrow-hit did not reach an arrow sample: ' + JSON.stringify(ga));
     if (ga && gh && !(ga.g < gh.g)) fail.push('H: an arrow lands at ' + ga.g + ', no quieter than the sword at ' + gh.g);
+
+    // ---- I. footsteps (patch 68) -------------------------------------------
+    // footTick_ reads e.phase/e.moveAmt/e._shufA/e._shufPh directly rather
+    // than driving the full rig through animate(), so it can be exercised
+    // here with a minimal fixture instead of a fully-built character mesh -
+    // see the patch's own comment on why that split pays off for testing.
+    {
+      const mkFoot = over => Object.assign({
+        parts: { kneeR: {} }, phase: 0, moveAmt: 0, pos: new T.Vector3(0, 0, 0),
+        yaw: 0, vyaw: 0, swimF: false, ridingF: false, wraith: false, state: 'move'
+      }, over || {});
+      const realPlay = G._samples.play;
+      const drivePhase = (e, n, inBoat) => {
+        for (let i = 0; i < n; i++) { e.phase += 0.2; G.footTick_(e, 0.033, !!inBoat); }
+      };
+
+      // material resolution: zone default buckets, and a tagged collider
+      // overriding the zone default.
+      const origZoneAt = G.zoneAt.bind(G);
+      G.zoneAt = () => 'IRONSPIRE';
+      note.footMatMetal = G.footMat_(mkFoot());
+      G.zoneAt = () => 'SUNCOAST';
+      note.footMatSand = G.footMat_(mkFoot());
+      G.zoneAt = () => 'HEARTLANDS';
+      note.footMatDirt = G.footMat_(mkFoot());
+      const savedColliders = G.colliders;
+      G.colliders = [{ x: 0, z: 0, hw: 5, hd: 5, mat: 'wood' }];
+      note.footMatOverride = G.footMat_(mkFoot());
+      G.colliders = savedColliders;
+      G.zoneAt = origZoneAt;
+      if (note.footMatMetal !== 'metal') fail.push('I: IRONSPIRE did not resolve to metal, got ' + note.footMatMetal);
+      if (note.footMatSand !== 'sand') fail.push('I: SUNCOAST did not resolve to sand, got ' + note.footMatSand);
+      if (note.footMatDirt !== 'dirt') fail.push('I: a plain zone did not default to dirt, got ' + note.footMatDirt);
+      if (note.footMatOverride !== 'wood') fail.push('I: a mat-tagged collider did not override the zone default, got ' + note.footMatOverride);
+
+      // walking triggers repeated footsteps, always the right material pool
+      G.zoneAt = () => 'HEARTLANDS';
+      let plays = [];
+      G._samples.play = (nm, o) => { plays.push({ nm: nm, g: (o || {}).gain, d: (o || {}).detune }); return null; };
+      const walker = mkFoot({ moveAmt: 1.0 });
+      drivePhase(walker, 80);
+      note.footWalkPlays = plays.length;
+      const badName = plays.find(p => !/^foot-dirt-[abc]$/.test(p.nm));
+      if (plays.length < 3) fail.push('I: walking did not trigger repeated footsteps: ' + plays.length);
+      if (badName) fail.push('I: a footstep asked for the wrong sample: ' + JSON.stringify(badName));
+      const walkGain = plays.length ? plays[plays.length - 1].g : null;
+
+      // running reads louder (and a shade lower) than walking, same call site
+      plays = [];
+      const runner = mkFoot({ moveAmt: 1.5 });
+      drivePhase(runner, 80);
+      note.footRunPlays = plays.length;
+      const runGain = plays.length ? plays[0].g : null;
+      if (!(runGain !== null && walkGain !== null && runGain > walkGain))
+        fail.push('I: a run did not read louder than a walk: run=' + runGain + ' walk=' + walkGain);
+
+      // turning in place (shuffle) plays footsteps too, even at moveAmt 0
+      plays = [];
+      const shuffler = mkFoot({ moveAmt: 0 });
+      shuffler._shufA = 0.5;
+      for (let i = 0; i < 30; i++) { shuffler._shufPh = (shuffler._shufPh || 0) + 0.15; G.footTick_(shuffler, 0.033, false); }
+      note.footShufflePlays = plays.length;
+      if (plays.length < 2) fail.push('I: turning in place did not trigger shuffle footsteps: ' + plays.length);
+
+      // gated off while swimming, riding, boating, or for a wraith
+      plays = [];
+      for (const flag of ['swimF', 'ridingF', 'wraith']) {
+        const gated = mkFoot({ moveAmt: 1.0 });
+        gated[flag] = true;
+        drivePhase(gated, 80);
+      }
+      const boater = mkFoot({ moveAmt: 1.0 });
+      drivePhase(boater, 80, true);
+      note.footGatedPlays = plays.length;
+      if (plays.length) fail.push('I: a swimming, riding, boating or wraith entity still played footsteps: ' + plays.length);
+
+      // distance: a footstep 120m out is below the same attenuation floor
+      // every other sound in the world uses
+      plays = [];
+      const farWalker = mkFoot({ moveAmt: 1.0, pos: far.pos.clone() });
+      drivePhase(farWalker, 80);
+      note.footFarPlays = plays.length;
+      if (plays.length) fail.push('I: a footstep 120m away should have been below the attenuation floor, played ' + plays.length);
+
+      G._samples.play = realPlay;
+      G.zoneAt = origZoneAt;
+    }
 
     return { fail: fail, note: note };
   });

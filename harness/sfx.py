@@ -271,6 +271,63 @@ MANIFEST = [
         'seconds': 2.5,
         'takes': [0.4, 0.6],
     },
+    # FOOTSTEPS (patch 68.x). Kevin's brief named WoW as the reference, and
+    # WoW's own terrain footstep files (Wowhead's Footsteps category,
+    # MON_Footstep_Bipedal_Foot_<size>_<material>) turned out to be a single
+    # pool of one-shot variants PER MATERIAL with no separate walk/run
+    # recordings at all - the game differentiates gait by animation cadence
+    # and impact force, not by swapping samples. That finding reshaped this
+    # manifest: one texture per material, shaped against the real reference
+    # numbers below, with walk/run handled at PLAYBACK time (gain/pitch) in
+    # the patch script rather than as separate generated takes. See
+    # measure.py numbers pulled from the real WoW files in /tmp/footref.
+    #
+    # WOOD  target: dur .14-.21s  cent 1000-1500  <200Hz .48-.52 (high, a
+    #   hollow plank resonance)  pkpos .06-.09  tail .13-.14s  some tonal
+    #   ring (13-29%, the wood "knock"). Shortest, tightest, most resonant.
+    {
+        'id': 'foot-wood',
+        'text': 'A single footstep, a boot sole striking a wooden plank '
+                'floor. One short hollow wooden knock with a tight low '
+                'thud, no scrape, no creak, no reverb tail, no music.',
+        'seconds': 1.0,
+        'takes': [0.25, 0.45, 0.65],
+    },
+    # DIRT  target: dur .27-.41s  cent 1900-2500  <200Hz .17-.30  pkpos
+    #   .03-.41 (mostly instant)  tail .11-.24s  0% tonal. Dull, no ring.
+    {
+        'id': 'foot-dirt',
+        'text': 'A single footstep on dry packed dirt ground. One dull '
+                'crunching thud with a light gritty scuff, no bounce, no '
+                'wood, no metal, no ring, no music.',
+        'seconds': 1.0,
+        'takes': [0.25, 0.45, 0.65],
+    },
+    # SAND  target: dur .33-.49s (longest)  cent 3970-4240 (brightest, by
+    #   far)  <200Hz .03-.09 (almost none, loose fine grain has no body to
+    #   resonate)  tail .24-.40s (longest, granular settling). 0% tonal.
+    {
+        'id': 'foot-sand',
+        'text': 'A single footstep sinking into loose dry sand. A soft '
+                'muffled press with a granular scattering hiss trailing '
+                'off, no crunch, no thud, no impact click, no music.',
+        'seconds': 1.2,
+        'takes': [0.25, 0.45, 0.65],
+    },
+    # METAL  target: dur .19-.23s  cent 1240-1750 (a dull clank, NOT a
+    #   bright ring - footfall force is far below a weapon strike)  <200Hz
+    #   .26-.36 (a hollow plate boom)  tail .12-.16s (short, damped). This
+    #   is a different target than combat-hit-plate (cent ~4947): a boot on
+    #   a metal deck, not a blade on armour.
+    {
+        'id': 'foot-metal',
+        'text': 'A single footstep, a boot striking a thin hollow metal '
+                'floor plate. One short dull metallic clank with a brief '
+                'low resonance, no long ring, no bell, no weapon clang, no '
+                'music.',
+        'seconds': 1.0,
+        'takes': [0.25, 0.45, 0.65],
+    },
 ]
 
 
