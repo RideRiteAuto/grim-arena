@@ -1,10 +1,11 @@
 # Grim World — patch notes
 
-## 2026-08-07 (v17.9) - LEGACY SOUND SWEEP: 16 NEW SOUNDS, 3 MISUSE BUGS FIXED
+## 2026-08-07 (v18.0) - HOW EVERYONE MOVES: WALKING, RUNNING, TURNING AND GALLOPING ALL REWORKED
 
-ADDED - 16 new sound effects for spots that were either dead silent or borrowing a sound that didn't fit: creature notice/aggro, goblin shrieks, NPC warcries, the real bow draw and release, monster charge-up windups, player dodge and jump, a claw swipe, the snare spell cast, a boss leap telegraph, level up, a new spell learned, a boss phase shift, a heavy slam impact, and the UI switch click. Level up, quest complete, and the deploy-ready banner now also share a proper chime instead of the placeholder beep.
-FIXED - three sound-reuse bugs found while auditing every sfx() call site: a boss's leap attack was playing the sword-crit clang instead of a telegraph, a second boss's leap windup was playing the dodge-roll swoosh, and the donkey-mount-acquired banner was reusing the win jingle without any indication it was actually a mount, not a fight.
-REMOVED - nothing code-wise. The old 1v1 duel arena's win/lose/horn sounds were never built and are not being built now - that whole round-based system is provably dead in the open world (stepRound() bails out immediately whenever mode is 'ai'), but the underlying host/join code is shared with the still-live co-op-hosting feature and was left untouched.
+REDONE - walking, running and sprinting are now genuinely different gaits instead of one animation sped up. Stride length, knee snap, arm swing, lean and body bob all shift as you speed up, and sprinting pulls the torso forward and quiets the bounce the way an actual sprint does.
+NEW - feet roll at the ankle now instead of pivoting stiffly from the knee like a peg leg. Most noticeable up close or on a slow walk.
+REDONE - turning in place while standing still steps more naturally: a quick flick of the view gets a fast, punchy step, a slow deliberate look-around gets a longer, more measured one, and the foot that steps matches the direction you're actually turning instead of just alternating. Also fixed a bug from testing this where standing still right after a turn could throw in one extra phantom footstep.
+REDONE - wolves, deer, boars, rats and hares now genuinely change gait between a walk and a full gallop (legs, body bounce, ears and tail all shift together), instead of just cycling the same walk faster. Wolves and boars gallop rotary (diagonal pairs), deer gallop transverse (a proper bounding leap), matching how each animal actually moves.
 
 
 ## 2026-08-07 (v17.9) - FIREBALL: NO MORE FREEZE, NEW LOOK
