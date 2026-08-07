@@ -35,7 +35,9 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     const want = ['anvil-strike', 'anvil-ring', 'anvil-dead', 'fire-bed',
                   'combat-swing', 'combat-heavy', 'combat-block', 'combat-parry',
                   'combat-hit-flesh', 'combat-hit-leather', 'combat-hit-plate',
-                  'combat-crit-ring'];
+                  'combat-crit-ring',
+                  'chop-a', 'chop-b', 'chop-c', 'mine-a', 'mine-b', 'mine-c',
+                  'forage', 'timber'];
     const got = {};
     for (const n of want) got[n] = G._samples.has(n);
 
@@ -86,10 +88,13 @@ const URL = process.env.URL || 'http://127.0.0.1:8123/index.html';
     if (typeof st === 'string') { fail.push(n + ': ' + st); continue; }
     // a decode that silently produced silence is the failure this catches
     if (st.peak < 0.05) fail.push(n + ' decoded to near silence, peak ' + st.peak);
-    // Anvil rings and the fire bed must carry a tail; combat one-shots are
-    // MEANT to be short (a 0.2s hit is a hit, not a truncation). Floor per
-    // family: 0.15s catches a decode that produced near-nothing either way.
-    const minSec = n.indexOf('combat-') === 0 ? 0.15 : 0.5;
+    // The floor is about what the sound IS, not what it is called. A one-shot
+    // impact is MEANT to be short: an axe strike or a sword hit really is
+    // about 0.2s, and failing it as "truncated" is the test being wrong.
+    // Sustained things (anvil ring-out, the fire bed, a falling tree) must
+    // carry a real tail.
+    const ONE_SHOT = /^(combat-|chop-|mine-|forage$)/;
+    const minSec = ONE_SHOT.test(n) ? 0.15 : 0.5;
     if (st.seconds < minSec) fail.push(n + ' is only ' + st.seconds + 's');
   }
   if (res.anvilOk !== true) fail.push('anvilStrike threw: ' + res.anvilOk);
