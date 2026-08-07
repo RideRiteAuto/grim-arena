@@ -91,6 +91,10 @@ const GRIM_EDIT_UI = (() => {
     }
     G._chunks.clear();
     G._terrAcc = 99;
+    // Hand-placed resources are not streamed, so clearing chunks does not
+    // remove them. Deleting the camp's oak has to take effect in the editor
+    // immediately, not on the next reload.
+    try { if (G.applyGoneFixed) G.applyGoneFixed(); } catch (e) {}
     try { G.stepTerrain(0, 260); } catch (e) {}
     try { drawOverlay(); } catch (e) {}
     paintStatus();
@@ -267,6 +271,26 @@ const GRIM_EDIT_UI = (() => {
     rebuildWorld();
     say('placed ' + GRIM_EDIT_CATALOG[S.kind].label);
   }
+  // Everything the world is currently showing that could be picked: the nodes
+  // the dressing pass streamed in AND the hand-placed set built at world load
+  // (the camp trees and rocks, the swamp oaks, the town pines). The second
+  // group is why this is not just G.zoneNodes: those are the landmarks Kevin
+  // most often wants to clear, and they live in a different array.
+  function worldPickables() {
+    const out = [];
+    for (const n of (G.zoneNodes || [])) if (n && n.g && n.nid) out.push(n);
+    for (const r of (G.resources || [])) if (r && r.g && r.nid) out.push(r);
+    return out;
+  }
+
+  // One picker for the whole world. Authored objects win ties inside their own
+  // radius because they are what Kevin just placed and is most likely aiming
+  // at; anything else resolves to the generated thing under the cursor.
+  //
+  // Returns a TAGGED result rather than a bare object, because the two kinds
+  // are deleted by completely different mechanisms: an authored object is
+  // spliced out of the layer, a generated one is recorded by id in the removal
+  // list so every client skips growing it.
   function pickObject(pt) {
     const L = GRIM_EDIT.raw;
     if (!L) return null;
@@ -275,16 +299,67 @@ const GRIM_EDIT_UI = (() => {
       const d = Math.hypot(o.x - pt.x, o.z - pt.z);
       if (d < bd) { bd = d; best = o; }
     }
-    return best;
+    if (best) return { type: 'authored', o: best, d: bd };
+
+    let wn = null, wd = 3.4;
+    for (const n of worldPickables()) {
+      const d = Math.hypot(n.g.position.x - pt.x, n.g.position.z - pt.z);
+      if (d < wd) { wd = d; wn = n; }
+    }
+    if (wn) return { type: 'world', node: wn, d: wd };
+    return null;
   }
+
+  // A hand-placed resource carries an 'fx:' id: it was authored into the world
+  // by a builder rather than grown from the seed, so it is usually a landmark
+  // and often something a quest leans on. Deleting one is allowed (Kevin asked
+  // for that explicitly) but it asks once first.
+  function isLandmark(sel) {
+    return !!(sel && sel.type === 'world' && sel.node && String(sel.node.nid).indexOf('fx:') === 0);
+  }
+
+  function selLabel(sel) {
+    if (!sel) return 'nothing';
+    if (sel.type === 'authored') {
+      const c = GRIM_EDIT_CATALOG[sel.o.k];
+      return (c && c.label) || sel.o.k;
+    }
+    return 'generated ' + (sel.node.kind || 'object');
+  }
+
   function deleteSel() {
     const L = GRIM_EDIT.raw;
     if (!L || !S.sel) return say('nothing selected');
+
+    // Landmarks get one confirmation. The second press within six seconds
+    // commits, so it is a speed bump rather than a wall.
+    if (isLandmark(S.sel) && S._confirmDel !== S.sel) {
+      S._confirmDel = S.sel;
+      S._confirmAt = perfNow();
+      return say('that is a hand-placed landmark, quests may use it. Delete again to confirm.');
+    }
+    if (S._confirmDel && (S._confirmDel !== S.sel || perfNow() - (S._confirmAt || 0) > 6000)) {
+      S._confirmDel = null;
+    }
+
     pushUndo();
-    const i = L.objects.indexOf(S.sel);
-    if (i >= 0) L.objects.splice(i, 1);
+    if (S.sel.type === 'authored') {
+      const i = L.objects.indexOf(S.sel.o);
+      if (i >= 0) L.objects.splice(i, 1);
+      say('deleted');
+    } else {
+      const nid = S.sel.node.nid;
+      if (L.removed.indexOf(nid) < 0) L.removed.push(nid);
+      say('removed the ' + (S.sel.node.kind || 'object') + ', it will not grow back');
+    }
     S.sel = null;
-    GRIM_EDIT.reindex(); rebuildWorld(); say('deleted');
+    S._confirmDel = null;
+    GRIM_EDIT.reindex(); rebuildWorld();
+  }
+
+  // performance.now without assuming it exists in every harness context
+  function perfNow() {
+    try { return performance.now(); } catch (e) { return 0; }
   }
   // Deleting a PROCEDURAL prop is different: it is not in the layer, it is
   // grown by the dressing pass from the world seed. It gets recorded as a
@@ -292,18 +367,20 @@ const GRIM_EDIT_UI = (() => {
   // on every machine.
   function deleteProcedural(pt) {
     const L = GRIM_EDIT.raw;
-    if (!L || !G.zoneNodes) return false;
+    if (!L) return false;
     let best = null, bd = 3.4;
-    for (const n of G.zoneNodes) {
-      if (!n || !n.g || !n.nid) continue;
+    // worldPickables covers the streamed nodes AND the hand-placed set, so
+    // Alt click reaches the camp trees and the swamp oaks too, not only the
+    // things the dressing pass grew.
+    for (const n of worldPickables()) {
       const d = Math.hypot(n.g.position.x - pt.x, n.g.position.z - pt.z);
       if (d < bd) { bd = d; best = n; }
     }
     if (!best) return false;
     pushUndo();
-    L.removed.push(best.nid);
+    if (L.removed.indexOf(best.nid) < 0) L.removed.push(best.nid);
     GRIM_EDIT.reindex(); rebuildWorld();
-    say('removed the generated ' + best.kind);
+    say('removed the ' + best.kind);
     return true;
   }
 
@@ -647,28 +724,47 @@ const GRIM_EDIT_UI = (() => {
         'Wheel rotates the ghost. Alt click removes a generated tree or rock instead of placing.'));
     } else if (S.tool === 'select') {
       row(b, 'Selection');
-      if (!S.sel) b.appendChild(el('div', 'color:#8f8f8f;font-size:11px', 'Click an object you placed.'));
-      else {
-        const c = GRIM_EDIT_CATALOG[S.sel.k];
-        b.appendChild(el('div', 'color:#ededed;font-size:12px;font-weight:700', (c && c.label) || S.sel.k));
+      if (!S.sel) {
+        b.appendChild(el('div', 'color:#8f8f8f;font-size:11px',
+          'Click anything: something you placed, or a tree, vein or boulder the world grew.'));
+      } else if (S.sel.type === 'world') {
+        // A generated thing. It has no authored transform to edit, so the only
+        // meaningful action is removing it, which is recorded by id.
+        const n = S.sel.node;
+        b.appendChild(el('div', 'color:#ededed;font-size:12px;font-weight:700', 'Generated ' + (n.kind || 'object')));
         b.appendChild(el('div', 'color:#8f8f8f;font-size:10px',
-          S.sel.x.toFixed(1) + ', ' + S.sel.z.toFixed(1) + '  scale ' + (S.sel.s || 1).toFixed(2)));
-        slider(b, 'rotation, degrees', 0, 359, 1, Math.round((S.sel.r || 0) * 57.2958),
-          v => { S.sel.r = v / 57.2958; GRIM_EDIT.reindex(); rebuildWorld(); });
-        slider(b, 'scale', 0.3, 4, 0.05, S.sel.s || 1,
-          v => { S.sel.s = v; GRIM_EDIT.reindex(); rebuildWorld(); });
-        slider(b, 'lift, metres', -3, 12, 0.1, S.sel.y || 0,
-          v => { S.sel.y = v; GRIM_EDIT.reindex(); rebuildWorld(); });
+          n.g.position.x.toFixed(1) + ', ' + n.g.position.z.toFixed(1) +
+          (isLandmark(S.sel) ? '  ·  hand-placed landmark' : '  ·  grown from the world seed')));
+        b.appendChild(el('div', 'color:#8f8f8f;font-size:10px;margin-top:4px',
+          'This one is not authored, so it has no rotation or scale to edit. Removing it ' +
+          'records its id, and every player skips it from then on.'));
+        const del = el('button', BTN.replace('#ededed', '#e0574f'), 'Remove from the world');
+        del.onclick = () => { deleteSel(); paintPanel(); };
+        b.appendChild(del);
+      } else {
+        const o = S.sel.o;
+        const c = GRIM_EDIT_CATALOG[o.k];
+        b.appendChild(el('div', 'color:#ededed;font-size:12px;font-weight:700', (c && c.label) || o.k));
+        b.appendChild(el('div', 'color:#8f8f8f;font-size:10px',
+          o.x.toFixed(1) + ', ' + o.z.toFixed(1) + '  scale ' + (o.s || 1).toFixed(2)));
+        if (c && c.node) b.appendChild(el('div', 'color:#8fbf6a;font-size:10px', 'harvestable in game'));
+        if (c && c.station) b.appendChild(el('div', 'color:#8fbf6a;font-size:10px', 'working ' + c.station + ' in game'));
+        slider(b, 'rotation, degrees', 0, 359, 1, Math.round((o.r || 0) * 57.2958),
+          v => { o.r = v / 57.2958; GRIM_EDIT.reindex(); rebuildWorld(); });
+        slider(b, 'scale', 0.3, 4, 0.05, o.s || 1,
+          v => { o.s = v; GRIM_EDIT.reindex(); rebuildWorld(); });
+        slider(b, 'lift, metres', -3, 12, 0.1, o.y || 0,
+          v => { o.y = v; GRIM_EDIT.reindex(); rebuildWorld(); });
         const dup = el('button', BTN, 'Duplicate');
         dup.onclick = () => {
           pushUndo();
-          const n = Object.assign({}, S.sel);
+          const n = Object.assign({}, o);
           n.i = 'o' + Date.now().toString(36); n.x += 2; n.z += 2;
-          GRIM_EDIT.raw.objects.push(n); S.sel = n;
+          GRIM_EDIT.raw.objects.push(n); S.sel = { type: 'authored', o: n, d: 0 };
           GRIM_EDIT.reindex(); rebuildWorld(); paintPanel();
         };
         const cp = el('button', BTN, 'Copy');
-        cp.onclick = () => { S.clipboard = Object.assign({}, S.sel); say('copied'); };
+        cp.onclick = () => { S.clipboard = Object.assign({}, o); say('copied'); };
         const del = el('button', BTN.replace('#ededed', '#e0574f'), 'Delete');
         del.onclick = () => { deleteSel(); paintPanel(); };
         b.appendChild(dup); b.appendChild(cp); b.appendChild(del);
@@ -882,7 +978,7 @@ const GRIM_EDIT_UI = (() => {
       else if (e.ctrlKey && k === 'z') { e.preventDefault(); undo(); }
       else if (e.ctrlKey && k === 'y') { e.preventDefault(); redo(); }
       else if (e.ctrlKey && k === 's') { e.preventDefault(); save(); }
-      else if (e.ctrlKey && k === 'c') { if (S.sel) { S.clipboard = Object.assign({}, S.sel); say('copied'); } }
+      else if (e.ctrlKey && k === 'c') { if (S.sel && S.sel.type === 'authored') { S.clipboard = Object.assign({}, S.sel.o); say('copied'); } }
       else if (e.ctrlKey && k === 'v') { if (S.hoverPt) paste(S.hoverPt); else say('point at the ground first'); }
       else if (k === 'delete' || k === 'backspace') { if (S.sel) deleteSel(); }
       else if (k === 'enter') {
@@ -1045,18 +1141,24 @@ const GRIM_EDIT_UI = (() => {
       placeAt(pt);
     } else if (S.tool === 'select') {
       if (!first) {
-        if (S.sel) {
+        // Only AUTHORED objects drag. A generated tree has no stored position
+        // to move: it grows where the seed says, so dragging one would silently
+        // do nothing on every other player's machine.
+        if (S.sel && S.sel.type === 'authored') {
           // the undo snapshot belongs to the first actual movement; taking
           // it on every selecting click filled the undo stack with no-ops
           if (!S.selMoved) { pushUndo(); S.selMoved = true; }
-          S.sel.x = snap(pt.x); S.sel.z = snap(pt.z); GRIM_EDIT.reindex(); rebuildWorld();
+          S.sel.o.x = snap(pt.x); S.sel.o.z = snap(pt.z); GRIM_EDIT.reindex(); rebuildWorld();
         }
         return;
       }
       S.sel = pickObject(pt);
       S.selMoved = false;
+      S._confirmDel = null;
       paintPanel();
-      say(S.sel ? 'selected, drag to move' : 'nothing there');
+      say(!S.sel ? 'nothing there'
+        : S.sel.type === 'world' ? ('selected the ' + selLabel(S.sel) + ', Delete removes it')
+        : 'selected, drag to move');
     } else if (S.tool === 'spawn') {
       if (!first) return;
       if (alt) removeSpawn(pt); else addSpawn(pt);
@@ -1362,7 +1464,7 @@ const GRIM_EDIT_UI = (() => {
     // ones. Everything here is inert until enter() has run.
     applyTool, setFly, useCentre, paintAt, sculptAt, placeAt, paste, eyedropAt, eyedrop,
     addSpawn, removeSpawn, districtCommit, roadClick, roadCommit,
-    prefabSave, prefabStamp, pickObject, deleteSel, deleteProcedural,
+    prefabSave, prefabStamp, pickObject, deleteSel, deleteProcedural, worldPickables, isLandmark, selLabel,
     undo, redo, save, exportFile, importFile, rebuildWorld, drawOverlay
   };
 })();

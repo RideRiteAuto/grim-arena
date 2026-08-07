@@ -34,6 +34,9 @@ const GRIM_EDIT_MATS = (() => {
       stone: mk(0x777067), stoneDark: mk(0x5a554e), slate: mk(0x4b4f52),
       thatch: mk(0x9a8248, 0.95), tile: mk(0x5c4a44),
       iron: mk(0x3f4348, 0.55, 0.55), cloth: mk(0x8d7a5c),
+      // the Bank of Hollowrest's trim colour, so a branch bank reads as the
+      // same institution rather than as a different building that also banks
+      gold: mk(0xc8a24a, 0.45, 0.4),
       // Planes need both faces or you see straight through a wall from
       // inside, which is exactly the fault the burial mound has today.
       sheet: new T.MeshStandardMaterial({ color: 0x6b5236, roughness: 0.9, flatShading: true, side: T.DoubleSide })
@@ -41,6 +44,24 @@ const GRIM_EDIT_MATS = (() => {
     return M;
   };
 })();
+
+// Which zone's palette a spot belongs to, and a stable per-spot seed. Both are
+// pure functions of world position, and BOTH the catalog's builders and the
+// renderer's node builder need them, so they sit at module scope rather than
+// inside either one. (They started inside the catalog, which is exactly why the
+// renderer's first attempt at building a real node threw on an undefined
+// zoneLook: same file, different closure.)
+function zoneLook(G, x, z) {
+  const L = G.ZONE_LOOK ? G.ZONE_LOOK() : null;
+  if (!L) return null;
+  const name = (typeof grimZoneName === 'function' && typeof GRIM_WORLD !== 'undefined' && GRIM_WORLD.ready)
+    ? grimZoneName(GRIM_WORLD.zone(x, z)) : 'HEARTLANDS';
+  return L[name] || L.HEARTLANDS;
+}
+function seedAt(x, z, salt) {
+  return (typeof grimSeed === 'function')
+    ? grimSeed(Math.round(x * 4), Math.round(z * 4), salt) : 1;
+}
 
 const GRIM_EDIT_CATALOG = (() => {
   // box(): a positioned, rotated box in the object's local space. Local Y is
@@ -243,21 +264,31 @@ const GRIM_EDIT_CATALOG = (() => {
     return g;
   }
 
+  // A branch of the Bank of Hollowrest: the same stone counter and gold-trim
+  // sign Odwin stands behind, so it reads as the institution rather than as a
+  // generic desk. This one is a REAL bank: the catalog tags it station:'bank',
+  // which is what puts it in the world's station registry and makes F open the
+  // same vault. The bank is shared per character, so a deposit here comes out
+  // at Hollowrest and vice versa.
+  function bankBooth(G) {
+    const T = G.T, M = GRIM_EDIT_MATS(T), g = grp(T);
+    box(T, g, M.stoneDark, 3.6, 1.05, 0.85, 0, 0, 0);            // counter
+    box(T, g, M.stone, 3.8, 0.12, 1.05, 0, 1.05, 0);             // worn top slab
+    for (const sx of [-1, 1]) box(T, g, M.woodDark, 0.16, 2.7, 0.16, sx * 1.7, 0, -0.1);
+    const sign = box(T, g, M.plank, 3.3, 0.72, 0.12, 0, 2.35, -0.1);
+    sign.castShadow = true;
+    box(T, g, M.gold, 3.45, 0.09, 0.16, 0, 3.07, -0.1);          // top trim
+    box(T, g, M.gold, 3.45, 0.09, 0.16, 0, 2.29, -0.1);          // bottom trim
+    box(T, g, M.gold, 0.5, 0.5, 0.06, 0, 2.46, -0.02);           // coin plaque
+    return g;
+  }
+
   // --- procedural props, reusing the game's own builders --------------------
   // A tree placed in the editor must be the SAME tree the dressing pass grows,
   // or the authored world stops matching the generated one and every screenshot
   // Kevin takes is a lie. These call straight into the game.
-  function zoneLook(G, x, z) {
-    const L = G.ZONE_LOOK ? G.ZONE_LOOK() : null;
-    if (!L) return null;
-    const name = (typeof grimZoneName === 'function' && typeof GRIM_WORLD !== 'undefined' && GRIM_WORLD.ready)
-      ? grimZoneName(GRIM_WORLD.zone(x, z)) : 'HEARTLANDS';
-    return L[name] || L.HEARTLANDS;
-  }
-  function seedAt(x, z, salt) {
-    return (typeof grimSeed === 'function')
-      ? grimSeed(Math.round(x * 4), Math.round(z * 4), salt) : 1;
-  }
+  // zoneLook and seedAt live at module scope (above) because the RENDERER
+  // needs them too, to build placed nodes through the game's own builders.
   function treeOf(shape) {
     return (G, o) => {
       const look = zoneLook(G, o.x, o.z);
@@ -368,9 +399,14 @@ const GRIM_EDIT_CATALOG = (() => {
     mailbox:    { label: 'Mailbox',       tab: 'props', clear: 1.0, build: mailbox },
     // the art track's kit models: the same builders the game itself uses, so
     // a placed furnace IS the camp furnace, sharing its animated materials
-    furnace:    { label: 'Furnace',    tab: 'props', clear: 3.2, solid: 1.5, build: kitProp('furnaceKit') },
-    anvil:      { label: 'Anvil',      tab: 'props', clear: 1.4, solid: 0.7, build: kitProp('anvilKit', { scale: 1.35 }) },
+    // Stations. The `station` tag is the whole difference between scenery and
+    // a working building: it registers the placed object with the world, which
+    // is what the F prompt, the smelting loop, the smithing queue and the bank
+    // all read. Without it these are furnace-shaped rocks.
+    furnace:    { label: 'Furnace',    tab: 'props', clear: 3.2, solid: 1.5, station: 'furnace', build: kitProp('furnaceKit') },
+    anvil:      { label: 'Anvil',      tab: 'props', clear: 1.4, solid: 0.7, station: 'anvil',   build: kitProp('anvilKit', { scale: 1.35 }) },
     campfire:   { label: 'Campfire',   tab: 'props', clear: 2.2, solid: 0.9, build: kitProp('campfireKit') },
+    bankbooth:  { label: 'Bank booth', tab: 'props', clear: 3.0, solid: 1.9, station: 'bank',    build: bankBooth },
     // nature, straight through the game's own builders
     tree_new:   { label: 'Broadleaf (new kit)', tab: 'nature', clear: 2.6, build: natureOf('tree') },
     tree_oak:   { label: 'Great oak',           tab: 'nature', clear: 3.4, build: natureOf('oak') },
@@ -429,6 +465,51 @@ const GRIM_EDIT_RENDER = (() => {
     return g;
   }
 
+  // A placed ore vein, tree or bush is NOT scenery. It is a real harvestable
+  // node, and it has to be built by the GAME's own node builders rather than
+  // the catalog's display-only ones, because those are what return the fell
+  // trunk, the stump, the ore studs and the rubble that the depletion
+  // animation needs. Everything else here mirrors the procedural node path in
+  // dressChunk line for line, deliberately: a placed copper vein should be
+  // indistinguishable from a grown one to every system downstream.
+  //
+  // The id is derived from the AUTHORED object id, not from position, so every
+  // player's client computes the same one. That is what makes multiplayer
+  // depletion agree and what lets the harvested-state memory survive the
+  // chunk streaming out and back.
+  function buildNode(G, o, c) {
+    const NODES = (typeof GRIM_RULES !== 'undefined' && GRIM_RULES.GATHER)
+      ? GRIM_RULES.GATHER.NODES : null;
+    const nd = NODES ? NODES[c.node] : null;
+    if (!nd) return null;
+    const look = zoneLook(G, o.x, o.z);
+    if (!look) return null;
+    const sc = o.s || 1;
+    const seed = seedAt(o.x, o.z, 'edit' + c.node);
+    let built = null;
+    try {
+      if (nd.skill === 'WOODCUTTING' && G.makeZoneTree) {
+        built = G.makeZoneTree(look, sc, seed, nd.shape);
+      } else if (nd.skill === 'MINING' && G.makeZoneOre) {
+        built = G.makeZoneOre(look, sc, seed, G.NODE_TINT(c.node), c.node);
+      } else if (G.makeZonePlant) {
+        built = G.makeZonePlant(look, sc, seed, G.NODE_TINT(c.node), c.node);
+      }
+    } catch (e) { return null; }
+    if (!built || !built.g) return null;
+    const gy = (typeof GRIM_WORLD !== 'undefined' && GRIM_WORLD.ready) ? GRIM_WORLD.height(o.x, o.z) : 0;
+    built.g.position.set(o.x, gy + (o.y || 0), o.z);
+    built.g.rotation.y = o.r || 0;
+    built.g.userData.editId = o.i;
+    return {
+      kind: c.node, nid: 'ed:' + o.i, g: built.g,
+      fell: built.fell || null, stump: built.stump || null,
+      studs: built.studs || null, rubble: built.rubble || null,
+      hp: nd.hp, max: nd.hp, dead: false, respawn: 0,
+      streamed: true, authored: true
+    };
+  }
+
   // Attach every authored object in this chunk. rec is the chunk record the
   // terrain streamer already keeps, so the drop path below is symmetric with
   // the one for clutter and nodes.
@@ -438,8 +519,33 @@ const GRIM_EDIT_RENDER = (() => {
     if (!list || !list.length) return;
     const built = [];
     const cols = [];
+    const stations = [];
     for (let i = 0; i < list.length; i++) {
-      const g = build(G, list[i]);
+      const o = list[i];
+      const c = GRIM_EDIT_CATALOG[o.k];
+      if (!c) continue;
+
+      // Harvestables go into the game's node system and onto rec.nodes, which
+      // the game's own dressDrop already releases with the chunk. They are
+      // deliberately kept OUT of editObjs: being in both lists would remove
+      // and dispose them twice.
+      if (c.node) {
+        const R = buildNode(G, o, c);
+        if (!R) continue;
+        G.scene.add(R.g);
+        G.zoneNodes = G.zoneNodes || [];
+        // a node emptied a moment ago comes back empty, not full, exactly as
+        // the procedural ones do
+        const kept = G._nodeState && G._nodeState[R.nid];
+        if (kept && kept.dead) { R.hp = 0; R.dead = true; R.respawn = kept.respawn; }
+        G.zoneNodes.push(R);
+        rec.nodes = rec.nodes || [];
+        rec.nodes.push(R);
+        if (R.dead && G.resourceDepleted) { try { G.resourceDepleted(R, null); } catch (e) {} }
+        continue;
+      }
+
+      const g = build(G, o);
       if (!g) continue;
       G.scene.add(g);
       built.push(g);
@@ -447,15 +553,24 @@ const GRIM_EDIT_RENDER = (() => {
       // use, so a placed furnace stops a player exactly the way the camp
       // furnace does. Tracked on the chunk record and removed with it, so
       // streaming out never leaves a ghost wall behind.
-      const c = GRIM_EDIT_CATALOG[list[i].k];
-      if (c && c.solid && G.colliders) {
-        const col = { x: list[i].x, z: list[i].z, r: c.solid * (list[i].s || 1) };
+      if (c.solid && G.colliders) {
+        const col = { x: o.x, z: o.z, r: c.solid * (o.s || 1) };
         G.colliders.push(col);
         cols.push(col);
+      }
+      // Interactable stations register with the world so the F prompt, the
+      // smelting loop and the bank all find them. Without this a placed
+      // furnace is a furnace-shaped rock.
+      if (c.station && G.registerStation) {
+        try {
+          const V = G.T ? new G.T.Vector3(o.x, g.position.y, o.z) : { x: o.x, y: g.position.y, z: o.z };
+          stations.push(G.registerStation(c.station, V, { authored: true }));
+        } catch (e) {}
       }
     }
     if (built.length) rec.editObjs = built;
     if (cols.length) rec.editCols = cols;
+    if (stations.length) rec.editStations = stations;
   }
 
   function drop(G, rec) {
@@ -477,9 +592,20 @@ const GRIM_EDIT_RENDER = (() => {
       }
       rec.editCols = null;
     }
+    // Stations leave with their chunk. A registry entry left behind would be
+    // a furnace you can smelt at from an empty field.
+    if (rec.editStations && G.unregisterStation) {
+      for (const st of rec.editStations) {
+        try { G.unregisterStation(st); } catch (e) {}
+      }
+      rec.editStations = null;
+    }
+    // Authored NODES are not touched here on purpose: they live on rec.nodes
+    // and the game's own dressDrop releases them, along with remembering
+    // whether they were harvested.
   }
 
-  return { build, dress, drop };
+  return { build, buildNode, dress, drop };
 })();
 
   // Applied when the edit layer lands AFTER the world has already been built,
@@ -493,6 +619,11 @@ const GRIM_EDIT_RENDER = (() => {
   GRIM_EDIT_RENDER.refresh = function (G) {
     if (!G || !G._chunks) return 0;
     let n = 0;
+    // Hand-placed resources (the camp trees and rocks, the swamp oaks, the town
+    // pines) are built once at world load rather than streamed, so rebuilding
+    // chunks does not touch them. If Kevin deleted one, this is the sweep that
+    // takes it out.
+    try { if (G.applyGoneFixed) G.applyGoneFixed(); } catch (e) {}
     for (const [key, ch] of G._chunks) {
       try { G.dressDrop(ch); } catch (e) {}
       try { G.roadDrop(ch); } catch (e) {}

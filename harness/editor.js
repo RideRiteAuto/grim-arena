@@ -546,6 +546,44 @@ async function open(browser) {
     const pasted = E.raw.objects[E.raw.objects.length - 1];
     out.pasted = E.raw.objects.length === n0 + 1 && pasted.k === 'barrel' && pasted.i !== placed.i;
 
+    // --- selecting the WORLD, not just your own objects -------------------
+    // Kevin's report: he could not click a tree or an ore vein the world grew,
+    // only things he had placed. The picker returns a tagged result now, so
+    // these check both arms of it.
+    S.tool = 'select';
+    U.applyTool({ x: placed.x, z: placed.z, y: 0 }, true, false);
+    out.pickedAuthored = !!(S.sel && S.sel.type === 'authored' && S.sel.o.i === placed.i);
+
+    // a generated node: take a real one out of the live world and click it
+    const grown = (g.zoneNodes || []).find(n => n && n.g && n.nid);
+    out.hadGrown = !!grown;
+    if (grown) {
+      const gp = grown.g.position;
+      U.applyTool({ x: gp.x, z: gp.z, y: 0 }, true, false);
+      out.pickedWorld = !!(S.sel && S.sel.type === 'world' && S.sel.node.nid === grown.nid);
+      // deleting it records the id rather than trying to splice a layer entry
+      const rem0 = E.raw.removed.length;
+      U.deleteSel();
+      out.worldRemoved = E.raw.removed.length === rem0 + 1 && E.raw.removed.indexOf(grown.nid) >= 0;
+      out.worldGoneFromScene = !(g.zoneNodes || []).some(n => n && n.nid === grown.nid);
+    }
+
+    // a hand-placed landmark asks once before it goes
+    const landmark = (g.resources || []).find(r => r && r.nid);
+    out.hadLandmark = !!landmark;
+    if (landmark) {
+      const lp = landmark.g.position;
+      U.applyTool({ x: lp.x, z: lp.z, y: 0 }, true, false);
+      out.pickedLandmark = !!(S.sel && S.sel.type === 'world' && S.sel.node.nid === landmark.nid);
+      const rem1 = E.raw.removed.length;
+      U.deleteSel();                                   // first press: warns only
+      out.landmarkWarned = E.raw.removed.length === rem1 && !!S.sel;
+      U.deleteSel();                                   // second press: commits
+      out.landmarkDeleted = E.raw.removed.indexOf(landmark.nid) >= 0;
+      out.landmarkGone = !(g.resources || []).some(r => r && r.nid === landmark.nid);
+    }
+    S.sel = null;
+
     // prefab save and stamp
     S.brush = 30;
     U.prefabSave('testfab', here);
@@ -579,6 +617,14 @@ async function open(browser) {
   ok(tools.districtClosed, 'a district closes into the layer');
   ok(tools.overlayDrawn, 'spawn and district markers are drawn in an editor-only overlay');
   ok(tools.pasted, 'copy and paste makes a new object rather than a second reference');
+  ok(tools.pickedAuthored, 'clicking something you placed still selects it');
+  ok(tools.hadGrown && tools.pickedWorld, 'clicking a tree or vein the WORLD grew selects it too');
+  ok(tools.worldRemoved, 'deleting a grown node records its id in the removal list');
+  ok(tools.worldGoneFromScene, 'the deleted node leaves the editor view immediately');
+  ok(tools.hadLandmark && tools.pickedLandmark, 'a hand-placed landmark can be selected');
+  ok(tools.landmarkWarned, 'deleting a landmark asks once instead of just doing it');
+  ok(tools.landmarkDeleted, 'a second Delete press commits the landmark removal');
+  ok(tools.landmarkGone, 'the deleted landmark leaves the editor view immediately');
   ok(tools.prefabSaved && tools.prefabStamped, 'a prefab saves and stamps');
   ok(tools.sculptRaised > 1.5, 'the sculpt tool raises real terrain',
     '+' + tools.sculptRaised.toFixed(2) + 'm');
