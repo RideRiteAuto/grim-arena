@@ -1,5 +1,15 @@
 # Grim World — patch notes
 
+## 2026-08-06 (v16.1) - PVP ACTUALLY WORKS, DOG TAGS, K/D RECORD
+
+FIXED - pvp hits now really land. The live game talks through the relay server, and the relay was silently dropping every pvp message - you saw the hitsplat, they never took the damage. The relay now carries player combat, delivered only to the player it is addressed to.
+FIXED - the player currently hosting the simulation could not be hurt even with pvp on. Now every seat takes hits the same way.
+NEW - dog tags. Kill a player and their dog tag (with their name on it) appears in your pack. Bank it, keep it, hand it in for future quests: it is proof of the kill. One tag per victim per 10 minutes, so trading kills back and forth cannot mint a pile of them. Fenwick will not buy them - proof is not for sale.
+NEW - your PVP record. Kills and deaths are counted, saved with your character, and shown at the bottom of the skills page (K).
+WORKS NOW - spells in pvp: fireball sets players burning (burn ticks never land the killing blow), frost freezes them solid for 2 seconds with a 6 second immunity after, so nobody can be chain-frozen forever.
+FAIR PLAY - the victim's machine is always the judge: your armour, shield and parries decide what a hit does to you. Incoming damage claims are capped at the biggest hit the game can legitimately produce, kill credit is only honoured if the killer really damaged you in the last 30 seconds, and player kills award no combat XP - so kill trading earns nothing.
+
+
 ## 2026-08-06 (v16) - PVP
 
 NEW - PVP, strictly opt-in. Flip PVP: ON on the main menu and you can fight, and be fought by, anyone else who has done the same. A red sword marks pvp players on their nameplate and in the who-is-online list.
@@ -76,8 +86,3 @@ The player carries a real elevation now, behind the new VERT switches in the sha
 ## Phase 1c: frames of reference, structure only
 
 A cargo pack on a boat deck has to stay on the deck while the boat sails, which needs positions that can be expressed relative to a moving thing. The structure for that exists now: a frame registry with world-frame identity converters, the player state message carries a frame id (0, the world), remotes store it the way they already store transmitted height, and the surfaces query accepts a frame argument it does not yet use. The world is the only frame, so nothing behaves differently. Phase 9 turns the rowboat into the first real frame and this structure makes that additive instead of a rewrite.
-
-
-## Phase 1a and 1b: the vertical layer groundwork
-
-worldY is now the single definition of an entity's true height, with fifteen call sites routed through it (placement, the network position, aim, damage anchors, remote players, every projectile muzzle), and surfaceY is the new surfaces query with bridge decks and terrain as its first two providers, bridges keeping their exact shipped maths. Both changes are verified zero behaviour change: the suite is green and every value is byte-identical to before. This is the safety groundwork for real elevation: when pos.y becomes a real height in 1d, these sites flip together in one switch instead of double counting the ground in twenty places. Camera, hitboxes, corpse slump and rail clamping are deliberately untouched, they are named 1e items. Also retired the shipped sfx patch 30 to applied so the build path works for anyone who pulls.

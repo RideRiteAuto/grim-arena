@@ -28,7 +28,7 @@ const RATE_LIMIT = 60;              // msgs/sec per player; the game sends ~20
 const OWNER_STALE_MS = 8000;
 
 // Messages the relay forwards. Anything else is dropped.
-const RELAYED = new Set(['s', 'w', 'nhit', 'ndead', 'rhit', 'rdead', 'phit', 'lreq', 'lok', 'lno', 'skupd', 'sknew', 'skgone', 'chat']);
+const RELAYED = new Set(['s', 'w', 'nhit', 'ndead', 'rhit', 'rdead', 'phit', 'pvp', 'pvpk', 'lreq', 'lok', 'lno', 'skupd', 'sknew', 'skgone', 'chat']);
 // Only the simulation owner may speak world truth.
 const OWNER_ONLY = new Set(['w', 'ndead', 'rdead', 'phit', 'lok', 'lno', 'skupd', 'sknew', 'skgone']);
 // Claims the owner alone needs to see (movement-only traffic).
@@ -1331,6 +1331,10 @@ export class World {
 
     if (!RELAYED.has(m.t)) return;
     if (OWNER_ONLY.has(m.t) && (!owner || meta.id !== owner.meta.id)) return;
+
+    // Player combat is strictly one-to-one. A pvp/pvpk without an address
+    // would fall through to broadcast and hit every player at once.
+    if ((m.t === 'pvp' || m.t === 'pvpk') && !m.to) return;
 
     m._p = meta.id;                                 // sender, stamped here and never trusted from the client
     delete m.to_;                                   // reserved
