@@ -60,6 +60,42 @@
 // variants are bigger than the species' old base size - never smaller - and
 // carry a slightly different bark/leaf shade, so a cluster of the same
 // species never reads as one tree copy-pasted next to itself.
+//
+// Base seam fix: the planted base flare (woodDown) and the trunk above the
+// break (woodUp's upper loft) are two separate lofts that are supposed to
+// read as one continuous trunk at breakY. Kevin: "you can see the seam
+// where the stump and tree snap. Even when the tree is still standing
+// before you cut it down." Three independent defects were stacked on top
+// of each other at that one ring:
+//   1. RADIUS MISMATCH. The upper loft's own taper is measured from the
+//      ground, so by breakY it has already narrowed past K.r - but the
+//      base flare's closing ring used to hardcode a flat K.r there with no
+//      taper of its own, so the two lofts met at two different radii. The
+//      same flat K.r was also used for the break-face discs (stumpCap), so
+//      the same step reappeared on the stump's cut face after a fell. Fixed
+//      by computing one breakR (the upper loft's own taper formula, applied
+//      up front) and reusing it for the base flare's closing ring AND both
+//      stumpCap discs, so all four places that have to meet at the break
+//      line share one number by construction.
+//   2. JITTER MISMATCH. roughen() jitters every vertex by a hash of that
+//      vertex's own (rounded) position plus a seed - deterministic only
+//      when the position itself matches. Even after the radii matched
+//      exactly, the upper loft was built in hinge-local space (offset for
+//      the fell group's own transform) while the lower loft was built in
+//      world space, so the shared seed hashed to two different numbers at
+//      the same physical point on the trunk and the ring still came out as
+//      a stitch of mismatched facets. Fixed by building the upper loft in
+//      world space too - identical coordinates to the lower loft at the
+//      shared ring - and only translating into hinge space afterward, once
+//      roughening and bark paint are already baked in.
+//   3. COINCIDENT END CAPS. loftRect auto-caps both ends of every loft with
+//      a triangle fan. Two lofts butted flush against each other each grow
+//      their own cap at the shared ring, landing as two coincident,
+//      oppositely-facing flat discs right at the seam - a textbook z-fight.
+//      Fixed by adding an opt-in caps:{start,end} parameter to loftRect
+//      (grim-kit.js) and skipping the redundant cap on each side.
+// All three fixes land in this one shared build() path, so every species in
+// KINDS is fixed by the same change.
 
 import {
   rngFor, mergeParts, roughen, paintByPos, logBetween, placed, loftRect
@@ -305,8 +341,12 @@ export function makeTreeKit(T, opt) {
   // read as a blank rounded dome, not a cut trunk, on the first pass. A few
   // real radial rings, painted a bit boldly, gives the low-poly style actual
   // concentric bands instead of a smooth blend.
-  const stumpCap = (K, rnd, upward) => {
-    const R = K.r * 0.97;
+  const stumpCap = (K, rnd, upward, ringR) => {
+    // ringR is the ACTUAL wood radius at the break line (see breakR in
+    // kit.build below) - it can be narrower than K.r once the upper trunk's
+    // own taper is applied. Falls back to K.r for any future caller that
+    // does not pass one.
+    const R = (ringR === undefined ? K.r : ringR) * 0.97;
     const h = Math.max(0.05, K.r * 0.12);
     const ringPhase = rnd() * 6.28;
     const paint = (c, x, y, z) => {
@@ -390,6 +430,19 @@ export function makeTreeKit(T, opt) {
     // ---- trunk: base flare to tip, split at the break line ------------------
     const lean = (rnd() - 0.5) * 0.16 * (K.sweep || 1) + (K.sweep ? (rnd() > 0.5 ? 0.08 : -0.08) * K.sweep : 0);
     const line = (t) => ({ x: lean * t * t * 2.4, y: t });   // gentle sweep
+    // The upper trunk's taper (below) is measured from the GROUND, not from
+    // the break, so by the time its loft reaches the break line it has
+    // already narrowed past K.r. The base flare used to close its own top
+    // ring at a flat K.r with no such taper applied, so the two lofts met at
+    // two different radii - a visible step ringing every trunk right where
+    // the base flare meets the trunk above it, at the base of the tree
+    // (breakY sits low, well under a fifth of the way up). The same step
+    // showed up on the stump's cut face after a fell, for the same reason.
+    // One shared radius for that one ring, reused by both lofts AND both
+    // stumpCap discs below, removes it for every species built from this
+    // rig, since they all share this exact code path.
+    const upperTaperAmt = K.taper === undefined ? 0.72 : K.taper;
+    const breakR = K.r * (1 - (K.breakY / K.h) * upperTaperAmt);
     const trunkSecs = [];
     const steps = [[0, K.flare * 0.82, 2.0], [0.04, K.r * 1.30, 2.5], [0.10, K.r * 1.06, 2.6]];
     for (const [tt, rr, p] of steps) {
@@ -400,24 +453,41 @@ export function makeTreeKit(T, opt) {
     // lower trunk (planted): flare up to the break. This loft is the ENTIRE
     // base - no separate buttress-root lobes glued on. A first pass tried
     // those and they read as four little planks stuck on a pole no matter
-    // how they were angled; the loft's own flare is the tree's base.
-    const lower = loftRect(T, 'y', trunkSecs.concat([{ at: K.breakY, hu: K.r, hv: K.r, cu: line(K.breakY / K.h).x, p: 2.6 }]), 9,
-      barkPaint(K, seed));
+    // how they were angled; the loft's own flare is the tree's base. The
+    // closing ring uses breakR (not K.r) so it meets the upper loft's first
+    // ring at an identical radius - see the comment above. end:false skips
+    // this loft's own top cap: the upper loft's matching bottom ring sits
+    // flush against it, so a cap here would be a second, exactly coincident
+    // disc and z-fight with the one below.
+    const lower = loftRect(T, 'y', trunkSecs.concat([{ at: K.breakY, hu: breakR, hv: breakR, cu: line(K.breakY / K.h).x, p: 2.6 }]), 9,
+      barkPaint(K, seed), { end: false });
     roughen(T, lower, 0.085, seed + 2, 1);   // same seed as the upper loft
     woodDown.push({ geo: lower });
 
-    // upper trunk (falls): break line to tip, in hinge space
+    // upper trunk (falls): break line to tip. Built in WORLD coordinates
+    // here, NOT hinge space like the rest of woodUp - that puts its first
+    // ring at the exact same (x,y,z) as the base flare's closing ring right
+    // above, so roughen() (same seed, hashed off vertex position) jitters
+    // every matching vertex around that ring identically instead of just
+    // landing on the same average radius. Built in hinge space, the two
+    // rings shared a radius after the breakR fix above but still landed on
+    // slightly different jitter per vertex - close, but a small stitch of
+    // mismatched facets remained right at the seam. Translated into hinge
+    // space, the same place IN() would have put it, only once roughen and
+    // the bark paint are already baked in below.
     const upperSecs = [];
     const tipY = K.h * (0.86 + rnd() * 0.1);
     const nSec = 5;
     for (let i = 0; i <= nSec; i++) {
       const y = K.breakY + (tipY - K.breakY) * (i / nSec);
       const t = y / K.h;
-      const rr = K.r * (1 - t * (K.taper === undefined ? 0.72 : K.taper));
-      const [lx, ly, lz] = IN(line(t).x, y, 0);
-      upperSecs.push({ at: ly, hu: Math.max(0.05, rr), hv: Math.max(0.05, rr), cu: lx, p: 2.6 });
+      const rr = K.r * (1 - t * upperTaperAmt);
+      upperSecs.push({ at: y, hu: Math.max(0.05, rr), hv: Math.max(0.05, rr), cu: line(t).x, p: 2.6 });
     }
-    const upper = loftRect(T, 'y', upperSecs, 9, (c, x, y, z) => barkPaint(K, seed)(c, x + hingeX, y + K.breakY, z));
+    // start:false skips this loft's own bottom cap for the same reason the
+    // base flare above skips its top one - the two rings sit flush and a
+    // cap on both sides is a coincident, z-fighting pair of discs.
+    const upper = loftRect(T, 'y', upperSecs, 9, barkPaint(K, seed), { start: false });
     // a snag's top is TORN, not sawn: a jagged ring of upward shards. This is
     // the dead tree's permanent, naturally-broken silhouette (what a snag
     // IS), a different thing from the fell mechanic's break faces below.
@@ -448,7 +518,8 @@ export function makeTreeKit(T, opt) {
       paintByPos(T, stub.geo, (c, x, y, z) => barkPaint(K, seed)(c, x + hingeX, y + K.breakY, z));
       woodUp.push(stub);
     }
-    roughen(T, upper, 0.085, seed + 2, 1);   // matches the lower loft at the break ring
+    roughen(T, upper, 0.085, seed + 2, 1);   // matches the lower loft at the break ring, vertex for vertex now that both build it in the same coordinate frame
+    upper.translate(-hingeX, -K.breakY, 0);   // now into hinge space, where the fell group's own transform expects it
     woodUp.push({ geo: upper });
 
     // ---- limbs: real wood between trunk and foliage -------------------------
@@ -745,7 +816,7 @@ export function makeTreeKit(T, opt) {
     // hinge space. Both halves of the same break get the SAME rng seed, so
     // the rings drawn on the stump and on the fallen trunk's butt line up as
     // if they were always one cut.
-    for (const p of stumpCap(K, rngFor(seed * 3 + 5), false)) {
+    for (const p of stumpCap(K, rngFor(seed * 3 + 5), false, breakR)) {
       p.matrix = new T.Matrix4().makeTranslation(-hingeX + line(K.breakY / K.h).x, 0.006, 0).multiply(p.matrix);
       woodUp.push(p);
     }
@@ -781,7 +852,7 @@ export function makeTreeKit(T, opt) {
     stumpG.visible = false;
     g.add(stumpG);
     const crownParts = [];
-    for (const p of stumpCap(K, rngFor(seed * 3 + 5), true)) {
+    for (const p of stumpCap(K, rngFor(seed * 3 + 5), true, breakR)) {
       p.matrix = new T.Matrix4().makeTranslation(line(K.breakY / K.h).x, K.breakY, 0).multiply(p.matrix);
       crownParts.push(p);
     }
