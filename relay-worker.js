@@ -475,6 +475,15 @@ const GRIM_RULES = {
     low:  { clutter: 0.45, dressRing: 1 }
   },
 
+  // Adjustable draw distance (patch 78.104+, see that patch's docstring for
+  // the full rationale). Scales camera far, fog near/far, and the terrain
+  // detail/coarse/prop-dressing chunk rings together. normal = live today.
+  VIEW_DIST: {
+    near:   { mult: 0.72, label: 'NEAR' },
+    normal: { mult: 1.0,  label: 'NORMAL' },
+    far:    { mult: 1.35, label: 'FAR' }
+  },
+
   // ---- gathering ----------------------------------------------------------
   // Three skills, one curve, tiered nodes, tiered tools. A node needs BOTH a
   // skill level and a tool tier; the trade economy is the tool ladder, because

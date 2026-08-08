@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v18.1) - ADJUSTABLE DRAW DISTANCE
+
+ADDED - a DRAW button next to GRAPHICS on the pause menu, cycling NEAR/NORMAL/FAR. Controls how far the camera sees: fog, the horizon, and how much terrain and scenery load in around you. NORMAL is a small step in from before (nothing was visible past where fog already hid it), FAR pushes it back out for a bigger view if your machine can take it.
+FIXED - the fog and the sky behind it used to be two different colors, so distant terrain sat as a lighter band on the horizon instead of fading away. They match now.
+
 ## 2026-08-08 (v17.11) - CLEANER GROUND TEXTURE BLENDS, WIDER BLEND RANGE
 
 REDONE - where two ground textures meet (or ground blends into rock on a slope), the game used to average the two textures' colours together, which washes them into a hazy, flat-looking band right at the seam, on top of the blend being limited by how fine the terrain mesh itself is. Reworked so each patch of ground is drawn with one texture or the other at full detail, scattered by a fine, stable grain so the transition reads as an organic mix rather than a blend bounded by mesh geometry. No extra cost to draw and no change to the terrain mesh itself.
