@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.15) - UNDER-THE-HOOD PERFORMANCE CLEANUP
+
+WORKS NOW - trimmed a batch of small per-frame memory allocations across camera movement, NPC animation, quest tracking, arrows and projectiles, and terrain loading. Less garbage-collection stutter to expect in busy scenes. Nothing should look or play differently, this is all internal.
+
+
 ## 2026-08-08 (v17.14) - GROUND TEXTURE STATIC FIXED, BIGGER BRUSH, SLOPE/SNOW LINE NOW TUNABLE
 
 FIXED - the dithered ground blend from the last patch could show a grid-like static pattern over large or bumpy areas, worst from a low angle. The dither now fades into the old smooth blend automatically at distance and grazing angles, where a screen pixel can no longer resolve the fine grain, so it never shows static again but keeps the crisp up-close blending where it matters.
@@ -69,8 +74,3 @@ FIXED - the previous patch (R/F hotkey fix, 6->8 action bar slots) shipped with 
 FIXED - pressing R was silently equipping whatever was bound to action-bar slot 2, and F (when nothing was nearby to interact with) was silently equipping slot 3. Neither key was ever meant to touch your weapon - R's only real job is SORT inside the pack, and F's is the universal interact key (loot, bank, shop, furnace, talk). Both now do only what they are supposed to.
 ADDED - the action bar grew from 6 slots to 8 (keys 1-8), and stays centered under the crosshair either way.
 CHANGED - a brand new character's action bar now starts completely empty. Your starting gear is unchanged - the scimitar is still equipped and the staff, bow, pick and axe are still in your pack - you just bind them to the bar yourself instead of it being done for you. Returning characters keep every slot they already had bound; the two new slots just start empty like everything else did.
-
-
-## 2026-08-07 (v17.7) - TRADE BUTTON (COMING SOON)
-
-ADDED - a TRADE button next to WHISPER on every other player's row in the Who's Online list (press O), including your online friends. It is not a real trade window yet, tapping it just tells you trading is coming soon and to whisper them for now, but the target-a-player groundwork is in place so a real offer-and-accept trade system can drop in later without changing how you pick who to trade with.

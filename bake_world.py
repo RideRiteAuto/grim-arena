@@ -378,12 +378,16 @@ def main():
     wdist = distance_px(water)          # distance to river/lake water
 
     # --- elevation, in meters ------------------------------------------------
+    # Per-zone 'rough' in ZONES below is the source of truth for noise
+    # amplitude at runtime - it's read directly by worldgen.js's ROUGH table,
+    # not from anything this baker emits. A `rough` grid used to be computed
+    # here as a hand-mirrored duplicate and was never actually read again
+    # (code-sweep audit, 2026-08-08) - removed rather than left as a second,
+    # driftable copy of numbers that already live in worldgen.js.
     base = np.zeros((GH, GW))
-    rough = np.zeros((GH, GW))
     for i, (_n, _c, p) in enumerate(ZONES):
         sel = zone == i
         base[sel] = p['base']
-        rough[sel] = p['rough']
     inland = np.clip(coast / (48.0 / (G * M_PER_PX / 2)), 0, 1)   # full base ~48m*4 inland
     inland = np.clip(coast * (G * M_PER_PX) / 220.0, 0, 1)        # ramp over ~220 m
     elev = base * (inland ** 1.2) * 1.0
