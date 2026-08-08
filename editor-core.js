@@ -637,10 +637,25 @@ const GRIM_EDIT = (() => {
     if (rd && (!hit || rd[1] >= hit[1])) hit = rd;
     if (!hit) return;
     const surf = hit[0], cov = hit[1];
-    const around = (out[4] > 0.5) ? out[1] : out[0];
+    const t0 = out[4];
+    const around = (t0 > 0.5) ? out[1] : out[0];
     if (surf === around) { out[0] = around; out[1] = around; return; }
+    // "resid" is how much of the natural, unpainted blend was already NOT
+    // "around" -- i.e. how much would show through a thin coat of paint. When
+    // "around" comes from out[0] that's just t0. When it comes from out[1]
+    // instead (the natural blend already favoured its own second texture),
+    // the residual is the complement: reusing t0 unmodified there used to
+    // read as "the natural blend was 97% toward around" and then treat that
+    // 97% as leftover paint weight, which forced coverage to spike back up
+    // right at the edge of a stroke's reach before snapping to nothing the
+    // moment paintAt() ran out of blend radius. That spike-then-cliff was
+    // the still-blocky edges reported after 86.100: 86.100 made paintAt()'s
+    // OWN coverage curve genuinely smooth, but this remap was distorting it
+    // downstream on whichever side of a stroke happened to cross terrain
+    // where the natural blend leaned toward out[1].
+    const resid = (t0 > 0.5) ? (1 - t0) : t0;
     out[0] = around; out[1] = surf;
-    out[4] = Math.max(out[4] * (1 - cov), cov);
+    out[4] = Math.max(resid * (1 - cov), cov);
     // Authored ground beats the snow cap and the shore blend: if Kevin paints
     // a courtyard at altitude he means a courtyard, not a courtyard under
     // snow.
