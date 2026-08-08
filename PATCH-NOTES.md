@@ -1,9 +1,15 @@
 # Grim World — patch notes
 
+## 2026-08-07 (v18.2) - TREES: NO MORE SEAM AT THE BASE
+
+FIXED - every tree in the game had a visible seam ringing the trunk right where it meets the ground, even standing before it's ever chopped - the two trunk pieces that split apart when a tree falls didn't quite line up. Fixed three separate causes at once: the two pieces were different thicknesses at the seam, their surface roughness didn't line up vertex to vertex, and they were each drawing a flat cap right on top of the other's. Applies to every species - oak, willow, pine, redwood, palm, the works.
+
+
 ## 2026-08-07 (v18.1) - ADJUSTABLE DRAW DISTANCE
 
 ADDED - a DRAW button next to GRAPHICS on the pause menu, cycling NEAR/NORMAL/FAR. Controls how far the camera sees: fog, the horizon, and how much terrain and scenery load in around you. NORMAL is a small step in from before (nothing was visible past where fog already hid it), FAR pushes it back out for a bigger view if your machine can take it.
 FIXED - the fog and the sky behind it used to be two different colors, so distant terrain sat as a lighter band on the horizon instead of fading away. They match now.
+
 
 ## 2026-08-08 (v17.11) - CLEANER GROUND TEXTURE BLENDS, WIDER BLEND RANGE
 
@@ -59,20 +65,3 @@ ADDED - party frames now show which zone each member is standing in, right under
 ## 2026-08-07 (v17.3) - ITEM TOOLTIPS STOP GETTING STUCK ON SCREEN
 
 FIXED - hovering an item in your pack or the bank, then hitting Tab or Escape to close the window, used to leave the little item info box floating on screen with no window under it. The pack and the bank now both hide their tooltip the instant the window closes, so nothing gets left behind. The bank's item hover also got upgraded from plain text to the same stats box the pack and Fenwick's shop already show.
-
-
-## 2026-08-07 (v17.2) - THE SOCIAL PANEL WORKS LIKE A REAL WINDOW NOW
-
-FIXED - O had to be held down to see who is online, and none of its buttons (INVITE, WHISPER, ADD FRIEND) could actually be clicked, since holding O never released your mouse from the camera. O now toggles the panel open and closed like every other window, hitting O again (or ESC, or the new close button) shuts it, and your cursor is freed the moment it opens so the buttons genuinely work. Chrome (title bar, close button, footer legend) now matches every other window instead of a bare unstyled box.
-FIXED - KICK and LEAVE on your party frames looked clickable but were not, any time another window was open (bank, pack, the social panel, all of them) - the screen dimmer behind that window was silently sitting in front of the party frames and eating every click. Party frames now render above the dimmer, so KICK and LEAVE stay reachable no matter what else you have open.
-
-
-## 2026-08-07 (v17.1) - NO MORE GUEST, A REAL PAUSE MENU
-
-REMOVED - the PLAY AS GUEST button. Accounts are mandatory now, so LOGIN & PLAY is the only door in, and the front-door copy and login-box status line that mentioned guest play are gone too.
-FIXED - hitting ESC used to dump you straight back onto the title screen, the same login/patch-notes overlay with the message swapped to PAUSED. ESC now opens a proper in-game pause menu: RESUME, SETTINGS (aim assist, music, volume, graphics quality, PVP, all the same controls, just relocated), and LOG OUT, which is now the only button that actually takes you back to the real title screen. Click outside the panel or hit ESC again to resume.
-
-
-## 2026-08-07 (v17.0) - HUD LAYOUT CLEANUP
-
-FIXED - the FPS/coords debug stamp sat directly under the new chat box; moved to the bottom-right, clear of both chat and the PRESS H / boat-interact hints. FIXED - party frames were pinned over your own health bar and the quest helper box; they now sit directly under your health bar where they belong, the quest helper is pushed further down to stay clear even with a full 5-person party, and the quest box grew a matching gap. NEW - party frames show mana now, not just HP, for every member whose client has synced it.
