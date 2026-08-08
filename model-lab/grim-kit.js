@@ -206,7 +206,19 @@ export function superRing(hu, hv, p, n) {
 // blade's ricasso are made in one surface instead of two overlapping boxes.
 //
 // paint(c, x, y, z, t) is optional, with t running 0..1 along the axis.
-export function loftRect(T, axis, sections, n, paint) {
+//
+// caps is optional: { start, end }, each defaulting to true (unchanged
+// behaviour for every existing caller). Pass start:false / end:false to skip
+// that end's triangle fan - for a loft that butts flush against another
+// solid at that end, its own cap is a redundant, exactly-coincident flat disc
+// sitting right on top of whatever covers that end already. Two coincident
+// discs facing opposite directions is a textbook z-fight: a thin, randomly
+// bright or dark sliver right at the seam, even once both sides share an
+// identical radius and identical jitter. Skipping the redundant cap removes
+// the second surface instead of trying to out-jitter it.
+export function loftRect(T, axis, sections, n, paint, caps) {
+  const doStart = !caps || caps.start !== false;
+  const doEnd = !caps || caps.end !== false;
   const pos = [], col = [];
   const c = new T.Color();
   const put3 = (a, b, at) => (axis === 'x' ? [at, b, a] : axis === 'y' ? [a, at, b] : [a, b, at]);
@@ -228,7 +240,8 @@ export function loftRect(T, axis, sections, n, paint) {
     }
   }
   // End caps, wound so both face outward along the run axis.
-  for (const [ri, dir] of [[0, -1], [rings.length - 1, 1]]) {
+  for (const [ri, dir, on] of [[0, -1, doStart], [rings.length - 1, 1, doEnd]]) {
+    if (!on) continue;
     const s = sections[ri];
     const ctr = put3(s.cu || 0, s.cv || 0, s.at);
     const t = (s.at - lo) / span;
