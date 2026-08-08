@@ -64,6 +64,18 @@ Tooling, not game code. None of this is served to players.
   idle rows through a swing correctly cancels it.
 - `patches/` holds the exact scripts used to edit `/tmp/game-src.html`, one per
   shipped change, so every bundle edit is reproducible and reviewable.
+- `phase0-baseline.js` byte-diffs the terrain/dressing pure-function outputs
+  (`chunkProps`, live chunk-mesh `color`/`aTile`/`aMix`/`position`
+  attributes, direct `terrainColor`/`groundSurface` samples, `bridgePad`
+  samples along every baked bridge) between two boots. Written to verify
+  patch 85.920 (Phase 0 of `TERRAIN-WORKER-OFFLOAD-PLAN.md`, the module-level
+  extraction) made zero behavior change, and kept around as the permanent
+  parity check that plan's later phases call for (Sec 6): run once as
+  `node harness/phase0-baseline.js before`, make the change, run again as
+  `node harness/phase0-baseline.js after`, diff `/tmp/phase0-before.json`
+  against `/tmp/phase0-after.json`. Most useful for a future three.js version
+  bump (the worker's vertex/normal math is re-derived from three@0.160.1's
+  own source) or for Phase 1's worker-vs-main-thread comparison.
 
 Run:
 

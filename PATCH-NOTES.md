@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.21) - UNDER-THE-HOOD: FIRST STEP TOWARD MOVING TERRAIN OFF THE MAIN THREAD
+
+WORKS NOW - the ground/prop-placement math that decides what a chunk of terrain looks like and what grows on it was reorganized into standalone building blocks, as prep for eventually running that work on a background thread instead of the same thread as the camera and controls (the real fix for the v17.20 camera-turn stutter, not just the mitigation that patch shipped). Zero behavior change from this step alone: verified byte-for-byte identical ground colors, prop placement, and bridge blending across a full test boot before and after. Nothing to notice yet; this just clears the way for the actual threading change.
+
+
 ## 2026-08-08 (v17.20) - SMOOTHER CAMERA TURNING IN THE OPEN WORLD
 
 FIXED - turning to look around while running used to randomly stutter or jump, like the view briefly forgot which way you were facing. The world streaming in new ground around you was doing enough work on the same frame as the camera update that it could visibly stall the view for a beat, worse the more you were actively turning at the time. Spread that work out over more frames instead of front-loading it, same total cost, no visible change to how fast the ground finishes detailing in as you walk. This is a mitigation aimed at the actual reported stutter, not a full rebuild of how terrain streams; if it doesn't fully clear this up let me know exactly when it still happens (standing still and turning vs. running and turning is the useful distinction) and I'll dig further.
