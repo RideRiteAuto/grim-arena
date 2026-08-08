@@ -64,9 +64,13 @@ const GRIM_RULES = {
                       // purpose: a brush and a blend width only mean anything
                       // small if the underlying cells are small too.
     BLEND_DEFAULT: 2, // default paint/road edge softness, in metres
-    BLEND_MAX: 4,     // clamp on the per-layer blend value, so a huge blend
+    BLEND_MAX: 6,     // clamp on the per-layer blend value, so a huge blend
                       // cannot make groundSurface scan an unreasonable
-                      // neighbourhood on every vertex
+                      // neighbourhood on every vertex. Raised from 4: ground
+                      // blending is dithered now instead of averaging colour
+                      // (see the ground shader), so a wide soft blend no
+                      // longer means a wide band of washed-out colour, and
+                      // is worth letting Kevin dial in from the tool.
     SNAP: 0.5,        // object placement snap in metres; Alt places free
     FEATHER: 1,       // legacy, unused now that paint carries its own blend
     MAXH: 12,         // biggest terrain delta the sculpt tools may author (m)
