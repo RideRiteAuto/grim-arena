@@ -578,7 +578,8 @@ const GRIM_EDIT = (() => {
     const rc = Math.max(1, Math.ceil(blend / PCELL) + 1);
     const c0 = Math.floor(sx / PCELL), z0 = Math.floor(sz / PCELL);
     let nearSurf, nearD = Infinity;
-    const hits = [];                       // flattened [d, surf, d, surf, ...]
+    // Pass 1: nearest painted cell decides what "the authored surface" is
+    // here, same as before -- only painted cells are candidates.
     for (let dz = -rc; dz <= rc; dz++) {
       for (let dx = -rc; dx <= rc; dx++) {
         const cx = c0 + dx, cz = z0 + dz;
@@ -588,18 +589,31 @@ const GRIM_EDIT = (() => {
         const ddx = wx - sx, ddz = wz - sz;
         const d = Math.sqrt(ddx * ddx + ddz * ddz);
         if (d > blend + PCELL) continue;
-        hits.push(d, s);
         if (d < nearD) { nearD = d; nearSurf = s; }
       }
     }
     if (nearSurf === undefined) return null;
+    // Pass 2: patch 86.100 -- weigh EVERY sampled cell, painted or not, so an
+    // unpainted neighbour dilutes coverage instead of being skipped. Without
+    // this, a lone patch surrounded by nothing has no non-matching weight to
+    // divide against, so the ratio is stuck at 1 out to a hard cliff instead
+    // of actually fading. Two adjacent painted surfaces are unaffected: every
+    // sampled cell there is painted either way, so this sums the same terms
+    // the old loop did.
     let wSum = 0, wMatch = 0;
-    for (let i = 0; i < hits.length; i += 2) {
-      const d = hits[i], s = hits[i + 1];
-      const t = Math.min(1, d / blend);
-      const w = 1 - t * t * (3 - 2 * t);   // smoothstep falloff, 1 at d=0
-      wSum += w;
-      if (s === nearSurf) wMatch += w;
+    for (let dz = -rc; dz <= rc; dz++) {
+      for (let dx = -rc; dx <= rc; dx++) {
+        const cx = c0 + dx, cz = z0 + dz;
+        const wx = (cx + 0.5) * PCELL, wz = (cz + 0.5) * PCELL;
+        const ddx = wx - sx, ddz = wz - sz;
+        const d = Math.sqrt(ddx * ddx + ddz * ddz);
+        if (d > blend + PCELL) continue;
+        const s = paintIdx.get(pCellKey(cx, cz));
+        const t = Math.min(1, d / blend);
+        const w = 1 - t * t * (3 - 2 * t);   // smoothstep falloff, 1 at d=0
+        wSum += w;
+        if (s === nearSurf) wMatch += w;
+      }
     }
     const cov = wSum > 0 ? wMatch / wSum : 1;
     if (cov <= 0.02) return null;
