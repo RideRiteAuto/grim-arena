@@ -155,7 +155,17 @@ const GRIM_EDIT = (() => {
       }
     }
     out.pcell = PCELL;
-    out.blend = Math.max(0.5, Math.min(BLEND_MAX, num(raw.blend, BLEND_DEFAULT)));
+    // Patch 83.200: this function stamps an explicit numeric blend onto
+    // every saved layer unconditionally (see below), so a world that has
+    // been loaded and saved even once under the old code already has
+    // blend: 2 baked in, not a blank field that would fall through to the
+    // new BLEND_DEFAULT above. Treat that specific old value as "nobody
+    // ever touched the slider" and carry it forward, the same way
+    // oldPcell above migrates a resized paint grid rather than leaving old
+    // saves stuck. Anything else the user actually dialled in, including
+    // the rare case where that happens to already be 2, is left alone.
+    const rawBlend = num(raw.blend, BLEND_DEFAULT);
+    out.blend = Math.max(0.5, Math.min(BLEND_MAX, rawBlend === 2 ? BLEND_DEFAULT : rawBlend));
 
     // Slope-to-rock and altitude-cap tuning (ground texture plan, Phase 3).
     // A degenerate range (lo >= hi) collapses back to "use the engine

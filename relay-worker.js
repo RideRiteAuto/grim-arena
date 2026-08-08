@@ -123,7 +123,13 @@ const GRIM_RULES = {
     PCELL: 1,         // ground paint grid size in metres. Finer than CELL on
                       // purpose: a brush and a blend width only mean anything
                       // small if the underlying cells are small too.
-    BLEND_DEFAULT: 2, // default paint/road edge softness, in metres
+    // Patch 83.200: was 2m, exactly equal to the near-field terrain mesh's
+    // 2m vertex spacing (64m chunks / 32 segments), so the blend band was
+    // only ever wide enough to interpolate smoothly along a boundary that
+    // happened to run with the grid, and jumped hard everywhere else. 5m
+    // gives 2.5x that spacing, comfortably wide in every direction rather
+    // than exactly one vertex wide in the best case.
+    BLEND_DEFAULT: 5, // default paint/road edge softness, in metres
     BLEND_MAX: 6,     // clamp on the per-layer blend value, so a huge blend
                       // cannot make groundSurface scan an unreasonable
                       // neighbourhood on every vertex. Raised from 4: ground
