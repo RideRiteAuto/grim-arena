@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Model lab: frostbolt</title>
+<style>
+  body { margin:0; background:#0d1216; }
+  #lbl { position:fixed; left:12px; top:12px; font:600 13px system-ui,sans-serif; color:#8fd8ff; letter-spacing:.08em; }
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.1/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="lbl">FROSTBOLT</div>
+<script type="module">
+// Prop lab: the frost bolt, and the ice block it leaves at a frozen target's
+// feet. Two objects reviewed on one page since they are cast from the same
+// hit and share a palette - "flight" looks along the bolt's direction of
+// travel from behind (the shards lead forward here, the opposite of the
+// fireball's "flight" view), "block" and "blockTop" are for the ground
+// effect, "scale" puts both next to the 1.8 m human stand-in at once.
+import * as T from 'three';
+import { makeFrostboltKit, makeIceBlockKit } from './frostbolt.js';
+
+const W = 960, H = 660;
+const renderer = new T.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = T.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new T.Scene();
+const cam = new T.PerspectiveCamera(42, W / H, 0.02, 200);
+
+const LIGHTS = {
+  dusk: { sky: 0x141a17, hemi: [0x3d4a58, 0x241f16, 0.55], sun: [0xffb779, 0.55, [6, 9, 4]], ground: 0x33402b, fog: [16, 62] },
+  day:  { sky: 0x8fa9b8, hemi: [0xcdd9e8, 0x3a3628, 0.95], sun: [0xffeecc, 1.7, [6, 10, 4]], ground: 0x53603c, fog: [30, 120] },
+  night:{ sky: 0x070a0d, hemi: [0x1b2430, 0x0b0d0a, 0.30], sun: [0x9fb6d8, 0.18, [-5, 8, -3]], ground: 0x1e2418, fog: [10, 46] }
+};
+let hemi, sun, ground;
+function applyLights(name) {
+  const L = LIGHTS[name] || LIGHTS.dusk;
+  scene.background = new T.Color(L.sky);
+  scene.fog = new T.Fog(L.sky, L.fog[0], L.fog[1]);
+  hemi.color.setHex(L.hemi[0]); hemi.groundColor.setHex(L.hemi[1]); hemi.intensity = L.hemi[2];
+  sun.color.setHex(L.sun[0]); sun.intensity = L.sun[1]; sun.position.set(...L.sun[2]);
+  ground.material.color.setHex(L.ground);
+  window.__light = name;
+}
+
+hemi = new T.HemisphereLight(0xffffff, 0x000000, 1); scene.add(hemi);
+sun = new T.DirectionalLight(0xffffff, 1);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -6; sun.shadow.camera.right = 6;
+sun.shadow.camera.top = 6; sun.shadow.camera.bottom = -6;
+sun.shadow.bias = -0.0012;
+scene.add(sun);
+
+const gGeo = new T.PlaneGeometry(60, 60, 60, 60);
+gGeo.rotateX(-Math.PI / 2);
+const heightAt = (x, z) => Math.sin(x * 0.28) * 0.055 + Math.sin(z * 0.21 + 1.1) * 0.045;
+{
+  const p = gGeo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, heightAt(p.getX(i), p.getZ(i)));
+  gGeo.computeVertexNormals();
+}
+ground = new T.Mesh(gGeo, new T.MeshStandardMaterial({ color: 0x53603c, roughness: 1 }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 1.8 m human stand-in, positioned at the ice block's feet - this is the
+// calibration shot for both objects: is the bolt a fistful of ice or a
+// snowball, is the block ankle-high rubble or does it actually read as
+// something that just clamped around someone's legs.
+const manM = new T.MeshStandardMaterial({ color: 0x3b4250, roughness: 0.9, flatShading: true });
+const man = new T.Group();
+{
+  const legs = new T.Mesh(new T.CylinderGeometry(0.14, 0.17, 0.9, 8), manM); legs.position.y = 0.45;
+  const torso = new T.Mesh(new T.CylinderGeometry(0.20, 0.24, 0.62, 8), manM); torso.position.y = 1.16;
+  const head = new T.Mesh(new T.SphereGeometry(0.13, 10, 8), manM); head.position.y = 1.62;
+  [legs, torso, head].forEach(m => { m.castShadow = true; man.add(m); });
+  man.position.set(0.9, 0, -0.9);
+  man.visible = false;
+  scene.add(man);
+}
+
+const boltKit = makeFrostboltKit(T);
+const boltBuilt = boltKit.build({ seed: 7 });
+const bolt = boltBuilt.g;
+bolt.position.set(0, 1.5, 0);
+// Flying roughly toward camera-left and slightly upward. orientAlong here
+// rakes the shards FORWARD along +dir, tips leading - the point of this
+// view is to confirm that reads as a thrown spike, not a comet.
+const DIR = new T.Vector3(1, 0.12, 0.35).normalize();
+boltKit.orientAlong(bolt, DIR);
+scene.add(bolt);
+
+const blockKit = makeIceBlockKit(T);
+const blockBuilt = blockKit.build({ seed: 11, heightAt });
+const block = blockBuilt.g;
+block.position.set(0.9, heightAt(0.9, -0.9), -0.9);
+scene.add(block);
+
+window.__bolt = boltBuilt;
+window.__block = blockBuilt;
+window.__boltKit = boltKit;
+window.__blockKit = blockKit;
+window.__scene = scene;
+
+const VIEWS = {
+  close:    { pos: [0.75, 1.58, 0.55], look: [0, 1.50, 0] },
+  flight:   { pos: [-0.85, 1.42, -0.30], look: [0.6, 1.55, 0.20] },
+  top:      { pos: [0.02, 3.0, 0.02], look: [0, 1.5, 0] },
+  block:    { pos: [2.05, 0.85, 0.15], look: [0.9, 0.30, -0.9] },
+  blockTop: { pos: [0.9, 2.4, -0.75], look: [0.9, 0.2, -0.9] },
+  scale:    { pos: [3.1, 1.75, 1.4], look: [0.7, 0.85, -0.5] }
+};
+
+let RAF = 0;
+window.__shot = (view, t, light, opts) => {
+  opts = opts || {};
+  if (RAF) { cancelAnimationFrame(RAF); RAF = 0; }
+  if (light) applyLights(light);
+  man.visible = !!opts.man;
+  boltKit.tick(t === undefined ? 0.6 : t);
+  blockKit.tick(t === undefined ? 0.6 : t);
+  const v = VIEWS[view] || VIEWS.close;
+  cam.position.set(...v.pos);
+  cam.lookAt(...v.look);
+  renderer.render(scene, cam);
+  return true;
+};
+window.__views = Object.keys(VIEWS);
+window.__stats = () => {
+  let meshes = 0, tris = 0;
+  bolt.traverse(o => { if (!o.isMesh) return; meshes++; const p = o.geometry.attributes.position; tris += (o.geometry.index ? o.geometry.index.count : p.count) / 3; });
+  let bMeshes = 0, bTris = 0;
+  block.traverse(o => { if (!o.isMesh) return; bMeshes++; const p = o.geometry.attributes.position; bTris += (o.geometry.index ? o.geometry.index.count : p.count) / 3; });
+  renderer.render(scene, cam);
+  return { boltMeshes: meshes, boltTris: tris, blockMeshes: bMeshes, blockTris: bTris, calls: renderer.info.render.calls, boltRadius: boltBuilt.radius, blockRadius: blockBuilt.radius };
+};
+window.__ready = true;
+
+applyLights('dusk');
+const lbl = document.getElementById('lbl');
+const t0 = performance.now();
+(function loop() {
+  const t = (performance.now() - t0) / 1000;
+  boltKit.tick(t);
+  blockKit.tick(t);
+  const a = t * 0.4;
+  cam.position.set(Math.sin(a) * 1.6, 1.55, Math.cos(a) * 1.6);
+  cam.lookAt(0, 1.5, 0);
+  lbl.textContent = 'FROSTBOLT  ' + (window.__light || 'dusk').toUpperCase();
+  renderer.render(scene, cam);
+  RAF = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

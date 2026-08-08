@@ -33,7 +33,14 @@ const OWNER_STALE_MS = 8000;
 // manifest/nreg/nhit/lreq/lall below) -- ptyu is deliberately NOT here: it is
 // server-authored only (like ndead/skupd), so a client sending one is simply
 // dropped by the generic RELAYED gate, no special-case exclusion needed.
-const RELAYED = new Set(['s', 'w', 'nhit', 'ndead', 'rhit', 'rdead', 'phit', 'pvp', 'pvpk', 'lreq', 'lok', 'lno', 'skupd', 'sknew', 'skgone', 'chat', 'ptyi', 'ptya', 'ptyd', 'ptyl', 'ptyk']);
+// 'pproj' (patch 80.142): a player's own cast, mirrored cosmetically to
+// everyone else in the world/PvP so an opponent's fireball or frost bolt is
+// visible in flight, not just felt on impact. Plain broadcast, no ownership
+// check needed - unlike 'w'/'ndead'/etc it isn't world truth, just a visual
+// courtesy each client already trusts only for rendering (real damage still
+// only ever arrives via 'hit'/'nhit'). Not to be confused with the server's
+// own unrelated 'proj' (NPC casts, server to client only, never in this set).
+const RELAYED = new Set(['s', 'w', 'nhit', 'ndead', 'rhit', 'rdead', 'phit', 'pvp', 'pvpk', 'lreq', 'lok', 'lno', 'skupd', 'sknew', 'skgone', 'chat', 'ptyi', 'ptya', 'ptyd', 'ptyl', 'ptyk', 'pproj']);
 const PARTY_CAP = 5;
 // Only the simulation owner may speak world truth.
 const OWNER_ONLY = new Set(['w', 'ndead', 'rdead', 'phit', 'lok', 'lno', 'skupd', 'sknew', 'skgone']);

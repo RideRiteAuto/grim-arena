@@ -1,5 +1,13 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v18.3) - FROST BOLT REWORK, AND YOU CAN NOW SEE OTHER PLAYERS' SPELLS AND SHOTS
+
+ADDED - the frost bolt has the same treatment fire got last patch: a real model instead of a plain glowing ball, a forward-leading cluster of icy shards with a frost-mist trail, same quality bar as the fireball.
+ADDED - hitting someone with frost now has a 25% chance to freeze them in place for 1.5 seconds (was: always froze for 2 seconds) and plants a block of ice at their feet for as long as the freeze lasts. Every frost hit also slows the target's movement 15% for a few seconds, whether or not it freezes.
+FIXED - only the person casting a spell or firing a shot could ever see it fly. In open-world play (including PvP) everyone else's fireballs, frost bolts, snares, toxin darts and arrows were completely invisible to you until they hit - so you could take a fireball to the face with no warning it was coming. Every player's own cast or shot is now broadcast to everyone else nearby, rendered with the same real model you'd see if you cast it yourself.
+Cast and hit sounds for frost are unchanged - they already got a full pass earlier and didn't need touching.
+
+
 ## 2026-08-07 (v18.2) - TREES: NO MORE SEAM AT THE BASE
 
 FIXED - every tree in the game had a visible seam ringing the trunk right where it meets the ground, even standing before it's ever chopped - the two trunk pieces that split apart when a tree falls didn't quite line up. Fixed three separate causes at once: the two pieces were different thicknesses at the seam, their surface roughness didn't line up vertex to vertex, and they were each drawing a flat cap right on top of the other's. Applies to every species - oak, willow, pine, redwood, palm, the works.
@@ -60,8 +68,3 @@ ADDED - a combat level now shows next to your name at the top of the screen and 
 ## 2026-08-07 (v17.4) - PARTY FRAMES SHOW WHERE YOUR PARTY IS
 
 ADDED - party frames now show which zone each member is standing in, right under their name. Your own zone updates live as you move; a party member's zone comes from the same state broadcast that already drives their health bar, so it stays current with no extra chat needed to find each other.
-
-
-## 2026-08-07 (v17.3) - ITEM TOOLTIPS STOP GETTING STUCK ON SCREEN
-
-FIXED - hovering an item in your pack or the bank, then hitting Tab or Escape to close the window, used to leave the little item info box floating on screen with no window under it. The pack and the bank now both hide their tooltip the instant the window closes, so nothing gets left behind. The bank's item hover also got upgraded from plain text to the same stats box the pack and Fenwick's shop already show.
