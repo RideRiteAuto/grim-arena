@@ -407,34 +407,55 @@ const GRIM_EDIT = (() => {
     return loadP;
   }
 
+  // One attempt at the fetch, with its own hard timeout. Broken out so
+  // doLoad can retry it once without duplicating the abort/timer plumbing.
+  async function fetchLayerOnce(u, ms) {
+    let ac = null, timer = null;
+    try {
+      try { ac = new AbortController(); } catch (e) { ac = null; }
+      if (ac) timer = setTimeout(() => { try { ac.abort(); } catch (e) {} }, ms);
+      const res = await fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'b=' + Date.now(), {
+        method: 'GET', cache: 'no-store', signal: ac ? ac.signal : undefined
+      });
+      if (!res.ok) throw new Error('http ' + res.status);
+      const gotRev = +(res.headers.get('x-edit-rev') || 0) || 0;
+      const body = await res.json();
+      return { rev: gotRev, body };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   async function doLoad(url) {
     if (!CFG.LAYER) { setLayer(null); api.on = false; return api; }
     const u = url || CFG.URL;
     if (!u) { setLayer(null); return api; }
     // Boot must never wait on the network for longer than it takes a player
     // to notice. If the relay is slow or unreachable the generated world is
-    // shown immediately; the layer is not worth a black screen.
-    let ac = null, timer = null;
-    try {
-      try { ac = new AbortController(); } catch (e) { ac = null; }
-      if (ac) timer = setTimeout(() => { try { ac.abort(); } catch (e) {} }, 2500);
-      const res = await fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'b=' + Date.now(), {
-        method: 'GET', cache: 'no-store', signal: ac ? ac.signal : undefined
-      });
-      if (!res.ok) throw new Error('http ' + res.status);
-      rev = +(res.headers.get('x-edit-rev') || 0) || 0;
-      const body = await res.json();
-      api.rev = rev;
-      setLayer(body && body.empty ? null : body);
-    } catch (e) {
-      // A world edit layer that cannot be fetched must never stop the game
-      // booting. The generated world is a complete, playable world; the
-      // authored layer is an improvement on it, not a dependency.
-      api.err = String((e && e.message) || e);
-      setLayer(null);
-    } finally {
-      if (timer) clearTimeout(timer);
+    // shown immediately; the layer is not worth a black screen. A single
+    // dropped connection or a cold Durable Object used to mean one lost race
+    // silently showed the bare generated map with zero sign of why, so this
+    // gets one retry before it gives up - still well inside that budget.
+    let lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const got = await fetchLayerOnce(u, 2500);
+        rev = got.rev;
+        api.rev = rev;
+        setLayer(got.body && got.body.empty ? null : got.body);
+        return api;
+      } catch (e) {
+        lastErr = e;
+      }
     }
+    // A world edit layer that cannot be fetched must never stop the game
+    // booting. The generated world is a complete, playable world; the
+    // authored layer is an improvement on it, not a dependency. But two
+    // failed tries is worth a clear console line, so this is diagnosable
+    // instead of a mystery next time.
+    api.err = String((lastErr && lastErr.message) || lastErr);
+    try { console.warn('[GRIM_EDIT] authored layer failed to load after 2 tries, showing the generated world:', api.err); } catch (e) {}
+    setLayer(null);
     return api;
   }
 

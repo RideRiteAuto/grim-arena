@@ -518,6 +518,13 @@ const GRIM_RULES = {
     ],
     TOOL_FOR: { WOODCUTTING: 'axe', MINING: 'pick', FORAGING: 'sickle' },
 
+    // Physical collision radius for a harvestable node, in metres, scaled by
+    // the node's own scale factor at build time. Trees and ore used to be
+    // walk-through, which read wrong once Kevin started placing them by hand
+    // to shape a path or wall off a cave mouth. Foraging nodes (herbs,
+    // berries, mushrooms) are small and stay walk-through on purpose.
+    NODE_SOLID_R: { WOODCUTTING: 0.5, MINING: 0.7 },
+
     // Tool tiers are deliberately NOT a straight band off node level. Every
     // tier's recipe needs material that a LOWER tier can already reach, or the
     // ladder eats its own tail: copper ore at level 10 cannot need a copper

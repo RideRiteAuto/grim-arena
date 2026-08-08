@@ -501,12 +501,15 @@ const GRIM_EDIT_RENDER = (() => {
     built.g.position.set(o.x, gy + (o.y || 0), o.z);
     built.g.rotation.y = o.r || 0;
     built.g.userData.editId = o.i;
+    const solidR = (typeof GRIM_RULES !== 'undefined' && GRIM_RULES.GATHER && GRIM_RULES.GATHER.NODE_SOLID_R)
+      ? GRIM_RULES.GATHER.NODE_SOLID_R[nd.skill] : null;
     return {
       kind: c.node, nid: 'ed:' + o.i, g: built.g,
       fell: built.fell || null, stump: built.stump || null,
       studs: built.studs || null, rubble: built.rubble || null,
       hp: nd.hp, max: nd.hp, dead: false, respawn: 0,
-      streamed: true, authored: true
+      streamed: true, authored: true,
+      col: solidR ? { x: o.x, z: o.z, r: solidR * sc } : null
     };
   }
 
@@ -541,6 +544,9 @@ const GRIM_EDIT_RENDER = (() => {
         G.zoneNodes.push(R);
         rec.nodes = rec.nodes || [];
         rec.nodes.push(R);
+        // Same collider list a placed furnace uses, so a hand-placed ore
+        // vein or tree blocks a path exactly like a grown one does.
+        if (R.col && G.colliders) G.colliders.push(R.col);
         if (R.dead && G.resourceDepleted) { try { G.resourceDepleted(R, null); } catch (e) {} }
         continue;
       }

@@ -1,5 +1,15 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.13) - THE HAND-PLACED WORLD LOADS MORE RELIABLY
+
+FIXED - if the one fetch for your saved map edits lost a race against a slow or flaky connection, the game gave up silently and showed the bare generated world with no sign anything went wrong. It now tries a second time before giving up, and if it still fails, says so in the console instead of failing silent.
+
+
+## 2026-08-08 (v17.12) - TREES AND ORE VEINS ARE SOLID NOW
+
+ADDED - trees and ore veins block movement now instead of being walk-through scenery, both the ones the world grows on its own and the ones placed by hand in the editor. Herbs, berries and mushrooms stay walk-through on purpose, they are too small to read as an obstacle.
+
+
 ## 2026-08-08 (v18.3) - FROST BOLT REWORK, AND YOU CAN NOW SEE OTHER PLAYERS' SPELLS AND SHOTS
 
 ADDED - the frost bolt has the same treatment fire got last patch: a real model instead of a plain glowing ball, a forward-leading cluster of icy shards with a frost-mist trail, same quality bar as the fireball.
@@ -58,13 +68,3 @@ ADDED - a TRADE button next to WHISPER on every other player's row in the Who's 
 ## 2026-08-07 (v17.6) - WHO'S ONLINE
 
 ADDED - the players list (press O) now shows where everyone is and how tough they are: a Zone · Level line under every name, yours included. Two new filters at the top narrow it down by zone or by a minimum combat level, so a big server reads as a short list of exactly who you're looking for. Friends and your own row are never filtered out.
-
-
-## 2026-08-07 (v17.5) - COMBAT LEVEL
-
-ADDED - a combat level now shows next to your name at the top of the screen and in party frames, right alongside each member's zone. It is your hitpoints level plus your best of melee, ranged, or magic, halved and capped at 99, so it reflects real fighting strength rather than time spent gathering. It updates the instant a relevant skill levels up.
-
-
-## 2026-08-07 (v17.4) - PARTY FRAMES SHOW WHERE YOUR PARTY IS
-
-ADDED - party frames now show which zone each member is standing in, right under their name. Your own zone updates live as you move; a party member's zone comes from the same state broadcast that already drives their health bar, so it stays current with no extra chat needed to find each other.
