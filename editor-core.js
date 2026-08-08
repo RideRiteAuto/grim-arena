@@ -623,11 +623,32 @@ const GRIM_EDIT = (() => {
   // Rewrite a groundSurface() result in place. Roads sit on top of paint, so
   // a road drawn across a painted field still reads as a road.
   //
-  // This rides the EXISTING A-to-B blend rather than adding a channel, which
-  // is the same trick the bridge abutment pads use: keep whichever surface is
-  // locally dominant as A, put the authored surface in B, and hand the
-  // coverage to the blend. The feather is then the ground's own feather, so
-  // the join is seamless by construction and costs nothing extra to draw.
+  // Patch 86.160: paint is now a genuine third layer, revealed over the
+  // natural A-to-B blend rather than rewritten into it. out[0]/out[1]/out[4]
+  // (the natural pair and its weight) are left completely untouched here --
+  // paint instead rides the altitude-cap slot (out[3]/out[6], tile.w/mix.z
+  // in the shader), which every vertex already carries and which authored
+  // ground already had priority over ("Authored ground beats the snow cap").
+  // That slot renders as a plain reveal on top of whatever came before it,
+  // the same way the rock-on-steep-slopes layer works, so paint simply fades
+  // in at strength `cov` with nothing to discard underneath.
+  //
+  // The old approach (83.200 through 86.150) rode the EXISTING A-to-B blend
+  // instead: keep whichever natural surface was locally dominant as A, put
+  // the authored surface in B, and hand coverage to the blend weight. That
+  // worked, but it could only ever show ONE of the two natural textures
+  // under a stroke -- the other was discarded -- and WHICH one survived
+  // flipped discretely wherever the natural blend's own weight crossed 50%.
+  // Where that crossing happened to fall near a paint stroke, the discard
+  // choice itself flipped mid-fade, which read as a hard seam through an
+  // otherwise smooth stroke: fixed math (86.150), on real per-vertex
+  // textures, still discarding one of them. Confirmed live: painting the
+  // same brush onto a single uniform natural pair still showed a sharp,
+  // stair-stepped edge on the side where the natural blend favoured its
+  // second texture, and a clean fade on the side where it favoured its
+  // first, with 86.150's coverage curve numerically identical on both
+  // sides. Revealing paint as an independent layer removes the discard
+  // entirely, so there is nothing left to flip.
   function paint(wx, wz, out) {
     if (!api.on) return;
     if (paintBounds && (wx < paintBounds.x0 || wx > paintBounds.x1 ||
@@ -636,30 +657,8 @@ const GRIM_EDIT = (() => {
     const rd = roadAt(wx, wz);
     if (rd && (!hit || rd[1] >= hit[1])) hit = rd;
     if (!hit) return;
-    const surf = hit[0], cov = hit[1];
-    const t0 = out[4];
-    const around = (t0 > 0.5) ? out[1] : out[0];
-    if (surf === around) { out[0] = around; out[1] = around; return; }
-    // "resid" is how much of the natural, unpainted blend was already NOT
-    // "around" -- i.e. how much would show through a thin coat of paint. When
-    // "around" comes from out[0] that's just t0. When it comes from out[1]
-    // instead (the natural blend already favoured its own second texture),
-    // the residual is the complement: reusing t0 unmodified there used to
-    // read as "the natural blend was 97% toward around" and then treat that
-    // 97% as leftover paint weight, which forced coverage to spike back up
-    // right at the edge of a stroke's reach before snapping to nothing the
-    // moment paintAt() ran out of blend radius. That spike-then-cliff was
-    // the still-blocky edges reported after 86.100: 86.100 made paintAt()'s
-    // OWN coverage curve genuinely smooth, but this remap was distorting it
-    // downstream on whichever side of a stroke happened to cross terrain
-    // where the natural blend leaned toward out[1].
-    const resid = (t0 > 0.5) ? (1 - t0) : t0;
-    out[0] = around; out[1] = surf;
-    out[4] = Math.max(resid * (1 - cov), cov);
-    // Authored ground beats the snow cap and the shore blend: if Kevin paints
-    // a courtyard at altitude he means a courtyard, not a courtyard under
-    // snow.
-    if (cov > 0.6) { out[5] = out[5] * (1 - cov); out[6] = out[6] * (1 - cov); }
+    out[3] = hit[0];
+    out[6] = hit[1];
   }
 
   function gone(nid) { return !!(goneSet && goneSet.size && goneSet.has(nid)); }

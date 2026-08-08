@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.22) - GROUND PAINT: FIXED A REMAINING HARD EDGE ON SOME SIDES OF A PAINTED AREA
+
+FIXED - painting a patch of ground (meadow, dirt, etc.) could still show a hard, blocky edge on one side of the brush while the rest faded in smoothly, even after the last two passes at this. The real cause: painting worked by swapping out one of the two natural textures already blended at that spot, and which one got swapped depended on the natural terrain itself, not on the paint stroke. Wherever those two things lined up badly, the edge went hard. Paint now fades in as its own layer on top of the natural ground instead of swapping anything out, so there's nothing left to cause that mismatch. Verified with real before/after data in all directions around a test brush stroke, not just eyeballed.
+
+
 ## 2026-08-08 (v17.21) - UNDER-THE-HOOD: FIRST STEP TOWARD MOVING TERRAIN OFF THE MAIN THREAD
 
 WORKS NOW - the ground/prop-placement math that decides what a chunk of terrain looks like and what grows on it was reorganized into standalone building blocks, as prep for eventually running that work on a background thread instead of the same thread as the camera and controls (the real fix for the v17.20 camera-turn stutter, not just the mitigation that patch shipped). Zero behavior change from this step alone: verified byte-for-byte identical ground colors, prop placement, and bridge blending across a full test boot before and after. Nothing to notice yet; this just clears the way for the actual threading change.
@@ -66,14 +71,3 @@ ADDED - the frost bolt has the same treatment fire got last patch: a real model 
 ADDED - hitting someone with frost now has a 25% chance to freeze them in place for 1.5 seconds (was: always froze for 2 seconds) and plants a block of ice at their feet for as long as the freeze lasts. Every frost hit also slows the target's movement 15% for a few seconds, whether or not it freezes.
 FIXED - only the person casting a spell or firing a shot could ever see it fly. In open-world play (including PvP) everyone else's fireballs, frost bolts, snares, toxin darts and arrows were completely invisible to you until they hit - so you could take a fireball to the face with no warning it was coming. Every player's own cast or shot is now broadcast to everyone else nearby, rendered with the same real model you'd see if you cast it yourself.
 Cast and hit sounds for frost are unchanged - they already got a full pass earlier and didn't need touching.
-
-
-## 2026-08-07 (v18.2) - TREES: NO MORE SEAM AT THE BASE
-
-FIXED - every tree in the game had a visible seam ringing the trunk right where it meets the ground, even standing before it's ever chopped - the two trunk pieces that split apart when a tree falls didn't quite line up. Fixed three separate causes at once: the two pieces were different thicknesses at the seam, their surface roughness didn't line up vertex to vertex, and they were each drawing a flat cap right on top of the other's. Applies to every species - oak, willow, pine, redwood, palm, the works.
-
-
-## 2026-08-07 (v18.1) - ADJUSTABLE DRAW DISTANCE
-
-ADDED - a DRAW button next to GRAPHICS on the pause menu, cycling NEAR/NORMAL/FAR. Controls how far the camera sees: fog, the horizon, and how much terrain and scenery load in around you. NORMAL is a small step in from before (nothing was visible past where fog already hid it), FAR pushes it back out for a bigger view if your machine can take it.
-FIXED - the fog and the sky behind it used to be two different colors, so distant terrain sat as a lighter band on the horizon instead of fading away. They match now.
