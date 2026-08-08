@@ -944,7 +944,17 @@ export class World {
       }
       separate(sim);
     }
-    for (const e of events) this.broadcast(socks, e);
+    // Tier 2 item #2: during any multi-monster fight, combat/theatre events
+    // (atk/boss/proj/regen-nhp, all pushed onto `events` above) used to go
+    // out one ws.send() per event, one per connected player -- event count
+    // directly multiplied send calls. Batched the same way nsnap already
+    // batches NPC snapshots: one 'evb' message carrying the whole array,
+    // client-side unpacked back through the same per-type handlers (onRelay
+    // recurses on each contained event, so nothing about how an individual
+    // atk/boss/proj/nhp is handled changes, only how many messages it took
+    // to arrive). A real protocol change -- ships with the matching client
+    // decoder in the same commit so neither side can deploy alone.
+    if (events.length) this.broadcast(socks, { t: 'evb', at: now, e: events });
     this.pushSnapshots(socks, sim, now);
   }
 
@@ -1032,7 +1042,14 @@ export class World {
         const moving = n.aggro || (n.vx * n.vx + n.vz * n.vz) > 0.05 || n.act || n.state !== 'idle';
         const due = moving ? fast : slow;
         if (now - (n.sentAt || 0) < due) continue;
-        rows.push([n.i, Math.round(n.x * 10), Math.round(n.z * 10), Math.round(n.yaw * 100),
+        // Tier 2 item #6 (patch 84.760, matching edit in the client bundle's
+        // onNpcSnap decoder): x10/round/divide-by-10 was flagged in the Aug 6
+        // audit as worth roughly 20% apparent speed variance on its own --
+        // at 0.1m precision the rounding error on a slow-moving monster's
+        // per-tick step can be a meaningful fraction of the real step. x100
+        // (0.01m) is a real protocol change, shipped in the same commit as
+        // the client decoder so neither side can deploy alone.
+        rows.push([n.i, Math.round(n.x * 100), Math.round(n.z * 100), Math.round(n.yaw * 100),
                    n.state, Math.round(n.st * 100), Math.round(n.moveAmt * 100), n.act || 0]);
       }
       if (!rows.length) {

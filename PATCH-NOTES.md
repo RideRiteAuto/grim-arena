@@ -1,5 +1,11 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.18) - MULTIPLAYER SERVER: SMOOTHER MONSTER MOVEMENT, LESS TRAFFIC DURING FIGHTS
+
+CHANGED - monster positions sent to your screen are now ten times more precise (about a centimetre instead of about ten centimetres), which should make monster movement read a little smoother and more consistent, especially at slower walking and patrol speeds.
+CHANGED - during a fight with several monsters swinging, casting, or doing boss theatre at once, the server now bundles those into one message per tick instead of sending each one separately. You shouldn't notice anything different in how a fight looks or feels, this only cuts down on network chatter during busy fights.
+
+
 ## 2026-08-08 (v17.17) - MULTIPLAYER SERVER: LESS CROSS-TALK, FASTER COMBAT HITS
 
 CHANGED - other players' position updates are now only sent to players near enough to actually see them, the same distance rule monsters already used. Party members still always see each other's position no matter how far apart, so the party overlay keeps working exactly like before. Less server traffic as more people play at once, nothing you should notice moment to moment.
@@ -69,9 +75,3 @@ FIXED - every coastline used to force a sandy strip onto the ground near any wat
 ## 2026-08-07 (v17.9) - MONSTERS DON'T TELEPORT ON YOU ANYMORE
 
 FIXED - monsters used to visibly jump to a different spot as you ran up on them, worse the faster you were moving even with FPS fine. The game was drawing monsters farther away than it was willing to tell you their real position, so they'd freeze in place out past a certain range and then snap to the truth the instant you got close. Draw range for monsters is a little shorter now to match, and reacquiring one after a gap eases in instead of popping.
-
-
-## 2026-08-07 (v17.9) - FIREBALL: NO MORE FREEZE, NEW LOOK
-
-FIXED - casting spells used to freeze and stutter the whole game for a beat, worse the more torches and lit props were in view. Every frost, fire and snare bolt built its own light and threw it away when the bolt died, and changing how many lights are in the scene forces every lit shader in view to recompile. Casts now share a fixed pool of five lights that never leave the scene, so nothing recompiles no matter how fast you cast.
-ADDED - the fireball spell now looks like actual fire instead of a glowing lump: a raked cluster of flame tongues built from the same shader the campfires use, with a trail of embers riding along behind it. Frost and snare are unchanged, and the cast sound is unchanged.
