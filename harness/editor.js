@@ -92,6 +92,13 @@ async function open(browser) {
   ok(base.heightDelta0 === 0, 'an empty layer moves no terrain');
   ok(base.deck0 === null, 'an empty layer adds no decks');
   ok(base.clears0 === false && base.gone0 === false, 'an empty layer clears nothing and deletes nothing');
+  // Ground texture plan, Phase 3: with no authored capLo/capHi the altitude
+  // cap must compute the exact pre-patch (h - 52) / 26, not a close cousin.
+  const capDefaultOk = base.samples.every(s => {
+    const want = Math.max(0, Math.min(1, (s.h - 52) / 26));
+    return Math.abs(s.su[6] - want) < 1e-6;
+  });
+  ok(capDefaultOk, 'altitude cap defaults to the exact pre-patch 52..78m band with no override');
   await a.page.close();
 
   // ---- build a layer around wherever the player actually spawns ----------
@@ -120,7 +127,10 @@ async function open(browser) {
       { i: 'crate1', k: 'crate', x: P.x + 6, z: P.z - 6, y: 0, r: 0.5, s: 1 },
       { i: 'bad1', k: 'no_such_kind_at_all', x: P.x + 3, z: P.z + 3, y: 0, r: 0, s: 1 }
     ],
-    removed: [], spawns: [], prefabs: {}, districts: [], bookmarks: []
+    removed: [], spawns: [], prefabs: {}, districts: [], bookmarks: [],
+    // Ground texture plan, Phase 3: a normal (non-editor) boot must honour
+    // these from first render, not only inside the editor.
+    slopeLo: 0.05, slopeHi: 0.5, capLo: 40, capHi: 55
   };
   fs.writeFileSync(EDITS, JSON.stringify(layer));
 
@@ -190,6 +200,16 @@ async function open(browser) {
     const clearsUnder = g.keepGround(P.x + 14.5, P.z - 14.5);
     const clearsAway = g.keepGround(P.x + 300, P.z + 300);
 
+    // Ground texture plan, Phase 3: authored capLo/capHi retexture the
+    // altitude band. h is a plain argument to groundSurface, so this is
+    // fully deterministic regardless of the real terrain height at the
+    // sample point; a spot far from any authored ground avoids the paint
+    // override at the end of groundSurface touching out[6].
+    const su6 = (h, x, z, zi) => { const o = [0, 0, 0, 0, 0, 0, 0]; g.groundSurface(zi, h, x, z, o); return o[6]; };
+    const capMid = su6(47, 2000, 2000, 3);
+    const uSlope = (g._chunkMat && g._chunkMat.userData.uSlope)
+      ? [g._chunkMat.userData.uSlope.value.x, g._chunkMat.userData.uSlope.value.y] : null;
+
     return {
       centre, faraway,
       hBase: +hBase.toFixed(3), hNow: +hNow.toFixed(3), ramp,
@@ -204,6 +224,7 @@ async function open(browser) {
       surfaceY: +surfaceY.toFixed(2),
       deckOff,
       clearsUnder, clearsAway,
+      capMid, uSlope,
       stats: g.EDIT().stats()
     };
   }, { P });
@@ -250,6 +271,35 @@ async function open(browser) {
   ok(res.stats.objects === 3 && res.stats.roads === 1, 'the layer reports what it holds',
     JSON.stringify(res.stats.objects) + ' objects, ' + res.stats.roads + ' road');
 
+  // Ground texture plan, Phase 3
+  ok(Math.abs(res.capMid - (47 - 40) / (55 - 40)) < 1e-6,
+    'authored capLo/capHi retexture the altitude cap band', 'cap ' + res.capMid);
+  ok(res.uSlope && Math.abs(res.uSlope[0] - 0.05) < 1e-6 && Math.abs(res.uSlope[1] - 0.5) < 1e-6,
+    'authored slopeLo/slopeHi reach the ground shader uniform for a normal player, not only the editor',
+    JSON.stringify(res.uSlope));
+
+  const pushed = await b.page.evaluate(() => {
+    const g = window.__grim, T = g.T;
+    // onBeforeCompile fires lazily on a material's first real draw call. The
+    // road ribbon may not have drawn one yet if no road segment happens to be
+    // in view, which would leave _roadMat.userData.uSlope unset through no
+    // fault of setSlopeRule. Attach it to a throwaway mesh and force a
+    // compile, the same thing a real frame eventually does on its own, so
+    // this checks the push rather than racing whether a road ever rendered.
+    const probe = new T.Mesh(new T.PlaneGeometry(1, 1), g._roadMat);
+    g.scene.add(probe);
+    try { g.renderer.compile(g.scene, g.cam); } catch (e) {}
+    g.scene.remove(probe);
+    g.setSlopeRule(0.2, 0.33);
+    const chunk = g._chunkMat.userData.uSlope ? [g._chunkMat.userData.uSlope.value.x, g._chunkMat.userData.uSlope.value.y] : null;
+    const road = g._roadMat.userData.uSlope ? [g._roadMat.userData.uSlope.value.x, g._roadMat.userData.uSlope.value.y] : null;
+    return { chunk, road };
+  });
+  ok(pushed.chunk && Math.abs(pushed.chunk[0] - 0.2) < 1e-6 && Math.abs(pushed.chunk[1] - 0.33) < 1e-6,
+    'setSlopeRule updates the ground material uniform live', JSON.stringify(pushed.chunk));
+  ok(pushed.road && Math.abs(pushed.road[0] - 0.2) < 1e-6 && Math.abs(pushed.road[1] - 0.33) < 1e-6,
+    'setSlopeRule updates the road material uniform too', JSON.stringify(pushed.road));
+
   const newErrs = b.errs.filter(e => !/404|Failed to load resource/.test(e));
   ok(newErrs.length === 0, 'no new console errors with a layer applied', newErrs.slice(0, 2).join(' | '));
   await b.page.close();
@@ -263,7 +313,11 @@ async function open(browser) {
     // one fully valid object, and three that must not survive: no position,
     // an unparseable position, and something that is not an object at all
     objects: [{ k: 'crate', x: 12, z: 34 }, { k: 'crate' }, { k: 'crate', x: 'NaN', z: 3 }, 7],
-    removed: [1, 'ok-id'], prefabs: { p: 'no' }, districts: [{ poly: [[0, 0]] }]
+    removed: [1, 'ok-id'], prefabs: { p: 'no' }, districts: [{ poly: [[0, 0]] }],
+    // Ground texture plan, Phase 3: an inverted range on either pair must
+    // degrade to "use the engine default", not a technically-clamped but
+    // backwards band that would flip which side is rock or cap.
+    slopeLo: 2, slopeHi: -1, capLo: 999, capHi: -999
   }));
   let c = await open(browser);
   await c.page.waitForTimeout(1200);
@@ -275,7 +329,9 @@ async function open(browser) {
     hasBadSurf: JSON.stringify(window.__grim.EDIT().raw.paint).indexOf('99') >= 0,
     maxDelta: Math.max.apply(null, [0].concat(Object.values(window.__grim.EDIT().raw.height).flat().map(e => Math.abs(e[2])))),
     objKinds: window.__grim.EDIT().raw.objects.map(o => o.k),
-    chunks: window.__grim._chunks.size
+    chunks: window.__grim._chunks.size,
+    slopeNulled: window.__grim.EDIT().raw.slopeLo === null && window.__grim.EDIT().raw.slopeHi === null,
+    capNulled: window.__grim.EDIT().raw.capLo === null && window.__grim.EDIT().raw.capHi === null
   }));
   ok(bad.started === true, 'the game still boots on a corrupt layer');
   ok(bad.chunks > 0, 'the world still builds on a corrupt layer', bad.chunks + ' chunks');
@@ -283,6 +339,8 @@ async function open(browser) {
   ok(bad.maxDelta <= 12.001, 'an absurd terrain delta is clamped', 'max ' + bad.maxDelta + 'm');
   ok(bad.objKinds.length === 1 && bad.objKinds[0] === 'crate', 'malformed objects are dropped, valid ones kept',
     JSON.stringify(bad.objKinds));
+  ok(bad.slopeNulled, 'an inverted slope range degrades to the engine default rather than a backwards band');
+  ok(bad.capNulled, 'an inverted cap range degrades to the engine default rather than a backwards band');
   await c.page.close();
 
   // ---- phase 4: the editor itself --------------------------------------
@@ -630,6 +688,87 @@ async function open(browser) {
     '+' + tools.sculptRaised.toFixed(2) + 'm');
   ok(tools.roundTrip, 'the layer saves to the endpoint and reads back intact');
   ok(tools.dirtyCleared, 'a successful save clears the unsaved flag');
+
+  // Kevin's report: an older road could not be selected or removed, only the
+  // most recently drawn one. Drives the real Select tool click path, then
+  // clicks the actual "Delete this road" button the panel drew.
+  const roadPick = await page.evaluate(() => {
+    const g = window.__grim, U = g.EDIT_UI(), E = g.EDIT(), S = U.state;
+    const L = E.raw;
+    const before = L.roads.length;
+    L.roads.push({ w: 6, s: 15, p: [[2000, 2000], [2040, 2000], [2080, 2000]] });
+    E.reindex();
+    const afterAdd = L.roads.length;
+    S.tool = 'select'; S.sel = null;
+    U.applyTool({ x: 2040, z: 2201, y: 0 }, true, false);   // 200m off any road
+    const farType = S.sel ? S.sel.type : null;
+    S.sel = null;
+    U.applyTool({ x: 2040, z: 2001, y: 0 }, true, false);   // 1m off the centreline
+    const pickedType = S.sel && S.sel.type;
+    let clicked = false;
+    for (const bt of document.querySelectorAll('button')) {
+      if ((bt.textContent || '').trim() === 'Delete this road') { bt.click(); clicked = true; break; }
+    }
+    return { before, afterAdd, afterDelete: L.roads.length, pickedType, farType, clicked };
+  });
+  ok(roadPick.afterAdd === roadPick.before + 1, 'a second road can be added alongside an existing one');
+  ok(roadPick.farType !== 'road', 'a point far from any road does not select one', String(roadPick.farType));
+  ok(roadPick.pickedType === 'road', 'clicking near a road selects it through the Select tool, not only the most recent one');
+  ok(roadPick.clicked, 'the selection panel draws a real Delete this road button');
+  ok(roadPick.afterDelete === roadPick.before, 'the Delete this road button actually removes it', JSON.stringify(roadPick));
+
+  // The four new brush controls, each driven through the real applyTool path.
+  const brush = await page.evaluate(() => {
+    const g = window.__grim, U = g.EDIT_UI(), E = g.EDIT(), S = U.state;
+    const spot = { x: 3000, z: 3000, y: 0 };
+    const countAt = () => { let c = 0; for (const k in E.raw.paint) c += E.raw.paint[k].length; return c; };
+
+    // Hard edge (old, default behaviour): every cell in the radius commits.
+    E.setLayer(null);
+    S.tool = 'paint'; S.surf = 3; S.brush = 12; S.hardness = 1; S.flow = 1; S.organic = false; S.maskSurf = null;
+    U.applyTool(spot, true, false);
+    const hardCount = countAt();
+
+    // Fully soft edge: only the centre cell is guaranteed, so fewer land.
+    E.setLayer(null);
+    S.hardness = 0;
+    U.applyTool(spot, true, false);
+    const softCount = countAt();
+
+    // Low flow, full hardness: fewer cells commit per single pass.
+    E.setLayer(null);
+    S.hardness = 1; S.flow = 0.3;
+    U.applyTool(spot, true, false);
+    const lowFlowCount = countAt();
+
+    // Mask: paint surface 5 solid, then try surface 6 locked to "unpainted
+    // only" over the same patch (nothing should change), then lock to
+    // surface 5 and paint 6 (every one of those cells should flip).
+    E.setLayer(null);
+    S.hardness = 1; S.flow = 1; S.organic = false; S.maskSurf = null;
+    S.surf = 5; S.brush = 8;
+    U.applyTool(spot, true, false);
+    const paintedA = countAt();
+    S.surf = 6; S.maskSurf = -1;
+    U.applyTool(spot, true, false);
+    const afterUnpaintedLock = countAt();
+    let stillAllFive = true;
+    for (const k in E.raw.paint) for (const e of E.raw.paint[k]) if (e[2] !== 5) stillAllFive = false;
+    S.maskSurf = 5;
+    U.applyTool(spot, true, false);
+    let nowAllSix = true;
+    for (const k in E.raw.paint) for (const e of E.raw.paint[k]) if (e[2] !== 6) nowAllSix = false;
+
+    return { hardCount, softCount, lowFlowCount, paintedA, afterUnpaintedLock, stillAllFive, nowAllSix };
+  });
+  ok(brush.hardCount > 20, 'a full-hardness brush paints every cell in its radius, unchanged from before', brush.hardCount + ' cells');
+  ok(brush.softCount > 0 && brush.softCount < brush.hardCount,
+    'hardness 0 paints fewer cells than a full-hard brush of the same radius', brush.softCount + ' vs ' + brush.hardCount);
+  ok(brush.lowFlowCount > 0 && brush.lowFlowCount < brush.hardCount,
+    'flow below 1 commits fewer cells per pass than flow 1', brush.lowFlowCount + ' vs ' + brush.hardCount);
+  ok(brush.afterUnpaintedLock === brush.paintedA && brush.stillAllFive,
+    '"unpainted ground only" refuses to paint over an already-painted patch');
+  ok(brush.nowAllSix, 'locking to a specific surface retextures exactly that surface and nothing else');
 
   const edErrs = eErrs.filter(e => !/404|Failed to load resource/.test(e));
   ok(edErrs.length === 0, 'no console errors in editor mode', edErrs.slice(0, 2).join(' | '));

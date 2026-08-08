@@ -1,5 +1,16 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.14) - GROUND TEXTURE STATIC FIXED, BIGGER BRUSH, SLOPE/SNOW LINE NOW TUNABLE
+
+FIXED - the dithered ground blend from the last patch could show a grid-like static pattern over large or bumpy areas, worst from a low angle. The dither now fades into the old smooth blend automatically at distance and grazing angles, where a screen pixel can no longer resolve the fine grain, so it never shows static again but keeps the crisp up-close blending where it matters.
+
+FIXED - an older road drawn before the most recent one could never be selected or deleted from the Select tool, only the most recent road could. Any road can now be clicked and deleted from wherever it sits in the list.
+
+ADDED - four new paint brush controls: hardness (softens the brush's own edge instead of a hard circle), flow (builds coverage up gradually like an airbrush instead of committing at full strength on contact), organic edge (breaks up the brush footprint so patches read as hand-placed instead of a stamped circle), and a paint-only-over lock so one texture can be retextured into another without spilling onto the rest of the ground.
+
+ADDED - the slope where a hillside starts showing rock, and the altitude where the snow/cap line starts, are both tunable per world from a new Ground texture rules panel, instead of being fixed in code. Old worlds render exactly as before until touched.
+
+
 ## 2026-08-08 (v17.13) - THE HAND-PLACED WORLD LOADS MORE RELIABLY
 
 FIXED - if the one fetch for your saved map edits lost a race against a slow or flaky connection, the game gave up silently and showed the bare generated world with no sign anything went wrong. It now tries a second time before giving up, and if it still fails, says so in the console instead of failing silent.
@@ -63,8 +74,3 @@ CHANGED - a brand new character's action bar now starts completely empty. Your s
 ## 2026-08-07 (v17.7) - TRADE BUTTON (COMING SOON)
 
 ADDED - a TRADE button next to WHISPER on every other player's row in the Who's Online list (press O), including your online friends. It is not a real trade window yet, tapping it just tells you trading is coming soon and to whisper them for now, but the target-a-player groundwork is in place so a real offer-and-accept trade system can drop in later without changing how you pick who to trade with.
-
-
-## 2026-08-07 (v17.6) - WHO'S ONLINE
-
-ADDED - the players list (press O) now shows where everyone is and how tough they are: a Zone · Level line under every name, yours included. Two new filters at the top narrow it down by zone or by a minimum combat level, so a big server reads as a short list of exactly who you're looking for. Friends and your own row are never filtered out.

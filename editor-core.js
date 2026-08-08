@@ -56,7 +56,11 @@ const GRIM_EDIT = (() => {
     return {
       v: 1, gen: 0, pcell: PCELL, blend: BLEND_DEFAULT,
       paint: {}, roads: [], objects: [], removed: [],
-      height: {}, spawns: [], prefabs: {}, districts: [], bookmarks: []
+      height: {}, spawns: [], prefabs: {}, districts: [], bookmarks: [],
+      // Ground texture plan, Phase 3: null means "use the engine default"
+      // (slope 0.16/0.42, cap 52/78m), so an old layer with neither field
+      // renders exactly as it always has.
+      slopeLo: null, slopeHi: null, capLo: null, capHi: null
     };
   }
 
@@ -87,6 +91,15 @@ const GRIM_EDIT = (() => {
   function pChunkKey(cx, cz) { return Math.floor(cx * PCELL / 64) + ',' + Math.floor(cz * PCELL / 64); }
   function chunkKey(cx, cz) { return cx + ',' + cz; }
   function num(v, d) { const n = +v; return isFinite(n) ? n : d; }
+  // Like num(), but for the Phase 3 slope/cap overrides, where the field
+  // being absent or invalid means "use the engine default", a real, distinct
+  // third state, not some arbitrary fallback number.
+  function clampedOrNull(v, lo, hi) {
+    if (v === null || v === undefined) return null;
+    const n = +v;
+    if (!isFinite(n)) return null;
+    return Math.max(lo, Math.min(hi, n));
+  }
 
   // ---- loading ------------------------------------------------------------
 
@@ -143,6 +156,22 @@ const GRIM_EDIT = (() => {
     }
     out.pcell = PCELL;
     out.blend = Math.max(0.5, Math.min(BLEND_MAX, num(raw.blend, BLEND_DEFAULT)));
+
+    // Slope-to-rock and altitude-cap tuning (ground texture plan, Phase 3).
+    // A degenerate range (lo >= hi) collapses back to "use the engine
+    // default" rather than being clamped into something technically valid
+    // but silently wrong, such as a one-unit-wide band nobody asked for.
+    out.slopeLo = clampedOrNull(raw.slopeLo, 0, 1);
+    out.slopeHi = clampedOrNull(raw.slopeHi, 0, 1);
+    if (out.slopeLo != null && out.slopeHi != null && out.slopeLo >= out.slopeHi) {
+      out.slopeLo = out.slopeHi = null;
+    }
+    out.capLo = clampedOrNull(raw.capLo, -200, 500);
+    out.capHi = clampedOrNull(raw.capHi, -200, 500);
+    if (out.capLo != null && out.capHi != null && out.capHi <= out.capLo) {
+      out.capLo = out.capHi = null;
+    }
+
     if (raw.height && typeof raw.height === 'object') {
       const MAXH = CFG.MAXH || 12;
       for (const k in raw.height) {

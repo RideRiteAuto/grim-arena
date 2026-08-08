@@ -38,6 +38,7 @@ const GRIM_EDIT_UI = (() => {
       keys: {}, look: false, lastX: 0, lastY: 0,
       tool: 'paint',
       surf: 15, brush: 8, strength: 1,
+      hardness: 1, flow: 1, organic: false, maskSurf: null,
       kind: 'tree_broad', tab: 'build',
       rot: 0, scale: 1, freePlace: false,
       road: null, roadW: 6,
@@ -91,6 +92,15 @@ const GRIM_EDIT_UI = (() => {
     }
     G._chunks.clear();
     G._terrAcc = 99;
+    // Ground texture plan, Phase 3: the slope-to-rock threshold lives in a
+    // shader uniform, not per-vertex data, so a slider change needs this
+    // explicit push. Defaults here must match groundFragBody's fallback.
+    try {
+      if (G.setSlopeRule) {
+        const L = GRIM_EDIT.raw;
+        G.setSlopeRule((L && L.slopeLo != null) ? L.slopeLo : 0.16, (L && L.slopeHi != null) ? L.slopeHi : 0.42);
+      }
+    } catch (e) {}
     // Hand-placed resources are not streamed, so clearing chunks does not
     // remove them. Deleting the camp's oak has to take effect in the editor
     // immediately, not on the next reload.
@@ -169,25 +179,57 @@ const GRIM_EDIT_UI = (() => {
     const L = GRIM_EDIT.raw;
     if (!L) return;
     const rad = Math.max(0, S.brush);
+    // Hardness: fraction of the radius that is always painted; beyond it the
+    // chance of a cell landing fades to 0 at the outer edge, giving the
+    // brush a real soft edge in the authored data (not just render-time
+    // blending). 1 = old fully-hard behaviour, unchanged by default.
+    const hardFrac = (S.hardness == null) ? 1 : Math.max(0, Math.min(1, S.hardness));
+    const hardR = rad * hardFrac;
     const rc = Math.max(1, Math.ceil(rad / PCELL) + 1);
     const c0 = pcellOf(pt.x), z0 = pcellOf(pt.z);
+    // Flow: chance a cell commits on this pass at all, so a slow drag can
+    // build coverage up like an airbrush. 1 = old always-commits behaviour.
+    const flow = (S.flow == null) ? 1 : Math.max(0.05, Math.min(1, S.flow));
+    // Paint-only-over-X: null paints anywhere (old behaviour), -1 restricts
+    // to currently unpainted ground, >=0 restricts to that authored surface.
+    const mask = (S.maskSurf == null) ? null : S.maskSurf;
     let touched = 0;
     for (let dz = -rc; dz <= rc; dz++) {
       for (let dx = -rc; dx <= rc; dx++) {
         const cx = c0 + dx, cz = z0 + dz;
+        const isCentre = !dx && !dz;
+        let wx = (cx + 0.5) * PCELL, wz = (cz + 0.5) * PCELL;
+        // Organic edge: jitter the footprint itself with the same trig-noise
+        // trick zone and bridge-pad borders use, so painted patches read as
+        // hand-placed rather than a stamped circle. Never jitters the centre
+        // cell, so the smallest brush still always paints something.
+        if (S.organic && !isCentre) {
+          wx += Math.sin(wx * 0.31 + wz * 0.53) * (rad * 0.12);
+          wz += Math.cos(wx * 0.47 - wz * 0.29) * (rad * 0.12);
+        }
         // The cell under the cursor always counts, so even the smallest
         // brush setting still paints something; every other cell has to
-        // pass the real-distance test.
-        if (dx || dz) {
-          const wx = (cx + 0.5) * PCELL, wz = (cz + 0.5) * PCELL;
+        // pass the real-distance test, and then the hardness falloff.
+        if (!isCentre) {
           const ddx = wx - pt.x, ddz = wz - pt.z;
-          if (ddx * ddx + ddz * ddz > rad * rad) continue;
+          const dd = Math.sqrt(ddx * ddx + ddz * ddz);
+          if (dd > rad) continue;
+          if (dd > hardR) {
+            const t = (dd - hardR) / Math.max(0.001, rad - hardR);
+            const chance = 1 - t * t * (3 - 2 * t);
+            if (Math.random() > chance) continue;
+          }
         }
+        if (flow < 1 && Math.random() > flow) continue;
         const key = pChunkOfCell(cx, cz);
         let list = L.paint[key];
-        if (!list) { if (erase) continue; list = L.paint[key] = []; }
         let at = -1;
-        for (let i = 0; i < list.length; i++) if (list[i][0] === cx && list[i][1] === cz) { at = i; break; }
+        if (list) for (let i = 0; i < list.length; i++) if (list[i][0] === cx && list[i][1] === cz) { at = i; break; }
+        if (mask !== null) {
+          const cur = at >= 0 ? list[at][2] : -1;
+          if (cur !== mask) continue;
+        }
+        if (!list) { if (erase) continue; list = L.paint[key] = []; }
         if (erase) { if (at >= 0) { list.splice(at, 1); touched++; } }
         else if (at >= 0) { if (list[at][2] !== S.surf) { list[at][2] = S.surf; touched++; } }
         else { list.push([cx, cz, S.surf]); touched++; }
@@ -328,6 +370,32 @@ const GRIM_EDIT_UI = (() => {
   // are deleted by completely different mechanisms: an authored object is
   // spliced out of the layer, a generated one is recorded by id in the removal
   // list so every client skips growing it.
+  // Nearest authored road to a point, or null. Re-smooths each road with
+  // GRIM_EDIT.smooth (the same Catmull-Rom the runtime index uses) so the
+  // hit-test follows the curve actually drawn, not the raw waypoints.
+  function pickRoad(pt, maxD) {
+    const L = GRIM_EDIT.raw;
+    if (!L || !L.roads.length) return null;
+    let best = null, bestD = Infinity;
+    for (let ri = 0; ri < L.roads.length; ri++) {
+      const r = L.roads[ri];
+      const pts = GRIM_EDIT.smooth(r.p);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const ax = pts[i + 1][0] - pts[i][0], az = pts[i + 1][1] - pts[i][1];
+        const len2 = ax * ax + az * az;
+        let t = len2 ? ((pt.x - pts[i][0]) * ax + (pt.z - pts[i][1]) * az) / len2 : 0;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        const px = pts[i][0] + ax * t - pt.x, pz = pts[i][1] + az * t - pt.z;
+        const d = Math.hypot(px, pz);
+        if (d < bestD) { bestD = d; best = ri; }
+      }
+    }
+    if (best === null) return null;
+    const tol = maxD || (L.roads[best].w / 2 + 6);
+    if (bestD > tol) return null;
+    return { type: 'road', index: best, road: L.roads[best], d: bestD };
+  }
+
   function pickObject(pt) {
     const L = GRIM_EDIT.raw;
     if (!L) return null;
@@ -717,10 +785,36 @@ const GRIM_EDIT_UI = (() => {
       if (S.tool === 'paint') {
         row(b, 'Brush');
         slider(b, 'radius, metres', 0.5, 24, 0.5, S.brush, v => S.brush = v);
+        slider(b, 'hardness', 0, 1, 0.05, S.hardness == null ? 1 : S.hardness, v => S.hardness = v);
+        slider(b, 'flow', 0.05, 1, 0.05, S.flow == null ? 1 : S.flow, v => S.flow = v);
+        const org = el('button', S.organic ? BTN_ON : BTN, S.organic ? 'Organic edge ON' : 'Organic edge OFF');
+        org.onclick = () => { S.organic = !S.organic; paintPanel(); };
+        b.appendChild(org);
         const er = el('div', 'color:#8f8f8f;font-size:10px;margin-top:6px',
           'Alt click erases back to the generated ground. Alt right click picks the surface under the cursor. ' +
-          'Ground paint is authored on a 1m grid, so this brush can now paint a single small patch.');
+          'Ground paint is authored on a 1m grid, so this brush can now paint a single small patch. ' +
+          'Hardness below 1 fades the brush toward its own edge; flow below 1 needs several passes to fully commit; ' +
+          'organic edge breaks up the brush footprint so patches read as hand-placed.');
         b.appendChild(er);
+        row(b, 'Paint only over');
+        const maskCol = el('div', 'display:grid;grid-template-columns:1fr;gap:3px');
+        const noneBt = el('button', (S.maskSurf == null ? BTN_ON : BTN) + 'font-size:10px;text-align:left;margin:0', 'any ground, no lock');
+        noneBt.onclick = () => { S.maskSurf = null; paintPanel(); };
+        maskCol.appendChild(noneBt);
+        const unpaintedBt = el('button', (S.maskSurf === -1 ? BTN_ON : BTN) + 'font-size:10px;text-align:left;margin:0', 'unpainted ground only');
+        unpaintedBt.onclick = () => { S.maskSurf = -1; paintPanel(); };
+        maskCol.appendChild(unpaintedBt);
+        const lockLbl = (S.maskSurf != null && S.maskSurf >= 0)
+          ? ('locked to ' + S.maskSurf + ' ' + (SURF_NAMES[S.maskSurf] || ''))
+          : 'lock to the surface selected above';
+        const lockBt = el('button', BTN + 'font-size:10px;text-align:left;margin:0', lockLbl);
+        lockBt.onclick = () => { S.maskSurf = S.surf; paintPanel(); };
+        maskCol.appendChild(lockBt);
+        b.appendChild(maskCol);
+        b.appendChild(el('div', 'color:#8f8f8f;font-size:10px;margin-top:4px',
+          'Restricts this brush to cells that already match the locked surface, so one authored patch can be ' +
+          'retextured into another without spilling onto the rest of the ground. Pick the target surface above, ' +
+          'then use the surface picker to choose what it becomes, then lock again if you switch targets.'));
       } else {
         row(b, 'Road');
         slider(b, 'width, metres', 2, 24, 1, S.roadW, v => S.roadW = v);
@@ -769,7 +863,25 @@ const GRIM_EDIT_UI = (() => {
         'Wheel rotates the ghost. Alt click removes a generated tree or rock instead of placing.'));
     } else if (S.tool === 'select') {
       row(b, 'Selection');
-      if (!S.sel) {
+      if (S.sel && S.sel.type === 'road') {
+        const r = S.sel.road;
+        b.appendChild(el('div', 'color:#ededed;font-size:12px;font-weight:700',
+          'Road, ' + r.p.length + ' waypoint' + (r.p.length === 1 ? '' : 's')));
+        b.appendChild(el('div', 'color:#8f8f8f;font-size:10px',
+          'width ' + r.w + 'm  ·  surface ' + r.s + ' ' + (SURF_NAMES[r.s] || '')));
+        b.appendChild(el('div', 'color:#8f8f8f;font-size:10px;margin-top:4px',
+          'Click near any point along this road to select it, from anywhere ' +
+          'in its waypoint list, not only the most recently drawn road.'));
+        slider(b, 'width, metres', 2, 40, 1, r.w, v => { r.w = v; GRIM_EDIT.reindex(); rebuildWorld(); });
+        const del = el('button', BTN.replace('#ededed', '#e0574f'), 'Delete this road');
+        del.onclick = () => {
+          pushUndo();
+          GRIM_EDIT.raw.roads.splice(S.sel.index, 1);
+          S.sel = null; GRIM_EDIT.reindex(); rebuildWorld(); paintPanel();
+          say('road deleted');
+        };
+        b.appendChild(del);
+      } else if (!S.sel) {
         b.appendChild(el('div', 'color:#8f8f8f;font-size:11px',
           'Click anything: something you placed, or a tree, vein or boulder the world grew.'));
       } else if (S.sel.type === 'world') {
@@ -910,6 +1022,40 @@ const GRIM_EDIT_UI = (() => {
         '<br>prefabs: ' + st.prefabs + '<br>size: ' + Math.round(st.bytes / 1024) + ' KB' +
         '<br>revision: ' + st.rev;
       b.appendChild(info);
+      row(b, 'Ground texture rules');
+      const wL = GRIM_EDIT.raw;
+      const curSloLo = (wL && wL.slopeLo != null) ? wL.slopeLo : 0.16;
+      const curSloHi = (wL && wL.slopeHi != null) ? wL.slopeHi : 0.42;
+      const curCapLo = (wL && wL.capLo != null) ? wL.capLo : 52;
+      const curCapHi = (wL && wL.capHi != null) ? wL.capHi : 78;
+      b.appendChild(el('div', 'color:#8f8f8f;font-size:10px;margin-bottom:2px',
+        'Steep ground shows rock below the first slope number and is fully rock past the second, no ' +
+        'painting needed. Ground above the first height starts showing the cap surface (snow, scree, ' +
+        'whatever that zone uses) and is fully capped past the second.'));
+      slider(b, 'rock starts, slope 0-1', 0, 1, 0.01, curSloLo, v => {
+        const L = GRIM_EDIT.raw; if (!L) return;
+        L.slopeLo = v; S.dirty = true; GRIM_EDIT.reindex(); rebuildWorld();
+      });
+      slider(b, 'rock full, slope 0-1', 0, 1, 0.01, curSloHi, v => {
+        const L = GRIM_EDIT.raw; if (!L) return;
+        L.slopeHi = v; S.dirty = true; GRIM_EDIT.reindex(); rebuildWorld();
+      });
+      slider(b, 'cap starts, metres', -50, 300, 1, curCapLo, v => {
+        const L = GRIM_EDIT.raw; if (!L) return;
+        L.capLo = v; S.dirty = true; GRIM_EDIT.reindex(); rebuildWorld();
+      });
+      slider(b, 'cap full, metres', -50, 300, 1, curCapHi, v => {
+        const L = GRIM_EDIT.raw; if (!L) return;
+        L.capHi = v; S.dirty = true; GRIM_EDIT.reindex(); rebuildWorld();
+      });
+      const rstBtn = el('button', BTN, 'Reset to engine defaults');
+      rstBtn.onclick = () => {
+        const L = GRIM_EDIT.raw; if (!L) return;
+        pushUndo();
+        L.slopeLo = L.slopeHi = L.capLo = L.capHi = null;
+        S.dirty = true; GRIM_EDIT.reindex(); rebuildWorld(); paintPanel();
+      };
+      b.appendChild(rstBtn);
       row(b, 'Bookmarks');
       const bn = el('input', 'width:100%;background:#232323;border:1px solid #383838;color:#ededed;border-radius:6px;padding:6px;font:12px system-ui');
       bn.placeholder = 'name this spot';
@@ -1200,7 +1346,7 @@ const GRIM_EDIT_UI = (() => {
         }
         return;
       }
-      S.sel = pickObject(pt);
+      S.sel = pickRoad(pt) || pickObject(pt);
       S.selMoved = false;
       S._confirmDel = null;
       paintPanel();
