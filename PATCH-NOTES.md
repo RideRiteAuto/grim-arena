@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.20) - SMOOTHER CAMERA TURNING IN THE OPEN WORLD
+
+FIXED - turning to look around while running used to randomly stutter or jump, like the view briefly forgot which way you were facing. The world streaming in new ground around you was doing enough work on the same frame as the camera update that it could visibly stall the view for a beat, worse the more you were actively turning at the time. Spread that work out over more frames instead of front-loading it, same total cost, no visible change to how fast the ground finishes detailing in as you walk. This is a mitigation aimed at the actual reported stutter, not a full rebuild of how terrain streams; if it doesn't fully clear this up let me know exactly when it still happens (standing still and turning vs. running and turning is the useful distinction) and I'll dig further.
+
+
 ## 2026-08-08 (v17.19) - MULTIPLAYER SERVER: FEWER STORAGE WRITES DURING COMBAT
 
 CHANGED - landing a hit or looting a kill no longer writes the whole world to storage on the spot every single time. Changes still land on your screen instantly, the save itself is just bundled up and written a couple seconds later instead of once per hit, cutting real server storage costs during busy fights and looting without changing anything you'd notice. Shipped alone and watched closely since it touches how progress gets saved.
@@ -67,11 +72,3 @@ FIXED - every tree in the game had a visible seam ringing the trunk right where 
 
 ADDED - a DRAW button next to GRAPHICS on the pause menu, cycling NEAR/NORMAL/FAR. Controls how far the camera sees: fog, the horizon, and how much terrain and scenery load in around you. NORMAL is a small step in from before (nothing was visible past where fog already hid it), FAR pushes it back out for a bigger view if your machine can take it.
 FIXED - the fog and the sky behind it used to be two different colors, so distant terrain sat as a lighter band on the horizon instead of fading away. They match now.
-
-
-## 2026-08-08 (v17.11) - CLEANER GROUND TEXTURE BLENDS, WIDER BLEND RANGE
-
-REDONE - where two ground textures meet (or ground blends into rock on a slope), the game used to average the two textures' colours together, which washes them into a hazy, flat-looking band right at the seam, on top of the blend being limited by how fine the terrain mesh itself is. Reworked so each patch of ground is drawn with one texture or the other at full detail, scattered by a fine, stable grain so the transition reads as an organic mix rather than a blend bounded by mesh geometry. No extra cost to draw and no change to the terrain mesh itself.
-CHANGED - the paint tool's "Ground blend / edge softness" setting can now go up to 6m (was 4m). A wide soft blend used to just mean a wider band of that same washed-out colour, so there was no reason to want one; that is no longer true, so the range grew to match.
-
-FIXED - every coastline used to force a sandy strip onto the ground near any water, regardless of zone or what was actually painted there, left over from before the zone and paint system existed. It was baked at the terrain mesh's own grid resolution rather than the paint tool's, which made it noticeably more jagged than a real paint blend, and it kept fighting attempts to paint over it since it was never actual ground paint to begin with. Removed both places it was forced in. Sun Coast and the Isles are unaffected, they already carry their own real coastal sand as part of the zone itself; everywhere else, the water's edge now shows the zone's real ground, or whatever gets painted there.
