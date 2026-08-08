@@ -1,5 +1,11 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.17) - MULTIPLAYER SERVER: LESS CROSS-TALK, FASTER COMBAT HITS
+
+CHANGED - other players' position updates are now only sent to players near enough to actually see them, the same distance rule monsters already used. Party members still always see each other's position no matter how far apart, so the party overlay keeps working exactly like before. Less server traffic as more people play at once, nothing you should notice moment to moment.
+CHANGED - landing a melee hit on a monster no longer forces an extra full simulation pass on top of the one already running about 10 times a second. Damage numbers, monster reactions, and death timing land exactly as fast as before, this only removes genuinely repeated work from a burst of hits landing close together.
+
+
 ## 2026-08-08 (v17.16) - EDITOR FEELS SNAPPIER, PLUS SOME SERVER CLEANUP
 
 WORKS NOW - dragging a placed object, or dragging its rotate/scale/lift sliders, in the world editor used to redraw the ground under it on every tiny movement, which made it feel sluggish underhand. It only redraws once you pause or let go now, same debounce trick a couple of other editor controls already got a few patches back.
@@ -69,8 +75,3 @@ FIXED - monsters used to visibly jump to a different spot as you ran up on them,
 
 FIXED - casting spells used to freeze and stutter the whole game for a beat, worse the more torches and lit props were in view. Every frost, fire and snare bolt built its own light and threw it away when the bolt died, and changing how many lights are in the scene forces every lit shader in view to recompile. Casts now share a fixed pool of five lights that never leave the scene, so nothing recompiles no matter how fast you cast.
 ADDED - the fireball spell now looks like actual fire instead of a glowing lump: a raked cluster of flame tongues built from the same shader the campfires use, with a trail of embers riding along behind it. Frost and snare are unchanged, and the cast sound is unchanged.
-
-
-## 2026-08-07 (v17.8) - HOTFIX: ACTION BAR PATCH BROKE THE GAME
-
-FIXED - the previous patch (R/F hotkey fix, 6->8 action bar slots) shipped with a broken invLoad(): a deleted variable declaration and a duplicated if-line left the game unable to parse at all, so nothing loaded for anyone. Restored the missing declaration, kept the new bank-array line and the 8-slot bar, dropped the duplicate line. No gameplay change beyond un-breaking the game.

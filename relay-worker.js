@@ -948,6 +948,33 @@ export class World {
     this.pushSnapshots(socks, sim, now);
   }
 
+  // nhit used to call advance() straight, unconditionally, on every landed
+  // melee hit -- on top of the ~10Hz pump that already just ran. When a real
+  // tick is due (steps > 0) that is correct and this is just advance() with
+  // extra steps, so it falls straight through. The waste was the OTHER case:
+  // steps <= 0 already short-circuits advance()'s own O(players x npcs) step
+  // loop, but it still runs a full pushSnapshots() every single time, and a
+  // burst of hits landing within the same ~10Hz window (an AoE, several
+  // players hitting at once) each triggered their own redundant pass. hp and
+  // death themselves never went through advance() at all -- nhit's handler
+  // mutates w.npcs directly -- so nothing about the fix below touches damage
+  // or death timing. What advance() actually did here was keep this.sim's
+  // aggro flags current and push one fresh snapshot so the target's reaction
+  // shows up right away instead of waiting for the next tick; collapsing a
+  // burst into one flush (20ms, far under the 100ms pump cadence and any
+  // player-perceptible delay) keeps that immediacy while dropping the rest.
+  advanceForHit(w, socks) {
+    const sim = this.ensureSim(w);
+    if (!sim || !w.npcs) return;
+    const now = Date.now();
+    const STEP = 1000 / GRIM_RULES.SIM_HZ;
+    const steps = Math.floor((now - (this.lastTick || now)) / STEP);
+    if (steps > 0) { this.advance(w, socks); return; }
+    if (now - (this._lastHitPush || 0) < 20) return;
+    this._lastHitPush = now;
+    this.pushSnapshots(socks, sim, now);
+  }
+
   // An attack is announced once, in full, with the moment it begins on the
   // server's clock. Every player plays the identical telegraph at the identical
   // instant; each player's own machine then decides whether THEY were inside
@@ -1399,6 +1426,29 @@ export class World {
       return;
     }
 
+    // Position broadcasts get the same interest filter NPC snapshots already
+    // use (GRIM_RULES.INTEREST_R) -- every player's move otherwise reached
+    // every other connected player regardless of distance, cost growing with
+    // concurrent players. Party membership is checked first and exempts the
+    // distance filter entirely: the party "where's my partner" overlay needs
+    // a member's position even far away, same reasoning as the party chat
+    // scoping just above. Failing open (send when either side's position
+    // isn't known yet) matches how every other path here already behaves --
+    // a silently dropped position update reads to a player as "everyone else
+    // stopped moving," a far worse failure than one extra send.
+    if (m.t === 's') {
+      const R = GRIM_RULES;
+      for (const w of socks) {
+        if (w === ws) continue;
+        const x = this.meta(w);
+        if (!x) continue;
+        if (meta.party && x.party === meta.party) { this.send(w, m); continue; }
+        if (meta.px == null || meta.pz == null || x.px == null || x.pz == null) { this.send(w, m); continue; }
+        if (Math.hypot(meta.px - x.px, meta.pz - x.pz) <= R.INTEREST_R) this.send(w, m);
+      }
+      return;
+    }
+
     if (m.to) {                                     // directed reply, used for loot grants
       const target = this.oneById(m.to);
       if (target) this.send(target, m);
@@ -1467,7 +1517,7 @@ export class World {
 
     if (m.t === 'nhit') {
       if (!w.npcs) return;
-      try { this.advance(w, socks); } catch (e) {}
+      try { this.advanceForHit(w, socks); } catch (e) {}
       const i = m.i | 0;
       const n = w.npcs[i];
       if (!n || n.dead || n.hp <= 0) return;
