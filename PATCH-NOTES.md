@@ -1,5 +1,9 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.23) - UNDER-THE-HOOD: BACKGROUND-THREAD TERRAIN BUILDER, NOT TURNED ON YET
+
+WORKS NOW - built the actual background thread the last under-the-hood patch was prepping for, but left it switched off. It builds terrain and decides what grows where, in parallel with the game itself and checked line-for-line against what the game already produces so it can't ever draw the world differently. Nothing is wired up to actually use it yet - that's a separate, later step behind its own on/off switch, so this patch changes nothing about how the game looks, plays, or feels today.
+
 ## 2026-08-08 (v17.22) - GROUND PAINT: FIXED A REMAINING HARD EDGE ON SOME SIDES OF A PAINTED AREA
 
 FIXED - painting a patch of ground (meadow, dirt, etc.) could still show a hard, blocky edge on one side of the brush while the rest faded in smoothly, even after the last two passes at this. The real cause: painting worked by swapping out one of the two natural textures already blended at that spot, and which one got swapped depended on the natural terrain itself, not on the paint stroke. Wherever those two things lined up badly, the edge went hard. Paint now fades in as its own layer on top of the natural ground instead of swapping anything out, so there's nothing left to cause that mismatch. Verified with real before/after data in all directions around a test brush stroke, not just eyeballed.

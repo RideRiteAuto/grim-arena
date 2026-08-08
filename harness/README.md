@@ -76,6 +76,14 @@ Tooling, not game code. None of this is served to players.
   against `/tmp/phase0-after.json`. Most useful for a future three.js version
   bump (the worker's vertex/normal math is re-derived from three@0.160.1's
   own source) or for Phase 1's worker-vs-main-thread comparison.
+- `worker-compare.js` is that Phase 1 worker-vs-main-thread comparison
+  (`TERRAIN-WORKER-OFFLOAD-PLAN.md` Sec6): boots the real bundle, then calls
+  `window.__grim.debugCompareSample()` to byte-diff the terrain worker's
+  output (geometry, colors, tiles, mixes, normals, dressing) against the
+  main thread's own computation across a representative sample of real
+  chunks. Kept runnable on demand, same reasoning as `phase0-baseline.js` --
+  a future three.js upgrade could silently reintroduce drift in the
+  from-scratch grid/normal math the worker uses instead of THREE.
 
 Run:
 
@@ -89,6 +97,7 @@ Run:
     node harness/ground.js
     node harness/interp.js
     node harness/combat.js
+    node harness/worker-compare.js
 
 ## `dressing.js` determinism failures here are usually not real
 

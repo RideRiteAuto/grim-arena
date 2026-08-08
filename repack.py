@@ -25,6 +25,17 @@ WEND = '/* WORLD-GEN-END */'
 EDITOR_FILES = ['editor-core.js', 'editor-tools.js', 'editor-ui.js']
 EBEGIN = '/* EDITOR-BEGIN */'
 EEND = '/* EDITOR-END */'
+# Terrain worker (Phase 1 of TERRAIN-WORKER-OFFLOAD-PLAN.md): a self-contained
+# script for a dedicated Web Worker, assembled from the same world/rules/edit
+# sources the main bundle uses plus terrain-worker-src.js's own worker-only
+# code (dispatcher, from-scratch geometry). Unlike WORLD_FILES/EDITOR_FILES,
+# this is NOT injected as executable code between its markers -- a worker has
+# no shared scope with the main script, so it's embedded as a single
+# JSON-escaped STRING (GRIM_TERRAIN_WORKER_SRC) that the main thread hands to
+# `new Worker(URL.createObjectURL(new Blob([...])))` at runtime.
+WORKER_FILES = ['worldgen-data.js', 'worldgen.js', 'shared-rules.js', 'editor-core.js', 'terrain-worker-src.js']
+WKBEGIN = '/* WORKERBEGIN */'
+WKEND = '/* WORKEREND */'
 
 def inject(text, rules, what):
     """Replace everything between the markers with the shared rules body.
@@ -84,6 +95,22 @@ def sync_editor():
         io.open(SRC, 'w', encoding='utf-8').write(out)
     print('editor synced (%d bytes) into game source' % len(body))
 
+def sync_worker():
+    """Assemble the terrain worker's self-contained script and embed it as a
+    JSON-escaped string literal between the WORKER markers. See WORKER_FILES's
+    comment: this is a string payload, not injected code, because a Worker
+    loaded from a Blob URL shares no scope with the main script."""
+    body = '\n'.join(io.open(f, encoding='utf-8').read().rstrip() for f in WORKER_FILES)
+    payload = json.dumps(body, ensure_ascii=False).replace('</', '<\\u002F')
+    src = io.open(SRC, encoding='utf-8').read()
+    a, b = src.find(WKBEGIN), src.find(WKEND)
+    if a < 0 or b < 0 or b < a:
+        raise SystemExit('terrain-worker markers missing in ' + SRC)
+    out = src[:a] + WKBEGIN + '\nconst GRIM_TERRAIN_WORKER_SRC = ' + payload + ';\n' + src[b:]
+    if out != src:
+        io.open(SRC, 'w', encoding='utf-8').write(out)
+    print('terrain worker synced (%d bytes) into game source' % len(body))
+
 def find_doc_line(lines):
     # The document payload is the JSON string line starting with "<!DOCTYPE
     for i, ln in enumerate(lines):
@@ -103,6 +130,7 @@ def pack():
     sync_rules()
     sync_world()
     sync_editor()
+    sync_worker()
     doc = io.open(SRC, encoding='utf-8').read()
     payload = json.dumps(doc, ensure_ascii=False).replace('</', '<\\u002F')
     for b in BUNDLES:

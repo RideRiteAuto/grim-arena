@@ -1,7 +1,9 @@
 # Grim World: Terrain/Dressing Web Worker Offload — Full Plan
 
-Status as of 2026-08-08: **Phase 0 shipped** (see the note at the end of this
-section). Phases 1-5 below are still design-only. This is a handoff doc —
+Status as of 2026-08-08: **Phase 0 and Phase 1 shipped** (see the notes at
+the end of §8). Phases 2-5 below are still design-only and **not authorized
+to start** without Kevin's explicit go-ahead — Phase 1 is worker scaffolding
+only, dormant, and changes nothing a player can observe. This is a handoff doc —
 written so a fresh agent/chat with no memory of how it was produced can pick
 this up. All line numbers below are from a `repack.py extract` taken at
 commit `82303a3` and **will drift** — re-grep every anchor before writing a
@@ -483,17 +485,76 @@ grid layout or vertex normals without THREE. That THREE-independent
 rebuild (§1's "must stay main-thread" section explains why it's needed) is
 real Phase 1 work.
 
-**Phase 1 — worker scaffolding, dormant.**
-Add `terrain-worker-src.js`, `repack.py`'s `WORKERBEGIN`/`WORKEREND` +
-`sync_worker()`, construct `this._terrainWorker`, wire the `GRIM_EDIT`
-initial sync (§3) and response handlers (§5) — but don't wire
-`stepTerrain` to send real requests yet. Add a debug-only path that fires
-test requests and byte-compares worker output against main-thread output
-for real (§6's determinism check, done, not just asserted). Ship once that
-comparison passes for a representative sample. **Also lands §3a's worker
-failure/recovery handling in this phase, not deferred** — `onerror`, a
-per-request timeout, and a restart path all need to exist before
-`stepTerrain` starts depending on the worker for real in Phase 2.
+**Phase 1 — worker scaffolding, dormant. SHIPPED 2026-08-08.**
+Added `terrain-worker-src.js` (own copies of Phase 0's pure functions, plus
+a from-scratch THREE-independent chunk grid/normal builder, plus the
+`onmessage` dispatcher and `GRIM_EDIT.setLayer` sync handler), `repack.py`'s
+`WORKERBEGIN`/`WORKEREND` markers + `sync_worker()` (assembles
+`worldgen-data.js + worldgen.js + shared-rules.js + editor-core.js +
+terrain-worker-src.js` into `GRIM_TERRAIN_WORKER_SRC`, a JSON-escaped string
+loaded via a Blob-URL `Worker` at runtime — not injected as executable code
+like the other three sync steps, since a Blob worker shares no scope with
+the main script). Constructs `_grimTerrainWorker` from inside `boot()`'s
+`layer.then()`, posts the initial `GRIM_EDIT.raw` + a stripped-to-plain-data
+`{anvils, campfires, roadSegs, gfx}` ctx (§7 wrinkle 1) at init, then keeps
+the worker's copy in sync on every edit by wrapping `GRIM_EDIT.reindex`/
+`setLayer` once (debounced ~150ms, matching `editor-ui.js`'s own pattern) —
+not by touching `editor-core.js`/`editor-ui.js`'s many individual call
+sites, per §3's correction. **`stepTerrain` does not send real requests —
+this phase is fully dormant, nothing a player does differently.**
+
+**Also lands §3a's worker failure/recovery in this phase, not deferred**:
+`worker.onerror`/`onmessageerror` handlers, a per-request timeout (default
+5s), and a bounded-retry (`5`) restart path that fails every in-flight
+request rather than leaving any hanging forever.
+
+**Verification performed** (§6: byte-diff worker output against real
+main-thread output, for real, not just argued):
+- The from-scratch chunk grid + normal math (`grimPlaneGridXZ`,
+  `grimPlaneIndex`, `grimComputeNormals`) was independently verified
+  bit-identical against the real, installed three@0.160.1
+  `PlaneGeometry`/`rotateX`/`computeVertexNormals` source (including the
+  Float32-accumulator-per-triangle rounding behavior, not a Float64 sum
+  rounded once at the end) across five chunk-coordinate/segment-count
+  combinations before this was ever wired into the worker.
+- `window.__grim.debugCompareChunk`/`debugCompareSample` (new, permanent —
+  kept callable on demand exactly per §6's note, since a future three.js
+  upgrade could silently reintroduce drift) run against 10 real chunks on a
+  real guest-mode local boot (varied zones, empty and dressed chunks, world
+  origin, and far-out coordinates): positions, colors, tiles, mixes,
+  normals, index, clutter list, and node list all **byte/structurally
+  identical** between the worker and the main thread's own computation for
+  every chunk, via `harness/worker-compare.js` (new).
+- Two real bugs found and fixed by this same pass, both the kind
+  `node --check`/a syntax gate cannot catch, only a real boot can (same
+  lesson Phase 0 already documented for the `SHARED-RULES-BEGIN`/`END`
+  sharp edge): an anchor-replacement patch mistake that silently dropped
+  `class Component extends DCLogic {` entirely (caught by the game failing
+  to boot at all — "logic class eval FAILED"), and a `DataCloneError` from
+  posting the live `anvils`/`campfires` records (which carry real THREE
+  objects — a mesh group, a cloned `Vector3`, the build kit) straight to the
+  worker instead of the plain `{x, z, radius}` `dressBlocked`/`chunkProps`
+  actually read.
+- `harness/boot.js`, `harness/dressing.js`, `harness/ground-blend-live.js`,
+  `harness/ground-paint-coverage.js` all ran clean against the packed bundle
+  — same results as Phase 0 (determinism identical, 0 placement-rule
+  violations). `harness/editor-gameplay.js` reproduces the same pre-existing
+  failure confirmed unrelated to this work in Phase 0's own verification
+  pass.
+- `harness/editor.js`: 87 of 89 checks passed. The 2 new failures
+  ("painted ground carries the authored surface", "the road paints the
+  ground it runs over") were confirmed, via the same before/after stash
+  comparison as everything else here, to reproduce identically on
+  unmodified `origin/master` — a pre-existing gap from 86.160's ground-paint
+  reveal-layer rework (`out[0]`/`out[1]` intentionally stay as the natural
+  blend now; the authored paint shows through `out[3]`/`out[6]` instead),
+  not something this phase caused or should fix. Worth flagging to whoever
+  owns that track: `harness/editor.js` wasn't updated for the new
+  architecture in 86.160's own commit.
+- Re-verified against origin/master a second time after it moved mid-work
+  (86.160's ground-paint reveal-layer rework landed while this was in
+  progress) — re-extracted, re-applied, re-packed, and re-ran the full
+  suite above against the new tip before pushing either time it moved.
 
 **Phase 2 — `stepTerrain` cutover, feature-flagged.**
 `GRIM_RULES.PERF.TERRAIN_WORKER` boolean, landed `false` by default, then
