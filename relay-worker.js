@@ -26,6 +26,16 @@ import { mulberry32, makeSimNpc, stepNpc, separate } from './sim.js';
 const PROTO = 7;
 const RATE_LIMIT = 60;              // msgs/sec per player; the game sends ~20
 const OWNER_STALE_MS = 8000;
+// Tier 2 item #5: how long a dirty (unsaved) world can sit in memory before
+// a debounced flush is forced. Cloudflare's own lifecycle docs put the
+// hibernation threshold at "10 seconds of no incoming request or event",
+// and hibernating discards whatever this.mem holds that was never written
+// with storage.put(). 2000ms gives a comfortable 5x margin under that 10s
+// line even accounting for scheduling jitter, while still cutting a rapid
+// hit/loot burst down from one storage write per event to about one every
+// two seconds. See PROJECT-MEMORY.md / TIER2-NETWORKING-EDITOR-PLAN.md
+// item #5 for why this one shipped alone with extra scrutiny.
+const SAVE_DEBOUNCE_MS = 2000;
 
 // Messages the relay forwards. Anything else is dropped.
 // ptyi/ptya/ptyd/ptyl/ptyk are listed for documentation even though they are
@@ -789,6 +799,7 @@ export class World {
     this.state = state;
     this.env = env;
     this.mem = null;                        // {npcs, sacks, seq} cache of stored world state
+    this._dirty = false;                    // true when mem has changes storage doesn't have yet
   }
 
   // ------------------------------------------------------- world state (durable)
@@ -801,7 +812,26 @@ export class World {
   }
   async saveWorld() {
     if (!this.mem) return;
-    try { await this.state.storage.put('world', this.mem); } catch (e) {}
+    try { await this.state.storage.put('world', this.mem); this._dirty = false; } catch (e) {}
+  }
+  // Tier 2 item #5: nhit and lreq land far more often than a manifest/nreg
+  // setup or a respawn/expiry alarm ever does, so writing the full world
+  // blob on every single one of them was real, avoidable storage-write
+  // cost. This defers the write instead of skipping it: mark the change and
+  // make sure an alarm is due within SAVE_DEBOUNCE_MS, reusing setAlarm's
+  // existing "earliest wins" merge against whatever respawn/expiry alarm is
+  // already scheduled (see setAlarm below). alarm() already calls
+  // saveWorld() unconditionally on every firing regardless of why it fired,
+  // so no change was needed there -- this only changes when the write gets
+  // requested, never whether it eventually happens. A debounce window this
+  // far under the hibernation threshold (see SAVE_DEBOUNCE_MS above) means
+  // the worst case is losing up to ~2s of the *last* hit/loot event if the
+  // Durable Object were killed outright (not hibernated) at the worst
+  // possible instant, same residual risk any debounce carries -- not the
+  // unbounded loss window an untriggered timer-based debounce would have.
+  async markDirty() {
+    this._dirty = true;
+    await this.setAlarm(Date.now() + SAVE_DEBOUNCE_MS);
   }
 
   // ------------------------------------------------------ monster simulation
@@ -1578,7 +1608,10 @@ export class World {
         if (sack) this.broadcast(socks, { t: 'sknew', s: this.wire(sack, now) });
         await this.setAlarm(n.at);
       }
-      await this.saveWorld();
+      // Tier 2 item #5: hp/death state above is mutated on this.mem (the
+      // in-memory cache) either way; only the storage.put() itself is
+      // deferred, and only up to SAVE_DEBOUNCE_MS. See markDirty().
+      await this.markDirty();
       return;
     }
 
@@ -1594,7 +1627,9 @@ export class World {
       if (en.qty <= 0) s.entries = s.entries.filter(x => x.qty > 0);
       if (!s.entries.length) { delete w.sacks[m.id]; this.broadcast(socks, { t: 'skgone', id: m.id }); }
       else this.broadcast(socks, { t: 'skupd', id: m.id, e: en.e, qty: en.qty });
-      await this.saveWorld();
+      // Tier 2 item #5: same debounce as nhit above -- the sack mutation is
+      // already applied to this.mem, only the storage write is deferred.
+      await this.markDirty();
       return;
     }
 

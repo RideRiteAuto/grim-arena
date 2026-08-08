@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.19) - MULTIPLAYER SERVER: FEWER STORAGE WRITES DURING COMBAT
+
+CHANGED - landing a hit or looting a kill no longer writes the whole world to storage on the spot every single time. Changes still land on your screen instantly, the save itself is just bundled up and written a couple seconds later instead of once per hit, cutting real server storage costs during busy fights and looting without changing anything you'd notice. Shipped alone and watched closely since it touches how progress gets saved.
+
+
 ## 2026-08-08 (v17.18) - MULTIPLAYER SERVER: SMOOTHER MONSTER MOVEMENT, LESS TRAFFIC DURING FIGHTS
 
 CHANGED - monster positions sent to your screen are now ten times more precise (about a centimetre instead of about ten centimetres), which should make monster movement read a little smoother and more consistent, especially at slower walking and patrol speeds.
@@ -70,8 +75,3 @@ REDONE - where two ground textures meet (or ground blends into rock on a slope),
 CHANGED - the paint tool's "Ground blend / edge softness" setting can now go up to 6m (was 4m). A wide soft blend used to just mean a wider band of that same washed-out colour, so there was no reason to want one; that is no longer true, so the range grew to match.
 
 FIXED - every coastline used to force a sandy strip onto the ground near any water, regardless of zone or what was actually painted there, left over from before the zone and paint system existed. It was baked at the terrain mesh's own grid resolution rather than the paint tool's, which made it noticeably more jagged than a real paint blend, and it kept fighting attempts to paint over it since it was never actual ground paint to begin with. Removed both places it was forced in. Sun Coast and the Isles are unaffected, they already carry their own real coastal sand as part of the zone itself; everywhere else, the water's edge now shows the zone's real ground, or whatever gets painted there.
-
-
-## 2026-08-07 (v17.9) - MONSTERS DON'T TELEPORT ON YOU ANYMORE
-
-FIXED - monsters used to visibly jump to a different spot as you ran up on them, worse the faster you were moving even with FPS fine. The game was drawing monsters farther away than it was willing to tell you their real position, so they'd freeze in place out past a certain range and then snap to the truth the instant you got close. Draw range for monsters is a little shorter now to match, and reacquiring one after a gap eases in instead of popping.
