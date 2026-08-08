@@ -255,6 +255,25 @@ const GRIM_EDIT_UI = (() => {
     blendDebounce = setTimeout(() => { GRIM_EDIT.reindex(); rebuildWorld(); }, 150);
   }
 
+  // Same wading-through-mud problem, different callers: dragging an
+  // authored object (select tool) and its rotate/scale/lift sliders below
+  // used to reindex+rebuild on every single mousemove/oninput tick. One
+  // shared debounce for all of them, since only one can be in progress at a
+  // time and they all end in the same reindex+rebuild. flushObjRebuild()
+  // forces it immediately on mouseup/change, so the final position or value
+  // always lands even if it lands mid-debounce.
+  let objRebuildDebounce = null;
+  function scheduleObjRebuild() {
+    clearTimeout(objRebuildDebounce);
+    objRebuildDebounce = setTimeout(() => { objRebuildDebounce = null; GRIM_EDIT.reindex(); rebuildWorld(); }, 150);
+  }
+  function flushObjRebuild() {
+    if (objRebuildDebounce === null) return;
+    clearTimeout(objRebuildDebounce);
+    objRebuildDebounce = null;
+    GRIM_EDIT.reindex(); rebuildWorld();
+  }
+
   // Terrain sculpt. Deltas on the same 4m grid as paint, bilinear at runtime
   // so the result is a smooth surface. Three safeguards from the plan are
   // enforced here rather than left to Kevin's judgment.
@@ -347,7 +366,7 @@ const GRIM_EDIT_UI = (() => {
       k: S.kind, x: snap(pt.x), z: snap(pt.z), y: 0, r: S.rot, s: S.scale, t: ''
     });
     GRIM_EDIT.reindex();
-    rebuildWorld();
+    repaintChunksNear(pt, objRepaintR(S.kind, S.scale));
     say('placed ' + GRIM_EDIT_CATALOG[S.kind].label);
   }
   // Everything the world is currently showing that could be picked: the nodes
@@ -448,6 +467,16 @@ const GRIM_EDIT_UI = (() => {
     }
 
     pushUndo();
+    // Captured before the splice/removal below: an authored object's own x/z
+    // stay readable after splice (removed from the array, not mutated), but
+    // reading them up front avoids relying on that and covers the procedural
+    // (world) case the same way.
+    const delPt = S.sel.type === 'authored'
+      ? { x: S.sel.o.x, z: S.sel.o.z }
+      : { x: S.sel.node.g.position.x, z: S.sel.node.g.position.z };
+    const delR = S.sel.type === 'authored'
+      ? objRepaintR(S.sel.o.k, S.sel.o.s || 1)
+      : objRepaintR(S.sel.node.kind, 1);
     if (S.sel.type === 'authored') {
       const i = L.objects.indexOf(S.sel.o);
       if (i >= 0) L.objects.splice(i, 1);
@@ -459,7 +488,7 @@ const GRIM_EDIT_UI = (() => {
     }
     S.sel = null;
     S._confirmDel = null;
-    GRIM_EDIT.reindex(); rebuildWorld();
+    GRIM_EDIT.reindex(); repaintChunksNear(delPt, delR);
   }
 
   // performance.now without assuming it exists in every harness context
@@ -484,7 +513,8 @@ const GRIM_EDIT_UI = (() => {
     if (!best) return false;
     pushUndo();
     if (L.removed.indexOf(best.nid) < 0) L.removed.push(best.nid);
-    GRIM_EDIT.reindex(); rebuildWorld();
+    GRIM_EDIT.reindex();
+    repaintChunksNear({ x: best.g.position.x, z: best.g.position.z }, objRepaintR(best.kind, 1));
     say('removed the ' + best.kind);
     return true;
   }
@@ -537,7 +567,11 @@ const GRIM_EDIT_UI = (() => {
         y: p.dy || 0, r: (p.r || 0) + S.rot, s: p.s || 1, t: ''
       });
     }
-    GRIM_EDIT.reindex(); rebuildWorld();
+    // Parts were saved from within S.brush of the original save point
+    // (prefabSave's own Math.hypot(dx,dz) > S.brush check), and rotation
+    // preserves that distance, so every stamped piece lands within S.brush
+    // of pt -- same margin paint/sculpt already use over their own brush.
+    GRIM_EDIT.reindex(); repaintChunksNear(pt, S.brush + 12);
     say('stamped ' + name + ', ' + parts.length + ' pieces');
   }
 
@@ -907,18 +941,18 @@ const GRIM_EDIT_UI = (() => {
         if (c && c.node) b.appendChild(el('div', 'color:#8fbf6a;font-size:10px', 'harvestable in game'));
         if (c && c.station) b.appendChild(el('div', 'color:#8fbf6a;font-size:10px', 'working ' + c.station + ' in game'));
         slider(b, 'rotation, degrees', 0, 359, 1, Math.round((o.r || 0) * 57.2958),
-          v => { o.r = v / 57.2958; GRIM_EDIT.reindex(); rebuildWorld(); });
+          v => { o.r = v / 57.2958; scheduleObjRebuild(); }).onchange = flushObjRebuild;
         slider(b, 'scale', 0.3, 4, 0.05, o.s || 1,
-          v => { o.s = v; GRIM_EDIT.reindex(); rebuildWorld(); });
+          v => { o.s = v; scheduleObjRebuild(); }).onchange = flushObjRebuild;
         slider(b, 'lift, metres', -3, 12, 0.1, o.y || 0,
-          v => { o.y = v; GRIM_EDIT.reindex(); rebuildWorld(); });
+          v => { o.y = v; scheduleObjRebuild(); }).onchange = flushObjRebuild;
         const dup = el('button', BTN, 'Duplicate');
         dup.onclick = () => {
           pushUndo();
           const n = Object.assign({}, o);
           n.i = 'o' + Date.now().toString(36); n.x += 2; n.z += 2;
           GRIM_EDIT.raw.objects.push(n); S.sel = { type: 'authored', o: n, d: 0 };
-          GRIM_EDIT.reindex(); rebuildWorld(); paintPanel();
+          GRIM_EDIT.reindex(); repaintChunksNear({ x: n.x, z: n.z }, objRepaintR(n.k, n.s || 1)); paintPanel();
         };
         const cp = el('button', BTN, 'Copy');
         cp.onclick = () => { S.clipboard = Object.assign({}, o); say('copied'); };
@@ -1222,7 +1256,7 @@ const GRIM_EDIT_UI = (() => {
     }, true);
     window.addEventListener('mouseup', e => {
       if (e.button === 2) S.look = false;
-      if (e.button === 0) { S.drag = false; S.lastPaintCell = -1; }
+      if (e.button === 0) { S.drag = false; S.lastPaintCell = -1; flushObjRebuild(); }
     }, true);
     window.addEventListener('mousemove', e => {
       if (!S.on) return;
@@ -1293,7 +1327,7 @@ const GRIM_EDIT_UI = (() => {
     n.i = 'o' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
     n.x = snap(pt.x); n.z = snap(pt.z);
     L.objects.push(n);
-    GRIM_EDIT.reindex(); rebuildWorld();
+    GRIM_EDIT.reindex(); repaintChunksNear({ x: n.x, z: n.z }, objRepaintR(n.k, n.s || 1));
     say('pasted');
   }
 
@@ -1342,7 +1376,7 @@ const GRIM_EDIT_UI = (() => {
           // the undo snapshot belongs to the first actual movement; taking
           // it on every selecting click filled the undo stack with no-ops
           if (!S.selMoved) { pushUndo(); S.selMoved = true; }
-          S.sel.o.x = snap(pt.x); S.sel.o.z = snap(pt.z); GRIM_EDIT.reindex(); rebuildWorld();
+          S.sel.o.x = snap(pt.x); S.sel.o.z = snap(pt.z); scheduleObjRebuild();
         }
         return;
       }
@@ -1456,6 +1490,18 @@ const GRIM_EDIT_UI = (() => {
     o.traverse(n => { if (n.geometry) { try { n.geometry.dispose(); } catch (e) {} } });
   }
 
+  // Best-effort "how far from this object could a rebuild safely skip"
+  // radius for a single place/delete/duplicate/paste, matching paint and
+  // sculpt's own margin-over-brush pattern (S.brush + 8 / + 12). Falls back
+  // generously when there is no catalog entry (a procedural pick has none)
+  // rather than risk a stale mesh edge, which is a silent visual bug nobody
+  // notices until much later.
+  function objRepaintR(kind, scale) {
+    const c = kind && typeof GRIM_EDIT_CATALOG !== 'undefined' ? GRIM_EDIT_CATALOG[kind] : null;
+    const clear = (c && c.clear) ? c.clear * (scale || 1) : 20;
+    return clear + 12;
+  }
+
   // Only the chunks the edit actually touched are rebuilt, so painting stays
   // interactive instead of regenerating the whole ring on every brush stroke.
   function repaintChunksNear(pt, r) {
@@ -1473,6 +1519,12 @@ const GRIM_EDIT_UI = (() => {
       G._chunks.delete(key);
     }
     G._terrAcc = 99;
+    // Hand-placed resources (landmarks) are not streamed with the chunks
+    // above, same as rebuildWorld() -- deleting one has to leave the scene
+    // immediately, not wait for a chunk that was never going to touch it.
+    // Cheap: early-returns instantly when there are no resources or the
+    // editor is off, otherwise one pass over a short, fixed list.
+    try { if (G.applyGoneFixed) G.applyGoneFixed(); } catch (err) {}
     try { G.stepTerrain(0, 200); } catch (err) {}
     paintStatus();
   }

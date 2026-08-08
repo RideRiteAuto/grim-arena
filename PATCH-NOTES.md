@@ -1,5 +1,12 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.16) - EDITOR FEELS SNAPPIER, PLUS SOME SERVER CLEANUP
+
+WORKS NOW - dragging a placed object, or dragging its rotate/scale/lift sliders, in the world editor used to redraw the ground under it on every tiny movement, which made it feel sluggish underhand. It only redraws once you pause or let go now, same debounce trick a couple of other editor controls already got a few patches back.
+CHANGED - placing, deleting, duplicating, pasting, or stamping a prefab object in the editor now only redraws the small patch of ground right around it instead of your whole visible surroundings, so those actions land noticeably faster, especially out past the near chunks.
+WORKS NOW - some behind-the-scenes traffic routing on the multiplayer server (loot grants, party invites, party kicks) got faster to look up internally. Nothing you'd see or notice, no player-facing change.
+
+
 ## 2026-08-08 (v17.15) - UNDER-THE-HOOD PERFORMANCE CLEANUP
 
 WORKS NOW - trimmed a batch of small per-frame memory allocations across camera movement, NPC animation, quest tracking, arrows and projectiles, and terrain loading. Less garbage-collection stutter to expect in busy scenes. Nothing should look or play differently, this is all internal.
@@ -67,10 +74,3 @@ ADDED - the fireball spell now looks like actual fire instead of a glowing lump:
 ## 2026-08-07 (v17.8) - HOTFIX: ACTION BAR PATCH BROKE THE GAME
 
 FIXED - the previous patch (R/F hotkey fix, 6->8 action bar slots) shipped with a broken invLoad(): a deleted variable declaration and a duplicated if-line left the game unable to parse at all, so nothing loaded for anyone. Restored the missing declaration, kept the new bank-array line and the 8-slot bar, dropped the duplicate line. No gameplay change beyond un-breaking the game.
-
-
-## 2026-08-07 (v17.7) - ACTION BAR: 8 SLOTS, STARTS EMPTY, AND R/F STOP HIJACKING YOUR WEAPON
-
-FIXED - pressing R was silently equipping whatever was bound to action-bar slot 2, and F (when nothing was nearby to interact with) was silently equipping slot 3. Neither key was ever meant to touch your weapon - R's only real job is SORT inside the pack, and F's is the universal interact key (loot, bank, shop, furnace, talk). Both now do only what they are supposed to.
-ADDED - the action bar grew from 6 slots to 8 (keys 1-8), and stays centered under the crosshair either way.
-CHANGED - a brand new character's action bar now starts completely empty. Your starting gear is unchanged - the scimitar is still equipped and the staff, bow, pick and axe are still in your pack - you just bind them to the bar yourself instead of it being done for you. Returning characters keep every slot they already had bound; the two new slots just start empty like everything else did.

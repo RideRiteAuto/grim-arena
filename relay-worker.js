@@ -1279,10 +1279,15 @@ export class World {
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    this.state.acceptWebSocket(server);
 
     const now = Date.now();
     const id = 'p' + Math.random().toString(36).slice(2, 8) + now.toString(36).slice(-3);
+    // Tagged with its own id: getWebSockets(id) below is then a direct
+    // lookup instead of a linear scan, and (unlike a hand-rolled Map) the
+    // tag is held by the platform's own hibernatable-websockets runtime, so
+    // it is correct again the instant a hibernated Durable Object wakes up
+    // and this class's constructor reruns -- nothing here has to rebuild it.
+    this.state.acceptWebSocket(server, [id]);
     server.serializeAttachment({ id, name: 'PLAYER', color: 0, joined: now, seen: now, bg: 0, sec: 0, count: 0 });
 
     this.send(server, { t: 'welcome', proto: PROTO, id, sv: now });
@@ -1395,7 +1400,7 @@ export class World {
     }
 
     if (m.to) {                                     // directed reply, used for loot grants
-      const target = socks.find(s => { const x = this.meta(s); return x && x.id === m.to; });
+      const target = this.oneById(m.to);
       if (target) this.send(target, m);
       return;
     }
@@ -1596,13 +1601,13 @@ export class World {
   party(ws, meta, m, socks) {
     if (m.t === 'ptyi') {                             // pure notification, no membership change
       if (!m.to || m.to === meta.id) return;
-      const target = socks.find(s => { const x = this.meta(s); return x && x.id === m.to; });
+      const target = this.oneById(m.to);
       if (target) this.send(target, { t: 'ptyi', from: meta.id, name: meta.name, color: meta.color });
       return;
     }
     if (m.t === 'ptyd') {                             // decline: notify the inviter only
       if (!m.to) return;
-      const target = socks.find(s => { const x = this.meta(s); return x && x.id === m.to; });
+      const target = this.oneById(m.to);
       if (target) this.send(target, { t: 'ptyd', from: meta.id, name: meta.name });
       return;
     }
@@ -1623,7 +1628,7 @@ export class World {
 
   partyAccept(ws, meta, m, socks) {
     if (!m.to) return;
-    const inviter = socks.find(s => { const x = this.meta(s); return x && x.id === m.to; });
+    const inviter = this.oneById(m.to);
     if (!inviter) return;
     let invMeta = this.meta(inviter);
     if (!invMeta) return;
@@ -1692,9 +1697,10 @@ export class World {
 
   partyKick(ws, meta, m, socks) {
     if (!meta.party || !meta.partyLeader || !m.to || m.to === meta.id) return;
-    const target = socks.find(s => { const x = this.meta(s); return x && x.id === m.to && x.party === meta.party; });
+    const target = this.oneById(m.to);
     if (!target) return;
     const tMeta = this.meta(target);
+    if (!tMeta || tMeta.party !== meta.party) return;   // party check, not id-taggable (party changes post-connect)
     delete tMeta.party; delete tMeta.partyLeader;
     this.setMeta(target, tMeta);
     this.send(target, { t: 'ptyu', party: null, members: [], kicked: true });
@@ -1743,6 +1749,13 @@ export class World {
 
   sockets() { try { return this.state.getWebSockets(); } catch (e) { return []; } }
   meta(ws) { try { return ws.deserializeAttachment(); } catch (e) { return null; } }
+  // Direct-by-id lookup via the accept-time tag (see fetch()), for the
+  // directed-message call sites (loot grants, party invite/accept/kick)
+  // that used to linear-scan every socket for one x.id === m.to match.
+  // Deliberately NOT used for owner lookups: ownership is a flag that
+  // flips after connect, tags are fixed at accept time, so resolveOwner()
+  // and friends still scan -- see TIER2 patch notes for why.
+  oneById(id) { try { return this.state.getWebSockets(id)[0] || null; } catch (e) { return null; } }
   setMeta(ws, meta) { try { ws.serializeAttachment(meta); } catch (e) {} }
   send(ws, obj) { try { ws.send(JSON.stringify(obj)); } catch (e) {} }
   broadcast(socks, obj, except) {
