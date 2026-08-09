@@ -1,9 +1,12 @@
 # Grim World: Terrain/Dressing Web Worker Offload — Full Plan
 
-Status as of 2026-08-08: **Phase 0 and Phase 1 shipped** (see the notes at
-the end of §8). Phases 2-5 below are still design-only and **not authorized
-to start** without Kevin's explicit go-ahead — Phase 1 is worker scaffolding
-only, dormant, and changes nothing a player can observe. This is a handoff doc —
+Status as of 2026-08-08: **Phase 0, Phase 1, and Phase 2 shipped** (see the
+notes at the end of §8). Phase 2 landed with `GRIM_RULES.PERF.TERRAIN_WORKER`
+**false** — the worker-request code path exists and is verified, but nothing
+a player does is different yet. Flipping the flag true is its own separate,
+trivially-revertible decision, **not authorized without Kevin's explicit
+go-ahead**, same as every phase here. Phases 3-5 below are still
+design-only and equally not authorized to start. This is a handoff doc —
 written so a fresh agent/chat with no memory of how it was produced can pick
 this up. All line numbers below are from a `repack.py extract` taken at
 commit `82303a3` and **will drift** — re-grep every anchor before writing a
@@ -556,14 +559,85 @@ main-thread output, for real, not just argued):
   progress) — re-extracted, re-applied, re-packed, and re-ran the full
   suite above against the new tip before pushing either time it moved.
 
-**Phase 2 — `stepTerrain` cutover, feature-flagged.**
-`GRIM_RULES.PERF.TERRAIN_WORKER` boolean, landed `false` by default, then
-flipped `true` in a separate trivially-revertible patch once Phase 1
-confirms parity. The flag branches at the top of the ring-scan loop:
-worker-request path vs. today's exact synchronous call, untouched. This is
-the rollback story — flip one boolean to revert fully, no patch needed.
-**This dual state is intentionally temporary** — see Phase 5, not "ship
-and forget."
+**Phase 2 — `stepTerrain` cutover, feature-flagged. SHIPPED 2026-08-08.**
+Added `GRIM_RULES.PERF.TERRAIN_WORKER` (shared-rules.js, landed `false`).
+`stepTerrain`'s chunk-build loop and dressing loop each branch once at the
+top on `useWorker = GRIM_RULES.PERF.TERRAIN_WORKER && _grimTerrainWorker &&
+_grimWorkerReady`: the worker-request path is entirely new code, and the
+`else` branch is the pre-existing synchronous loop copied verbatim,
+untouched — not refactored, not shared, so there is zero chance a
+refactoring slip changes what ships today. Added
+`this._chunkReqs`/`_dressReqs`/`_reqSeq` (initTerrain, §5), and
+`requestBuildChunk`/`requestDressChunk` (next to `buildChunk`), which post
+to the Phase 1 worker and on response do exactly the same Mesh-assembly /
+game-state tail the synchronous methods already do — `dressChunk` was split
+into `dressChunk` (computes props) + `finishDressChunk(rec, props)`
+(everything downstream) specifically so both paths call the identical tail,
+per this doc's own Phase 5 note that the tail is shared plumbing, not "the
+old path." On failure (timeout / staleEdit / no worker), both request
+methods fall back to the synchronous call for that one chunk (§3a) rather
+than leave a hole in the terrain — a deliberate simplification of §2's
+literal "retry after edit-sync catches up" wording for staleEdit
+specifically: falling back immediately is simpler and always correct
+(the sync path reads current state directly, not through the worker); a
+future patch could add the retry if staleEdit thrashing turns out to
+matter in practice. A symmetric sweep drops stale `_chunkReqs`/`_dressReqs`
+entries alongside the existing `_chunks` range sweep.
+
+**One real gap found and closed during this phase's own verification, not
+carried forward:** the worker's `ctx.gfx` (read by `chunkProps`' clutter-
+density scaling) was only ever set once, at worker-init time (a known,
+explicitly-flagged limitation from Phase 1). This surfaced as a real,
+reproducible false positive in `worker-compare.js` once the flag was
+tested live — traced to the exact cause, not just patched around blind.
+Fixed: `stepTerrain` now re-posts a `'ctx'` message whenever `this.gfx`
+changes and `useWorker` is active (`this._lastGfxSent` tracker), and
+`grimDebugCompareChunk` (Phase 1) gets the same refresh directly, since it
+bypasses `stepTerrain` and would otherwise still see the stale-ctx false
+positive that surfaced this gap in the first place.
+
+The flag branching is the rollback story exactly as designed — flip one
+boolean to revert fully, no patch needed. **This dual state is
+intentionally temporary** — see Phase 5, not "ship and forget."
+
+**Verification performed** (with the flag both off, as shipped, and
+temporarily flipped on locally to prove the live path — never committed
+with it on):
+- **Flag off (shipped state):** `harness/boot.js`, `harness/dressing.js`
+  (determinism identical, 1,637 clutter + 13 nodes, 0 rule violations),
+  `harness/worker-compare.js`, `harness/ground-blend-live.js`,
+  `harness/ground-paint-coverage.js` all clean — byte-identical results to
+  Phase 1's own baseline, confirming the untouched synchronous path is
+  genuinely untouched. `harness/editor.js`: same 87/89 pre-existing result
+  Phase 1 already found and attributed to 86.160, not a new regression.
+  `harness/editor-gameplay.js` reproduces the same pre-existing failure
+  Phase 0 already confirmed is unrelated.
+- **Flag on (local only, to prove the cutover actually works):**
+  `harness/boot.js` and `harness/dressing.js` both clean through the real
+  worker-driven build+dress path (same 1,637/13/0-violations numbers,
+  confirmed via a rerun after the first attempt hit the known SwiftShader
+  auto-degrade artifact — see harness/README.md's existing note on that,
+  reproduced identically on unmodified origin/master under the same system
+  load, unrelated to this patch). `harness/worker-compare.js` clean after
+  the gfx-staleness fix above.
+- **One real, non-blocking finding surfaced only with the flag on:** in
+  `?edit=1` sessions specifically, the worker's throttled per-tick dressing
+  budget (unchanged from today's `1` per ~0.12s tick outside boot) means
+  newly-streamed world-grown nodes can take noticeably longer to become
+  clickable/selectable than the synchronous path — confirmed via direct
+  instrumentation to be a throughput/latency effect, not a correctness bug
+  (`window.__grim.debugCompareChunk` stays byte-identical throughout; given
+  enough wait, dressing catches up completely). This is exactly the kind of
+  thing the flag-off default and Phase 5's 1-2-week observation window
+  exist to catch before it reaches a player — **not fixed here** (budget
+  retuning is explicitly Phase 3's job, not bundled into the offload patch,
+  per this doc's original design), but worth knowing before ever flipping
+  the flag: Kevin's daily editor session may feel slower to populate at
+  first if/when this goes live, and that's worth watching for specifically
+  during the observation window.
+- Origin moved once more during this phase's work (58744f2, an unrelated
+  ground-shader fix) — re-extracted, re-applied, re-packed, and re-ran the
+  full suite above against the new tip before pushing.
 
 **Phase 3 — tune the throttle back up.**
 Once Phase 2 is stable, revisit the 85.100 budget (1+1) — likely safe to

@@ -498,6 +498,17 @@ const GRIM_RULES = {
     low:  { clutter: 0.45, dressRing: 1 }
   },
 
+  // Feature flag for the terrain worker offload (TERRAIN-WORKER-OFFLOAD-
+  // PLAN.md, Phase 2). Lands false: stepTerrain's ring-scan loop keeps
+  // calling buildChunk/dressChunk synchronously exactly like it always has.
+  // Flipping this true is deliberately a separate, trivially-revertible
+  // patch made once real play confirms parity -- flip it back to revert
+  // instantly, no code change needed. Deleted for good in Phase 5, once the
+  // synchronous fallback it guards is no longer needed.
+  PERF: {
+    TERRAIN_WORKER: false
+  },
+
   // Adjustable draw distance (patch 78.104+, see that patch's docstring for
   // the full rationale). Scales camera far, fog near/far, and the terrain
   // detail/coarse/prop-dressing chunk rings together. normal = live today.

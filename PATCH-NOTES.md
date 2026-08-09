@@ -1,5 +1,9 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.24) - UNDER-THE-HOOD: BACKGROUND-THREAD BUILDER IS WIRED UP, STILL SWITCHED OFF
+
+WORKS NOW - the background terrain builder from the last patch is now actually connected to the game, behind a switch that's left off. With the switch off (today), nothing changes - the game builds terrain exactly like it always has. Flipping that switch on later is its own separate, deliberate step, not something this patch does.
+
 ## 2026-08-08 (v17.23) - UNDER-THE-HOOD: BACKGROUND-THREAD TERRAIN BUILDER, NOT TURNED ON YET
 
 WORKS NOW - built the actual background thread the last under-the-hood patch was prepping for, but left it switched off. It builds terrain and decides what grows where, in parallel with the game itself and checked line-for-line against what the game already produces so it can't ever draw the world differently. Nothing is wired up to actually use it yet - that's a separate, later step behind its own on/off switch, so this patch changes nothing about how the game looks, plays, or feels today.
