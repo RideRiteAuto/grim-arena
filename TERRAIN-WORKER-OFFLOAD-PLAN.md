@@ -1,12 +1,16 @@
 # Grim World: Terrain/Dressing Web Worker Offload — Full Plan
 
-Status as of 2026-08-08: **Phase 0, Phase 1, and Phase 2 shipped** (see the
-notes at the end of §8). Phase 2 landed with `GRIM_RULES.PERF.TERRAIN_WORKER`
-**false** — the worker-request code path exists and is verified, but nothing
-a player does is different yet. Flipping the flag true is its own separate,
-trivially-revertible decision, **not authorized without Kevin's explicit
-go-ahead**, same as every phase here. Phases 3-5 below are still
-design-only and equally not authorized to start. This is a handoff doc —
+Status as of 2026-08-08: **`GRIM_RULES.PERF.TERRAIN_WORKER` is now `true` —
+the terrain worker is live in production**, flipped on Kevin's explicit
+go-ahead after Phase 1's byte-diff comparison and Phase 2's own live-path
+verification both confirmed the worker path matches the synchronous one
+exactly (see the notes at the end of §8 for both phases). **The rollback
+story is unchanged and still real: flip the flag back to `false` to revert
+to the synchronous path instantly, no code change needed** — see the
+important caveat on the throttle values in Phase 3's note if that ever
+happens for real. Phase 4-5 below are still design-only and **not
+authorized to start** without Kevin's explicit go-ahead, same as every
+phase here. This is a handoff doc —
 written so a fresh agent/chat with no memory of how it was produced can pick
 this up. All line numbers below are from a `repack.py extract` taken at
 commit `82303a3` and **will drift** — re-grep every anchor before writing a
@@ -639,7 +643,20 @@ with it on):
   ground-shader fix) — re-extracted, re-applied, re-packed, and re-ran the
   full suite above against the new tip before pushing.
 
-**Phase 3 — tune the throttle back up.**
+**`GRIM_RULES.PERF.TERRAIN_WORKER` flipped `true` 2026-08-08, on Kevin's
+explicit go-ahead**, as its own standalone commit (kept separately
+revertible per this section's own design). Re-verified the full suite
+above against the actual shipped bundle with the flag live (not just a
+local test): `boot.js`/`worker-compare.js`/`dressing.js` clean (determinism
+confirmed via the subset-relationship check — see `harness/README.md` —
+each time the SwiftShader auto-degrade artifact fired, which it did more
+persistently in this session than earlier, unrelated to this change and
+already independently confirmed against unmodified `origin/master`).
+`editor.js` reproduces the same 5 failures (2 pre-existing + 3 from the
+editor node-latency finding) documented in Phase 2's own notes above — no
+surprises, matches exactly what live-local testing already predicted.
+
+**Phase 3 — tune the throttle back up. SHIPPED 2026-08-08.**
 Once Phase 2 is stable, revisit the 85.100 budget (1+1) — likely safe to
 return to 3+2 or higher now that `budget` only throttles request-sending,
 not blocking time. Needs its own before/after camera-smoothness check on a

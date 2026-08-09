@@ -439,14 +439,15 @@ const GRIM_RULES = {
   },
 
   // Feature flag for the terrain worker offload (TERRAIN-WORKER-OFFLOAD-
-  // PLAN.md, Phase 2). Lands false: stepTerrain's ring-scan loop keeps
-  // calling buildChunk/dressChunk synchronously exactly like it always has.
-  // Flipping this true is deliberately a separate, trivially-revertible
-  // patch made once real play confirms parity -- flip it back to revert
-  // instantly, no code change needed. Deleted for good in Phase 5, once the
-  // synchronous fallback it guards is no longer needed.
+  // PLAN.md). Flipped true 2026-08-08 on Kevin's go-ahead, once Phase 1's
+  // byte-diff comparison and Phase 2's own live-path verification both
+  // confirmed the worker path matches the synchronous one exactly. This IS
+  // the rollback story: flip back to false to revert to the synchronous
+  // path instantly, no code change needed, if anything worker-related shows
+  // up in real play. Deleted for good in Phase 5, once the synchronous
+  // fallback it guards is no longer needed (see that section's criteria).
   PERF: {
-    TERRAIN_WORKER: false
+    TERRAIN_WORKER: true
   },
 
   // Adjustable draw distance (patch 78.104+, see that patch's docstring for

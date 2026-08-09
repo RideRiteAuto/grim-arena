@@ -1,5 +1,9 @@
 # Grim World — patch notes
 
+## 2026-08-08 (v17.25) - BACKGROUND-THREAD TERRAIN BUILDER IS NOW LIVE
+
+WORKS NOW - the game now actually uses the background thread to build terrain instead of doing that work on the same thread as the camera and controls, which is the real, permanent fix for the earlier camera-turn stutter (the last two patches were prep and mitigation, not the fix itself). Extensively checked beforehand to draw an identical world either way. If anything looks or feels off, this can be switched back to the old way instantly - tell me and I'll flip it back.
+
 ## 2026-08-08 (v17.24) - UNDER-THE-HOOD: BACKGROUND-THREAD BUILDER IS WIRED UP, STILL SWITCHED OFF
 
 WORKS NOW - the background terrain builder from the last patch is now actually connected to the game, behind a switch that's left off. With the switch off (today), nothing changes - the game builds terrain exactly like it always has. Flipping that switch on later is its own separate, deliberate step, not something this patch does.
