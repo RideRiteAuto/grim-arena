@@ -570,7 +570,16 @@ const GRIM_RULES = {
       // they can already fell, which is a live-save regression, not content.
       tree:      { skill: 'WOODCUTTING', lvl: 1,  tool: 1, hp: 3,  xp: 15,  respawn: 45,  yield: ['LOGS', 2, 2],        legacy: true },
       oak:       { skill: 'WOODCUTTING', lvl: 5,  tool: 1, hp: 5,  xp: 60,  respawn: 90,  yield: ['OAK LOGS', 3, 3],    legacy: true },
-      rock:      { skill: 'MINING',      lvl: 1,  tool: 1, hp: 4,  xp: 20,  respawn: 60,  yield: ['IRON ORE', 2, 2],    legacy: true },
+      // Repointed from IRON ORE to COPPER ORE (Kevin, Aug 12): this was the
+      // second of two differently-gated "iron ore" nodes (the other is
+      // `ironore` below, MINING 30, Ironspire only, which stays the one true
+      // iron source). Iron this early undercut the intended stone -> copper
+      // -> bronze -> [travel to Ironspire] -> iron ladder, and every one of
+      // these 15 camp rocks is exactly the lvl-1 ore patch new players need
+      // for the copper/bronze tutorial quests, standing right where they
+      // already walk. xp matches `copper` below so the same item pays the
+      // same rate everywhere.
+      rock:      { skill: 'MINING',      lvl: 1,  tool: 1, hp: 4,  xp: 25,  respawn: 60,  yield: ['COPPER ORE', 2, 2],  legacy: true },
 
       // ---- woodcutting
       poplar:    { skill: 'WOODCUTTING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 45,  yield: ['LOGS', 1, 2],
@@ -607,7 +616,12 @@ const GRIM_RULES = {
       // ---- mining
       stone:     { skill: 'MINING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 60,  yield: ['LOOSE STONE', 1, 2],
                    zones: ['HEARTLANDS', 'GREENWOOD', 'IRONSPIRE', 'FROSTWILD', 'SUNCOAST', 'WINDSCAR', 'EMBER', 'SUNSCORCH', 'EASTRIDGE', 'ISLES'] },
-      copper:    { skill: 'MINING', lvl: 10, tool: 1, hp: 3,  xp: 50,  respawn: 60,  yield: ['COPPER ORE', 1, 2],
+      // lvl 10 -> 1 and xp 50 -> 25 (Kevin, Aug 12): copper is the first metal
+      // in the new early-game ladder (stone is skipped on purpose, see the
+      // tutorial quests), so it has to be reachable at level 1 same as the
+      // camp's own copper rocks above -- two gates on the same ore was the
+      // bug, not a feature.
+      copper:    { skill: 'MINING', lvl: 1,  tool: 1, hp: 3,  xp: 25,  respawn: 60,  yield: ['COPPER ORE', 1, 2],
                    zones: ['IRONSPIRE'] },
       salt:      { skill: 'MINING', lvl: 20, tool: 2, hp: 3,  xp: 100, respawn: 60,  yield: ['SALT', 1, 2],
                    zones: ['SUNCOAST'] },

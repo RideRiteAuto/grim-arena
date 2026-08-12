@@ -1,16 +1,30 @@
 # Grim World — patch notes
 
+## 2026-08-12 (v17.26) - NEW PLAYER START REWORKED: LOGS TO COPPER TO BRONZE TO YOUR OWN ROWBOAT
+
+NEW - a brand new character's first few minutes now actually teach the game instead of handing you finished gear. You start with nothing worn (just the mining/woodcutting tools you always started with in your pack) and Ball Pellinger's first quests walk you through it: cut six logs, then mine copper and turn it into your own bronze helm and platebody at the furnace and anvil, then build your own rowboat at a new crafting table by the forge using logs you cut. Only after that does the old goblin-slaying quest chain start, unchanged from before.
+
+FIXED - there used to be two different copper/iron-ore setups that didn't agree with each other (one let you mine iron at level 1, the other required level 30), which made early mining levels feel arbitrary. The camp's starting ore patches now consistently give copper at level 1, and the high-level iron vein at Ironspire (level 30) is the only iron source in the game.
+
+NEW - Fenwick the trader now also stocks tier-1 and tier-2 tools in case you lose yours, plus venison for a quick heal.
+
+Existing characters are unaffected - if you are already past the very first goblin quest none of this changes anything for you, and anyone already carrying a rowboat keeps it.
+
+
 ## 2026-08-08 (v17.25) - BACKGROUND-THREAD TERRAIN BUILDER IS NOW LIVE
 
 WORKS NOW - the game now actually uses the background thread to build terrain instead of doing that work on the same thread as the camera and controls, which is the real, permanent fix for the earlier camera-turn stutter (the last two patches were prep and mitigation, not the fix itself). Extensively checked beforehand to draw an identical world either way. If anything looks or feels off, this can be switched back to the old way instantly - tell me and I'll flip it back.
+
 
 ## 2026-08-08 (v17.24) - UNDER-THE-HOOD: BACKGROUND-THREAD BUILDER IS WIRED UP, STILL SWITCHED OFF
 
 WORKS NOW - the background terrain builder from the last patch is now actually connected to the game, behind a switch that's left off. With the switch off (today), nothing changes - the game builds terrain exactly like it always has. Flipping that switch on later is its own separate, deliberate step, not something this patch does.
 
+
 ## 2026-08-08 (v17.23) - UNDER-THE-HOOD: BACKGROUND-THREAD TERRAIN BUILDER, NOT TURNED ON YET
 
 WORKS NOW - built the actual background thread the last under-the-hood patch was prepping for, but left it switched off. It builds terrain and decides what grows where, in parallel with the game itself and checked line-for-line against what the game already produces so it can't ever draw the world differently. Nothing is wired up to actually use it yet - that's a separate, later step behind its own on/off switch, so this patch changes nothing about how the game looks, plays, or feels today.
+
 
 ## 2026-08-08 (v17.22) - GROUND PAINT: FIXED A REMAINING HARD EDGE ON SOME SIDES OF A PAINTED AREA
 
@@ -54,32 +68,3 @@ WORKS NOW - some behind-the-scenes traffic routing on the multiplayer server (lo
 ## 2026-08-08 (v17.15) - UNDER-THE-HOOD PERFORMANCE CLEANUP
 
 WORKS NOW - trimmed a batch of small per-frame memory allocations across camera movement, NPC animation, quest tracking, arrows and projectiles, and terrain loading. Less garbage-collection stutter to expect in busy scenes. Nothing should look or play differently, this is all internal.
-
-
-## 2026-08-08 (v17.14) - GROUND TEXTURE STATIC FIXED, BIGGER BRUSH, SLOPE/SNOW LINE NOW TUNABLE
-
-FIXED - the dithered ground blend from the last patch could show a grid-like static pattern over large or bumpy areas, worst from a low angle. The dither now fades into the old smooth blend automatically at distance and grazing angles, where a screen pixel can no longer resolve the fine grain, so it never shows static again but keeps the crisp up-close blending where it matters.
-
-FIXED - an older road drawn before the most recent one could never be selected or deleted from the Select tool, only the most recent road could. Any road can now be clicked and deleted from wherever it sits in the list.
-
-ADDED - four new paint brush controls: hardness (softens the brush's own edge instead of a hard circle), flow (builds coverage up gradually like an airbrush instead of committing at full strength on contact), organic edge (breaks up the brush footprint so patches read as hand-placed instead of a stamped circle), and a paint-only-over lock so one texture can be retextured into another without spilling onto the rest of the ground.
-
-ADDED - the slope where a hillside starts showing rock, and the altitude where the snow/cap line starts, are both tunable per world from a new Ground texture rules panel, instead of being fixed in code. Old worlds render exactly as before until touched.
-
-
-## 2026-08-08 (v17.13) - THE HAND-PLACED WORLD LOADS MORE RELIABLY
-
-FIXED - if the one fetch for your saved map edits lost a race against a slow or flaky connection, the game gave up silently and showed the bare generated world with no sign anything went wrong. It now tries a second time before giving up, and if it still fails, says so in the console instead of failing silent.
-
-
-## 2026-08-08 (v17.12) - TREES AND ORE VEINS ARE SOLID NOW
-
-ADDED - trees and ore veins block movement now instead of being walk-through scenery, both the ones the world grows on its own and the ones placed by hand in the editor. Herbs, berries and mushrooms stay walk-through on purpose, they are too small to read as an obstacle.
-
-
-## 2026-08-08 (v18.3) - FROST BOLT REWORK, AND YOU CAN NOW SEE OTHER PLAYERS' SPELLS AND SHOTS
-
-ADDED - the frost bolt has the same treatment fire got last patch: a real model instead of a plain glowing ball, a forward-leading cluster of icy shards with a frost-mist trail, same quality bar as the fireball.
-ADDED - hitting someone with frost now has a 25% chance to freeze them in place for 1.5 seconds (was: always froze for 2 seconds) and plants a block of ice at their feet for as long as the freeze lasts. Every frost hit also slows the target's movement 15% for a few seconds, whether or not it freezes.
-FIXED - only the person casting a spell or firing a shot could ever see it fly. In open-world play (including PvP) everyone else's fireballs, frost bolts, snares, toxin darts and arrows were completely invisible to you until they hit - so you could take a fireball to the face with no warning it was coming. Every player's own cast or shot is now broadcast to everyone else nearby, rendered with the same real model you'd see if you cast it yourself.
-Cast and hit sounds for frost are unchanged - they already got a full pass earlier and didn't need touching.
