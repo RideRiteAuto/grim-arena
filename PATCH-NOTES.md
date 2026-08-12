@@ -1,5 +1,14 @@
 # Grim World — patch notes
 
+## 2026-08-12 (v17.29) - Click-to-auto-gather + mining progression fix
+
+NEW - Click a rock, tree, or forageable plant while your pick, axe or sickle is equipped and your character walks itself into range, faces it, and keeps swinging until the node is depleted or something interrupts you. Works for mining, woodcutting and foraging alike - one click instead of walk-face-click-repeat for every single swing.
+
+FIXED - iron ore's level gate dropped from MINING 30 to MINING 20, lined up with salt (Ironspire's neighbor zone, also 20). Finishing the new-player bronze quest chain left characters around level 10 mining, so the very next quest (IRONS IN THE FIRE, which needs real iron ore) was silently demanding 20 more levels than anything the game had asked for yet. Iron is still a real trip to Ironspire and a real grind on top of the bronze content - just not a second, much longer, unexplained one.
+
+FIXED - BRONZE BEGINNINGS' mining completion bonus raised from 60 to 150 xp, matching the scale of the smithing bonus already awarded on the same line.
+
+
 ## 2026-08-12 (v17.28) - Crafting table fully fleshed out: 6 new recipes
 
 The crafting table goes from 3 recipes to 9. Three new food/medicine items (TRAIL RATIONS, HEARTHFEN POULTICE, SUNSCORCH TONIC) heal 12/35/60 HP and scale with FORAGING level, giving BERRIES, MUSHROOMS, HOLLY, FENROOT, SPICE, DYE FLOWERS and PEARL a real use for the first time - all seven were gatherable but never consumed by anything before this. Three new trade goods (ELDERWOOD CARVINGS, SALT GLASS TALISMAN, GATHERERS TRINKET) do the same for the higher-tier woodcutting logs, glass sand/saltpeter, and the three rare bonus drops (bird nest, gem shard, wild seed), each priced with a real craft markup over selling the raw materials. No new equippable weapons or 3D held models - every new item is inventory-only, same as the rowboat before it.
@@ -60,9 +69,3 @@ CHANGED - landing a hit or looting a kill no longer writes the whole world to st
 
 CHANGED - monster positions sent to your screen are now ten times more precise (about a centimetre instead of about ten centimetres), which should make monster movement read a little smoother and more consistent, especially at slower walking and patrol speeds.
 CHANGED - during a fight with several monsters swinging, casting, or doing boss theatre at once, the server now bundles those into one message per tick instead of sending each one separately. You shouldn't notice anything different in how a fight looks or feels, this only cuts down on network chatter during busy fights.
-
-
-## 2026-08-08 (v17.17) - MULTIPLAYER SERVER: LESS CROSS-TALK, FASTER COMBAT HITS
-
-CHANGED - other players' position updates are now only sent to players near enough to actually see them, the same distance rule monsters already used. Party members still always see each other's position no matter how far apart, so the party overlay keeps working exactly like before. Less server traffic as more people play at once, nothing you should notice moment to moment.
-CHANGED - landing a melee hit on a monster no longer forces an extra full simulation pass on top of the one already running about 10 times a second. Damage numbers, monster reactions, and death timing land exactly as fast as before, this only removes genuinely repeated work from a burst of hits landing close together.

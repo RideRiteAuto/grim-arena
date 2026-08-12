@@ -512,9 +512,10 @@ const GRIM_RULES = {
       oak:       { skill: 'WOODCUTTING', lvl: 5,  tool: 1, hp: 5,  xp: 60,  respawn: 90,  yield: ['OAK LOGS', 3, 3],    legacy: true },
       // Repointed from IRON ORE to COPPER ORE (Kevin, Aug 12): this was the
       // second of two differently-gated "iron ore" nodes (the other is
-      // `ironore` below, MINING 30, Ironspire only, which stays the one true
-      // iron source). Iron this early undercut the intended stone -> copper
-      // -> bronze -> [travel to Ironspire] -> iron ladder, and every one of
+      // `ironore` below, MINING 20 as of the same day's progression-gap
+      // fix, Ironspire only, which stays the one true iron source). Iron
+      // this early undercut the intended stone -> copper -> bronze ->
+      // [travel to Ironspire] -> iron ladder, and every one of
       // these 15 camp rocks is exactly the lvl-1 ore patch new players need
       // for the copper/bronze tutorial quests, standing right where they
       // already walk. xp matches `copper` below so the same item pays the
@@ -565,7 +566,10 @@ const GRIM_RULES = {
                    zones: ['IRONSPIRE'] },
       salt:      { skill: 'MINING', lvl: 20, tool: 2, hp: 3,  xp: 100, respawn: 60,  yield: ['SALT', 1, 2],
                    zones: ['SUNCOAST'] },
-      ironore:   { skill: 'MINING', lvl: 30, tool: 2, hp: 5,  xp: 150, respawn: 60,  yield: ['IRON ORE', 1, 2],
+      // lvl 30 -> 20 (Kevin, Aug 12: mining progression-gap fix): lines
+      // iron up with salt at the same checkpoint instead of a further
+      // ~5700xp past it -- see harness/patches for the full writeup.
+      ironore:   { skill: 'MINING', lvl: 20, tool: 2, hp: 5,  xp: 150, respawn: 60,  yield: ['IRON ORE', 1, 2],
                    zones: ['IRONSPIRE'] },
       coal:      { skill: 'MINING', lvl: 40, tool: 3, hp: 5,  xp: 200, respawn: 60,  yield: ['COAL', 1, 2],
                    zones: ['IRONSPIRE'] },
