@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-12 (v17.28) - Crafting table fully fleshed out: 6 new recipes
+
+The crafting table goes from 3 recipes to 9. Three new food/medicine items (TRAIL RATIONS, HEARTHFEN POULTICE, SUNSCORCH TONIC) heal 12/35/60 HP and scale with FORAGING level, giving BERRIES, MUSHROOMS, HOLLY, FENROOT, SPICE, DYE FLOWERS and PEARL a real use for the first time - all seven were gatherable but never consumed by anything before this. Three new trade goods (ELDERWOOD CARVINGS, SALT GLASS TALISMAN, GATHERERS TRINKET) do the same for the higher-tier woodcutting logs, glass sand/saltpeter, and the three rare bonus drops (bird nest, gem shard, wild seed), each priced with a real craft markup over selling the raw materials. No new equippable weapons or 3D held models - every new item is inventory-only, same as the rowboat before it.
+
+
 ## 2026-08-12 (v17.27) - Bugfix pass + crafting/NPC expansion
 
 Fixed a real bug Kevin reported: the donkey mount drop had gotten wired to the Bandit Captain instead of Mr. Sailers on the relay-server multiplayer path (the direct peer path was already correct). Mr. Sailers now carries his own tag end to end. Also found and closed a dormant inconsistency in the old pre-account starter-kit code path (unreachable from the live login UI, but fixed so it can never quietly hand out free iron gear again if a guest mode ever returns). Crafting table now also makes CRUDE AXE and CRUDE PICK from logs alone (both already-existing items, zero new asset risk), giving it a real second use beyond the rowboat. Added Marta the Shipwright, a flavor NPC by the crafting table, same proven pattern as Jim and Pete. Verified via the local play() boot harness (real login still blocked in this sandbox by the known Cloudflare edge issue): quest chain, craft costs, craft-table UI, and the mount fix all check out.
@@ -61,10 +66,3 @@ CHANGED - during a fight with several monsters swinging, casting, or doing boss 
 
 CHANGED - other players' position updates are now only sent to players near enough to actually see them, the same distance rule monsters already used. Party members still always see each other's position no matter how far apart, so the party overlay keeps working exactly like before. Less server traffic as more people play at once, nothing you should notice moment to moment.
 CHANGED - landing a melee hit on a monster no longer forces an extra full simulation pass on top of the one already running about 10 times a second. Damage numbers, monster reactions, and death timing land exactly as fast as before, this only removes genuinely repeated work from a burst of hits landing close together.
-
-
-## 2026-08-08 (v17.16) - EDITOR FEELS SNAPPIER, PLUS SOME SERVER CLEANUP
-
-WORKS NOW - dragging a placed object, or dragging its rotate/scale/lift sliders, in the world editor used to redraw the ground under it on every tiny movement, which made it feel sluggish underhand. It only redraws once you pause or let go now, same debounce trick a couple of other editor controls already got a few patches back.
-CHANGED - placing, deleting, duplicating, pasting, or stamping a prefab object in the editor now only redraws the small patch of ground right around it instead of your whole visible surroundings, so those actions land noticeably faster, especially out past the near chunks.
-WORKS NOW - some behind-the-scenes traffic routing on the multiplayer server (loot grants, party invites, party kicks) got faster to look up internally. Nothing you'd see or notice, no player-facing change.
