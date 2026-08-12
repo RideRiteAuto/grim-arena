@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-12 (v17.27) - Bugfix pass + crafting/NPC expansion
+
+Fixed a real bug Kevin reported: the donkey mount drop had gotten wired to the Bandit Captain instead of Mr. Sailers on the relay-server multiplayer path (the direct peer path was already correct). Mr. Sailers now carries his own tag end to end. Also found and closed a dormant inconsistency in the old pre-account starter-kit code path (unreachable from the live login UI, but fixed so it can never quietly hand out free iron gear again if a guest mode ever returns). Crafting table now also makes CRUDE AXE and CRUDE PICK from logs alone (both already-existing items, zero new asset risk), giving it a real second use beyond the rowboat. Added Marta the Shipwright, a flavor NPC by the crafting table, same proven pattern as Jim and Pete. Verified via the local play() boot harness (real login still blocked in this sandbox by the known Cloudflare edge issue): quest chain, craft costs, craft-table UI, and the mount fix all check out.
+
+
 ## 2026-08-12 (v17.26) - NEW PLAYER START REWORKED: LOGS TO COPPER TO BRONZE TO YOUR OWN ROWBOAT
 
 NEW - a brand new character's first few minutes now actually teach the game instead of handing you finished gear. You start with nothing worn (just the mining/woodcutting tools you always started with in your pack) and Ball Pellinger's first quests walk you through it: cut six logs, then mine copper and turn it into your own bronze helm and platebody at the furnace and anvil, then build your own rowboat at a new crafting table by the forge using logs you cut. Only after that does the old goblin-slaying quest chain start, unchanged from before.
@@ -63,8 +68,3 @@ CHANGED - landing a melee hit on a monster no longer forces an extra full simula
 WORKS NOW - dragging a placed object, or dragging its rotate/scale/lift sliders, in the world editor used to redraw the ground under it on every tiny movement, which made it feel sluggish underhand. It only redraws once you pause or let go now, same debounce trick a couple of other editor controls already got a few patches back.
 CHANGED - placing, deleting, duplicating, pasting, or stamping a prefab object in the editor now only redraws the small patch of ground right around it instead of your whole visible surroundings, so those actions land noticeably faster, especially out past the near chunks.
 WORKS NOW - some behind-the-scenes traffic routing on the multiplayer server (loot grants, party invites, party kicks) got faster to look up internally. Nothing you'd see or notice, no player-facing change.
-
-
-## 2026-08-08 (v17.15) - UNDER-THE-HOOD PERFORMANCE CLEANUP
-
-WORKS NOW - trimmed a batch of small per-frame memory allocations across camera movement, NPC animation, quest tracking, arrows and projectiles, and terrain loading. Less garbage-collection stutter to expect in busy scenes. Nothing should look or play differently, this is all internal.
