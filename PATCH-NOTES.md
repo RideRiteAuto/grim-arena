@@ -1,5 +1,10 @@
 # Grim World — patch notes
 
+## 2026-08-12 (v17.30) - Mining XP retune (stone/copper/iron)
+
+TUNED - stone's mining xp raised from 5 to 20. Copper (and the camp's copper-yielding rock nodes, kept in lockstep as before) raised from 25 to 45. Iron ore lowered from 150 to 75 (flagged as a rough number to revisit). Level gates and everything else about these nodes are unchanged - this is a straight xp-per-swing retune, not a rebalance of what's reachable when.
+
+
 ## 2026-08-12 (v17.29) - Click-to-auto-gather + mining progression fix
 
 NEW - Click a rock, tree, or forageable plant while your pick, axe or sickle is equipped and your character walks itself into range, faces it, and keeps swinging until the node is depleted or something interrupts you. Works for mining, woodcutting and foraging alike - one click instead of walk-face-click-repeat for every single swing.
@@ -63,9 +68,3 @@ FIXED - turning to look around while running used to randomly stutter or jump, l
 ## 2026-08-08 (v17.19) - MULTIPLAYER SERVER: FEWER STORAGE WRITES DURING COMBAT
 
 CHANGED - landing a hit or looting a kill no longer writes the whole world to storage on the spot every single time. Changes still land on your screen instantly, the save itself is just bundled up and written a couple seconds later instead of once per hit, cutting real server storage costs during busy fights and looting without changing anything you'd notice. Shipped alone and watched closely since it touches how progress gets saved.
-
-
-## 2026-08-08 (v17.18) - MULTIPLAYER SERVER: SMOOTHER MONSTER MOVEMENT, LESS TRAFFIC DURING FIGHTS
-
-CHANGED - monster positions sent to your screen are now ten times more precise (about a centimetre instead of about ten centimetres), which should make monster movement read a little smoother and more consistent, especially at slower walking and patrol speeds.
-CHANGED - during a fight with several monsters swinging, casting, or doing boss theatre at once, the server now bundles those into one message per tick instead of sending each one separately. You shouldn't notice anything different in how a fight looks or feels, this only cuts down on network chatter during busy fights.

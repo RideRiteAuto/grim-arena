@@ -520,7 +520,7 @@ const GRIM_RULES = {
       // for the copper/bronze tutorial quests, standing right where they
       // already walk. xp matches `copper` below so the same item pays the
       // same rate everywhere.
-      rock:      { skill: 'MINING',      lvl: 1,  tool: 1, hp: 4,  xp: 25,  respawn: 60,  yield: ['COPPER ORE', 2, 2],  legacy: true },
+      rock:      { skill: 'MINING',      lvl: 1,  tool: 1, hp: 4,  xp: 45,  respawn: 60,  yield: ['COPPER ORE', 2, 2],  legacy: true },
 
       // ---- woodcutting
       poplar:    { skill: 'WOODCUTTING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 45,  yield: ['LOGS', 1, 2],
@@ -555,21 +555,21 @@ const GRIM_RULES = {
                    zones: ['GREENWOOD'], deep: true, rare: true },
 
       // ---- mining
-      stone:     { skill: 'MINING', lvl: 1,  tool: 1, hp: 3,  xp: 5,   respawn: 60,  yield: ['LOOSE STONE', 1, 2],
+      stone:     { skill: 'MINING', lvl: 1,  tool: 1, hp: 3,  xp: 20,  respawn: 60,  yield: ['LOOSE STONE', 1, 2],
                    zones: ['HEARTLANDS', 'GREENWOOD', 'IRONSPIRE', 'FROSTWILD', 'SUNCOAST', 'WINDSCAR', 'EMBER', 'SUNSCORCH', 'EASTRIDGE', 'ISLES'] },
       // lvl 10 -> 1 and xp 50 -> 25 (Kevin, Aug 12): copper is the first metal
       // in the new early-game ladder (stone is skipped on purpose, see the
       // tutorial quests), so it has to be reachable at level 1 same as the
       // camp's own copper rocks above -- two gates on the same ore was the
       // bug, not a feature.
-      copper:    { skill: 'MINING', lvl: 1,  tool: 1, hp: 3,  xp: 25,  respawn: 60,  yield: ['COPPER ORE', 1, 2],
+      copper:    { skill: 'MINING', lvl: 1,  tool: 1, hp: 3,  xp: 45,  respawn: 60,  yield: ['COPPER ORE', 1, 2],
                    zones: ['IRONSPIRE'] },
       salt:      { skill: 'MINING', lvl: 20, tool: 2, hp: 3,  xp: 100, respawn: 60,  yield: ['SALT', 1, 2],
                    zones: ['SUNCOAST'] },
       // lvl 30 -> 20 (Kevin, Aug 12: mining progression-gap fix): lines
       // iron up with salt at the same checkpoint instead of a further
       // ~5700xp past it -- see harness/patches for the full writeup.
-      ironore:   { skill: 'MINING', lvl: 20, tool: 2, hp: 5,  xp: 150, respawn: 60,  yield: ['IRON ORE', 1, 2],
+      ironore:   { skill: 'MINING', lvl: 20, tool: 2, hp: 5,  xp: 75,  respawn: 60,  yield: ['IRON ORE', 1, 2],
                    zones: ['IRONSPIRE'] },
       coal:      { skill: 'MINING', lvl: 40, tool: 3, hp: 5,  xp: 200, respawn: 60,  yield: ['COAL', 1, 2],
                    zones: ['IRONSPIRE'] },
